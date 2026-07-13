@@ -5,7 +5,7 @@ plugins {
 group = "dev.lodestone"
 version = providers.gradleProperty("lodestoneVersion").getOrElse("0.1.0-SNAPSHOT")
 
-val junitVersion = "5.11.4"
+val junitVersion = "6.1.2"
 
 allprojects {
     repositories {

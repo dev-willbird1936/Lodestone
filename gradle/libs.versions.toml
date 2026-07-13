@@ -1,6 +1,6 @@
 [versions]
 java = "21"
-junit = "5.11.4"
+junit = "6.1.2"
 
 [libraries]
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
