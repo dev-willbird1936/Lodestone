@@ -2,7 +2,7 @@ description = "MCP gateway over Lodestone runtime services."
 
 dependencies {
     implementation(project(":common:runtime-core"))
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.code.gson:gson:2.14.0")
 }
 
 tasks.jar {

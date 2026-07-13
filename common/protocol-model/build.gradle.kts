@@ -1,7 +1,7 @@
 description = "Versioned Lodestone protocol data model."
 
 dependencies {
-    api("com.google.code.gson:gson:2.10.1")
+    api("com.google.code.gson:gson:2.14.0")
 }
 
 tasks.jar {
