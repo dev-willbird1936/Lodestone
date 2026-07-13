@@ -270,7 +270,7 @@ public final class LodestoneRuntime implements AutoCloseable {
         }
         final JsonMapSnapshot admittedInput;
         try {
-            admittedInput = snapshotJsonMap(request.input(), MAX_INPUT_JSON_BYTES);
+            admittedInput = snapshotJsonMap(request.input(), MAX_INPUT_JSON_BYTES, true);
         } catch (Throwable invalidInput) {
             return completedError(request, result, trace, "INVALID_INPUT",
                     "capability input must be a bounded JSON object", false);
@@ -290,7 +290,7 @@ public final class LodestoneRuntime implements AutoCloseable {
         final JsonMapSnapshot effectiveInput;
         try {
             effectiveInput = input == admittedInput.value()
-                    ? admittedInput : snapshotJsonMap(input, MAX_INPUT_JSON_BYTES);
+                    ? admittedInput : snapshotJsonMap(input, MAX_INPUT_JSON_BYTES, true);
         } catch (Throwable invalidInput) {
             return completedError(request, result, trace, "INVALID_INPUT",
                     "capability input must be a bounded JSON object", false);
@@ -1234,6 +1234,12 @@ public final class LodestoneRuntime implements AutoCloseable {
 
     @SuppressWarnings("unchecked")
     private static JsonMapSnapshot snapshotJsonMap(Map<String, Object> value, int maxUtf8Bytes) {
+        return snapshotJsonMap(value, maxUtf8Bytes, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static JsonMapSnapshot snapshotJsonMap(Map<String, Object> value, int maxUtf8Bytes,
+                                                    boolean normalizeIntegralNumbers) {
         if (value == null) {
             throw new IllegalArgumentException("JSON object must not be null");
         }
@@ -1252,7 +1258,8 @@ public final class LodestoneRuntime implements AutoCloseable {
         if (!(decoded instanceof Map<?, ?> decodedMap)) {
             throw new IllegalArgumentException("value must decode as a JSON object");
         }
-        return new JsonMapSnapshot((Map<String, Object>) freezeJson(decodedMap), canonicalJson, utf8Bytes);
+        return new JsonMapSnapshot((Map<String, Object>) freezeJson(decodedMap, normalizeIntegralNumbers),
+                canonicalJson, utf8Bytes);
     }
 
     private static JsonElement canonicalizeJson(JsonElement value) {
@@ -1270,26 +1277,41 @@ public final class LodestoneRuntime implements AutoCloseable {
         return canonical;
     }
 
-    private static Object freezeJson(Object value) {
+    private static Object freezeJson(Object value, boolean normalizeIntegralNumbers) {
         if (value instanceof Map<?, ?> map) {
             var frozen = new LinkedHashMap<String, Object>();
             map.forEach((key, nested) -> {
                 if (!(key instanceof String textKey)) {
                     throw new IllegalArgumentException("JSON object keys must be strings");
                 }
-                frozen.put(textKey, freezeJson(nested));
+                frozen.put(textKey, freezeJson(nested, normalizeIntegralNumbers));
             });
             return java.util.Collections.unmodifiableMap(frozen);
         }
         if (value instanceof List<?> list) {
             var frozen = new ArrayList<Object>(list.size());
-            list.forEach(nested -> frozen.add(freezeJson(nested)));
+            list.forEach(nested -> frozen.add(freezeJson(nested, normalizeIntegralNumbers)));
             return java.util.Collections.unmodifiableList(frozen);
         }
-        if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) {
+        if (value instanceof Number number) {
+            return normalizeIntegralNumbers ? normalizeJsonNumber(number) : number;
+        }
+        if (value == null || value instanceof String || value instanceof Boolean) {
             return value;
         }
         throw new IllegalArgumentException("unsupported JSON value type: " + value.getClass().getName());
+    }
+
+    private static Number normalizeJsonNumber(Number number) {
+        if (!(number instanceof Double || number instanceof Float)) {
+            return number;
+        }
+        double value = number.doubleValue();
+        if (!Double.isFinite(value) || value != Math.rint(value)
+                || value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+            return number;
+        }
+        return (int) value;
     }
 
     @Override

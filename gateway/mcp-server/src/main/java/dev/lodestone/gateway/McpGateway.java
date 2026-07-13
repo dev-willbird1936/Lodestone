@@ -15,8 +15,10 @@ import dev.lodestone.protocol.ResultEnvelope;
 import dev.lodestone.protocol.CapabilityDescriptor;
 import dev.lodestone.runtime.AuthorizationPolicy;
 import dev.lodestone.runtime.LodestoneRuntime;
+import dev.lodestone.runtime.ResourceContent;
 
 import java.util.EnumSet;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,7 +62,8 @@ public final class McpGateway {
             new CapabilityAlias("calculate_shape", "lodestone.geometry.calculate", "1.0"),
             new CapabilityAlias("validate_mask", "lodestone.worldedit.mask.validate", "1.0"),
             new CapabilityAlias("place_furniture", "lodestone.furniture.place", "1.0"),
-            new CapabilityAlias("place_building_pattern", "lodestone.building.pattern.place", "1.0"));
+            new CapabilityAlias("place_building_pattern", "lodestone.building.pattern.place", "1.0"),
+            new CapabilityAlias("capture_screenshot", "minecraft.client.screenshot.capture", "1.0"));
     private final LodestoneRuntime runtime;
     private final StaticCatalogTools staticCatalogTools;
     private final CallerGrantResolver callerGrantResolver;
@@ -360,11 +363,30 @@ public final class McpGateway {
         tools.add(worldEditClipboardTool());
         tools.add(worldEditHistoryTool());
         for (var alias : COMPATIBILITY_ALIASES) {
-            capability(alias.capability(), alias.version()).ifPresent(capability -> tools.add(tool(
-                    alias.name(), capability.documentation() + " Negotiated state: " + capability.availability() + ".",
-                    JsonSupport.MAPPER.toJsonTree(capability.inputSchema()).getAsJsonObject())));
+            if (alias.name().equals("capture_screenshot") && !supportsStagedArtifacts()) {
+                continue;
+            }
+            capability(alias.capability(), alias.version()).ifPresent(capability -> {
+                if (alias.name().equals("capture_screenshot")) {
+                    tools.add(captureScreenshotTool(capability));
+                } else {
+                    tools.add(tool(alias.name(), capability.documentation() + " Negotiated state: "
+                                    + capability.availability() + ".",
+                            JsonSupport.MAPPER.toJsonTree(capability.inputSchema()).getAsJsonObject()));
+                }
+            });
         }
         return object(Map.of("tools", tools));
+    }
+
+    private JsonElement captureScreenshotTool(CapabilityDescriptor capability) {
+        return tool("capture_screenshot", capability.documentation() + " Negotiated state: "
+                        + capability.availability() + ".",
+                schema(Map.of(
+                        "max_width", Map.of("type", "integer", "minimum", 1, "maximum", 8192,
+                                "default", 1920),
+                        "max_height", Map.of("type", "integer", "minimum", 1, "maximum", 8192,
+                                "default", 1080))));
     }
 
     private JsonElement worldEditSelectionTool() {
@@ -569,8 +591,14 @@ public final class McpGateway {
         if (capability(alias.capability(), alias.version()).isEmpty()) {
             throw new GatewayException(-32602, "capability alias is not negotiated: " + alias.name());
         }
+        requireStagedArtifacts(alias.capability());
         Map<String, Object> input = JsonSupport.MAPPER.fromJson(args,
                 TypeToken.getParameterized(Map.class, String.class, Object.class).getType());
+        if (alias.name().equals("capture_screenshot")) {
+            input = new LinkedHashMap<>();
+            input.put("maxWidth", args.has("max_width") ? args.get("max_width").getAsInt() : 1920);
+            input.put("maxHeight", args.has("max_height") ? args.get("max_height").getAsInt() : 1080);
+        }
         return invokeCanonical(alias.capability(), alias.version(), input);
     }
 
@@ -838,6 +866,7 @@ public final class McpGateway {
         if (capability(capability, version).isEmpty()) {
             throw new GatewayException(-32602, "capability is not negotiated: " + capability + "@" + version);
         }
+        requireStagedArtifacts(capability);
         var request = new RequestEnvelope(ProtocolVersion.CURRENT, UUID.randomUUID().toString(),
                 runtime.sessionId(), capability, version, input, null, null, false);
         var session = session();
@@ -873,8 +902,20 @@ public final class McpGateway {
         var request = new RequestEnvelope(ProtocolVersion.CURRENT, UUID.randomUUID().toString(),
                 runtime.sessionId(), capability, text(args, "capabilityVersion", null), input, deadline,
                 namespacedIdempotencyKey(text(args, "idempotencyKey", null)), bool(args, "dryRun", false));
+        requireStagedArtifacts(capability);
         var session = session();
         return toolResult(runtime.invoke(request, session.id, session.authorization).join());
+    }
+
+    private boolean supportsStagedArtifacts() {
+        return McpProtocol.CURRENT.equals(session().negotiatedMcpVersion);
+    }
+
+    private void requireStagedArtifacts(String capability) {
+        if ("minecraft.client.screenshot.capture".equals(capability) && !supportsStagedArtifacts()) {
+            throw new GatewayException(-32602,
+                    "minecraft.client.screenshot.capture requires MCP protocol 2025-11-25");
+        }
     }
 
     private JsonElement subscribe(JsonObject args) {
@@ -928,14 +969,26 @@ public final class McpGateway {
     }
 
     private JsonElement resourcesList() {
-        return object(Map.of("resources", runtime.resources()));
+        return object(Map.of("resources", runtime.resources(session().id)));
     }
 
     private JsonElement resourceRead(JsonObject params) {
         var uri = requiredText(params, "uri");
-        return object(Map.of("contents", List.of(Map.of(
-                "uri", uri, "mimeType", "application/json", "text",
-                runtime.readResource(uri, session().id)))));
+        final ResourceContent resource;
+        try {
+            resource = runtime.readResourceContent(uri, session().id);
+        } catch (IllegalArgumentException missing) {
+            throw new GatewayException(-32002, "resource not found");
+        }
+        var content = new LinkedHashMap<String, Object>();
+        content.put("uri", uri);
+        content.put("mimeType", resource.mimeType());
+        if (resource.binary()) {
+            content.put("blob", Base64.getEncoder().encodeToString(resource.bytes()));
+        } else {
+            content.put("text", resource.text());
+        }
+        return object(Map.of("contents", List.of(content)));
     }
 
     private JsonElement tool(String name, String description, JsonObject inputSchema) {
@@ -972,18 +1025,65 @@ public final class McpGateway {
     private JsonElement toolResult(Object value) {
         var result = new JsonObject();
         result.addProperty("isError", value instanceof ResultEnvelope envelope && envelope.status() != ResultEnvelope.Status.OK);
-        result.add("structuredContent", JsonSupport.MAPPER.toJsonTree(value));
+        var output = value instanceof ResultEnvelope envelope && envelope.status() == ResultEnvelope.Status.OK
+                ? envelope.output() : null;
+        var artifactUri = findArtifactUri(output);
+        result.add("structuredContent", artifactUri == null
+                ? JsonSupport.MAPPER.toJsonTree(value)
+                : JsonSupport.MAPPER.toJsonTree(output));
         var content = new JsonArray();
-        var text = new JsonObject();
-        text.addProperty("type", "text");
-        try {
-            text.addProperty("text", JsonSupport.MAPPER.toJson(value));
-        } catch (Exception failure) {
-            text.addProperty("text", "{\"error\":\"serialization failed\"}");
+        if (artifactUri != null) {
+            try {
+                var resource = runtime.readResourceContent(artifactUri, session().id);
+                if (resource.binary()) {
+                    var image = new JsonObject();
+                    image.addProperty("type", "image");
+                    image.addProperty("mimeType", resource.mimeType());
+                    image.addProperty("data", Base64.getEncoder().encodeToString(resource.bytes()));
+                    content.add(image);
+                }
+            } catch (RuntimeException ignored) {
+                // The structured result remains authoritative if the ephemeral blob expires.
+            }
         }
-        content.add(text);
+        if (content.isEmpty()) {
+            var text = new JsonObject();
+            text.addProperty("type", "text");
+            try {
+                text.addProperty("text", JsonSupport.MAPPER.toJson(value));
+            } catch (Exception failure) {
+                text.addProperty("text", "{\"error\":\"serialization failed\"}");
+            }
+            content.add(text);
+        }
         result.add("content", content);
         return result;
+    }
+
+    private static String findArtifactUri(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            var artifact = map.get("artifact");
+            if (artifact instanceof Map<?, ?> metadata) {
+                var uri = metadata.get("uri");
+                if (uri instanceof String text && text.startsWith("lodestone://artifacts/sha256/")) {
+                    return text;
+                }
+            }
+            var uri = map.get("uri");
+            if (uri instanceof String text && text.startsWith("lodestone://artifacts/sha256/")) {
+                return text;
+            }
+            for (var nested : map.values()) {
+                var found = findArtifactUri(nested);
+                if (found != null) return found;
+            }
+        } else if (value instanceof Iterable<?> iterable) {
+            for (var nested : iterable) {
+                var found = findArtifactUri(nested);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private void requireInitialized() {

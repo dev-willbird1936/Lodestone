@@ -23,6 +23,7 @@ dependencies {
 
     implementation project(':common:adapter-api')
     implementation project(':common:runtime-core')
+    testRuntimeOnly project(':common:runtime-core')
 
 }
 

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.fabric;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import dev.lodestone.adapter.InputNumbers;
 import dev.lodestone.adapter.InputLease;
 import dev.lodestone.adapter.InvocationContext;
+import dev.lodestone.adapter.InvocationAttributes;
+import dev.lodestone.adapter.ScreenshotDimensions;
 import dev.lodestone.adapter.UiBounds;
 import dev.lodestone.adapter.UiContracts;
 import dev.lodestone.adapter.UiLimits;
@@ -14,6 +17,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -39,6 +43,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
@@ -89,6 +94,10 @@ public final class FabricClientController implements ClientModInitializer {
     }
 
     private static final class Bridge implements FabricAdapter.ClientBridge {
+        private static final int DEFAULT_SCREENSHOT_WIDTH = 1920;
+        private static final int DEFAULT_SCREENSHOT_HEIGHT = 1080;
+        private static final int MAX_SCREENSHOT_AXIS = 8192;
+        private static final long MAX_SCREENSHOT_PIXELS = 16_777_216L;
         private final InputLease inputLease = new InputLease();
         private final Map<String, KeyMapping> directlyOwnedKeys = new LinkedHashMap<>();
         private final FabricWorldAvailability worldAvailability = new FabricWorldAvailability();
@@ -137,7 +146,7 @@ public final class FabricClientController implements ClientModInitializer {
             return switch (capability) {
                 case "minecraft.registry.item.search", "minecraft.server.info.read",
                         "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
-                        "minecraft.ui.state.read" -> true;
+                        "minecraft.ui.state.read", "minecraft.client.screenshot.capture" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" ->
                         worldAvailability.available();
                 case "minecraft.ui.key", "minecraft.ui.click", "minecraft.ui.text.insert",
@@ -154,6 +163,7 @@ public final class FabricClientController implements ClientModInitializer {
                 return switch (capability) {
                     case "minecraft.registry.item.search" -> searchItems(invocation);
                     case "minecraft.server.info.read" -> serverInfo(invocation);
+                    case "minecraft.client.screenshot.capture" -> captureScreenshot(invocation);
                     case "minecraft.input.key.set" -> setKey(invocation, false);
                     case "minecraft.input.mouse.set" -> setKey(invocation, true);
                     case "minecraft.input.release-all" -> releaseAll(invocation);
@@ -176,6 +186,60 @@ public final class FabricClientController implements ClientModInitializer {
                     default -> throw new IllegalArgumentException("unsupported client capability: " + capability);
                 };
             });
+        }
+
+        private static Map<String, Object> captureScreenshot(InvocationContext invocation) throws IOException {
+            var client = Minecraft.getInstance();
+            var input = invocation.request().input();
+            var maxWidth = screenshotAxis(input, "maxWidth", DEFAULT_SCREENSHOT_WIDTH);
+            var maxHeight = screenshotAxis(input, "maxHeight", DEFAULT_SCREENSHOT_HEIGHT);
+            var player = client.player;
+            var playerPosition = player == null ? null : Map.<String, Object>of(
+                    "x", player.getX(), "y", player.getY(), "z", player.getZ());
+            var playerRotation = player == null ? null : Map.<String, Object>of(
+                    "yaw", player.getYRot(), "pitch", player.getXRot());
+
+            try (var original = Screenshot.takeScreenshot(client.getMainRenderTarget())) {
+                var originalWidth = original.getWidth();
+                var originalHeight = original.getHeight();
+                var dimensions = ScreenshotDimensions.fit(originalWidth, originalHeight,
+                        maxWidth, maxHeight, MAX_SCREENSHOT_PIXELS);
+                byte[] png;
+                if (dimensions.width() == originalWidth && dimensions.height() == originalHeight) {
+                    png = original.asByteArray();
+                } else {
+                    try (var resized = new NativeImage(dimensions.width(), dimensions.height(), false)) {
+                        original.resizeSubRectTo(0, 0, originalWidth, originalHeight, resized);
+                        png = resized.asByteArray();
+                    }
+                }
+                invocation.cancellation().throwIfCancelled();
+                var artifact = InvocationAttributes.requireArtifactSink(invocation).stage("image/png", png);
+                var result = new LinkedHashMap<String, Object>();
+                result.put("artifact", artifact.toMetadata());
+                result.put("width", dimensions.width());
+                result.put("height", dimensions.height());
+                result.put("originalWidth", originalWidth);
+                result.put("originalHeight", originalHeight);
+                if (playerPosition != null) result.put("playerPosition", playerPosition);
+                if (playerRotation != null) result.put("playerRotation", playerRotation);
+                return Map.copyOf(result);
+            }
+        }
+
+        private static int screenshotAxis(Map<String, Object> input, String key, int fallback) {
+            var value = input.get(key);
+            if (value == null) return fallback;
+            if (!(value instanceof Number number)) {
+                throw new IllegalArgumentException(
+                        key + " must be an integer between 1 and " + MAX_SCREENSHOT_AXIS);
+            }
+            var parsed = InputNumbers.exactInt(number, key);
+            if (parsed < 1 || parsed > MAX_SCREENSHOT_AXIS) {
+                throw new IllegalArgumentException(
+                        key + " must be an integer between 1 and " + MAX_SCREENSHOT_AXIS);
+            }
+            return parsed;
         }
 
         private Map<String, Object> setKey(InvocationContext invocation, boolean mouse) {

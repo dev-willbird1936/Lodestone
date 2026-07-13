@@ -52,6 +52,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.command.execute",
             "minecraft.registry.item.search",
             "minecraft.server.info.read",
+            "minecraft.client.screenshot.capture",
             "minecraft.player.state.read",
             "minecraft.player.context.read",
             "minecraft.world.block.read",
@@ -81,6 +82,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.chat.read");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search", "minecraft.server.info.read",
+            "minecraft.client.screenshot.capture",
             "minecraft.player.context.read", "minecraft.entity.nearby.read",
             "minecraft.world.heightmap.read", "minecraft.world.light.analyze",
             "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
@@ -128,6 +130,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.command.execute", this::executeCommand);
         handlers.put("minecraft.registry.item.search", this::clientCall);
         handlers.put("minecraft.server.info.read", this::clientCall);
+        handlers.put("minecraft.client.screenshot.capture", this::clientCall);
         handlers.put("minecraft.player.state.read", this::readPlayerState);
         handlers.put("minecraft.player.context.read", this::clientCall);
         handlers.put("minecraft.world.block.read", this::readBlock);

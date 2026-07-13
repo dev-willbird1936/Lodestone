@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.neoforge;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import dev.lodestone.adapter.InputNumbers;
 import dev.lodestone.adapter.InputLease;
 import dev.lodestone.adapter.UiBounds;
@@ -11,6 +12,7 @@ import dev.lodestone.adapter.UiSelector;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -226,6 +228,7 @@ public final class NeoForgeClientController {
             var client = Minecraft.getInstance();
             return switch (capability) {
                 case "minecraft.registry.item.search", "minecraft.server.info.read",
+                        "minecraft.client.screenshot.capture",
                         "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
                         "minecraft.ui.state.read",
                         "minecraft.chat.read" -> true;
@@ -243,6 +246,7 @@ public final class NeoForgeClientController {
                 return switch (capability) {
                 case "minecraft.registry.item.search" -> searchItems(invocation);
                 case "minecraft.server.info.read" -> serverInfo(invocation);
+                case "minecraft.client.screenshot.capture" -> screenshot(invocation);
                 case "minecraft.input.key.set" -> setKey(invocation, false);
                 case "minecraft.input.mouse.set" -> setKey(invocation, true);
                 case "minecraft.input.release-all" -> releaseAllInput(invocation);
@@ -266,6 +270,45 @@ public final class NeoForgeClientController {
                 default -> throw new IllegalArgumentException("unsupported client capability: " + capability);
                 };
             });
+        }
+
+        private static Map<String, Object> screenshot(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var client = Minecraft.getInstance();
+            var pose = pose(client.player);
+            var captured = Screenshot.takeScreenshot(client.getMainRenderTarget());
+            return NeoForgeScreenshotSupport.capture(invocation,
+                    new NativeCapturedImage(captured), pose);
+        }
+
+        private static NeoForgeScreenshotSupport.Pose pose(LocalPlayer player) {
+            return player == null ? null : new NeoForgeScreenshotSupport.Pose(
+                    player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+        }
+
+        private record NativeCapturedImage(NativeImage image)
+                implements NeoForgeScreenshotSupport.CapturedImage {
+            private NativeCapturedImage {
+                if (image == null) throw new IllegalArgumentException("captured image is required");
+            }
+
+            @Override public int width() { return image.getWidth(); }
+            @Override public int height() { return image.getHeight(); }
+
+            @Override
+            public NeoForgeScreenshotSupport.CapturedImage resize(int width, int height) {
+                var resized = new NativeImage(width, height, false);
+                try {
+                    image.resizeSubRectTo(0, 0, image.getWidth(), image.getHeight(), resized);
+                    return new NativeCapturedImage(resized);
+                } catch (Throwable failure) {
+                    resized.close();
+                    throw failure;
+                }
+            }
+
+            @Override public byte[] asByteArray() throws java.io.IOException { return image.asByteArray(); }
+            @Override public void close() { image.close(); }
         }
 
         private void captureChat(Map<String, Object> message) {

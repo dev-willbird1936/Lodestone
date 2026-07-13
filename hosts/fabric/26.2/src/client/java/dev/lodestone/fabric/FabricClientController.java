@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.fabric;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import dev.lodestone.adapter.InvocationContext;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -25,6 +27,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ForkJoinPool;
 
 /** Client-only bridge for Fabric 26.2 read primitives. */
 public final class FabricClientController implements ClientModInitializer {
@@ -64,7 +68,8 @@ public final class FabricClientController implements ClientModInitializer {
         @Override
         public boolean available(String capability) {
             return switch (capability) {
-                case "minecraft.registry.item.search", "minecraft.server.info.read" -> true;
+                case "minecraft.registry.item.search", "minecraft.server.info.read",
+                        "minecraft.client.screenshot.capture" -> true;
                 case "minecraft.player.context.read", "minecraft.entity.nearby.read" -> wasInWorld;
                 default -> false;
             };
@@ -72,6 +77,9 @@ public final class FabricClientController implements ClientModInitializer {
 
         @Override
         public CompletionStage<Map<String, Object>> invoke(String capability, InvocationContext invocation) {
+            if ("minecraft.client.screenshot.capture".equals(capability)) {
+                return captureScreenshot(invocation);
+            }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
                 return switch (capability) {
@@ -82,6 +90,57 @@ public final class FabricClientController implements ClientModInitializer {
                     default -> throw new IllegalArgumentException("unsupported client capability: " + capability);
                 };
             });
+        }
+
+        private static CompletionStage<Map<String, Object>> captureScreenshot(InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            var client = Minecraft.getInstance();
+            client.execute(() -> {
+                try {
+                    invocation.cancellation().throwIfCancelled();
+                    var pose = pose(client.player);
+                    Screenshot.takeScreenshot(client.gameRenderer.mainRenderTarget(), image -> {
+                        if (result.isDone()) {
+                            image.close();
+                            return;
+                        }
+                        FabricScreenshotSupport.capture(invocation,
+                                        new NativeCapturedImage(image), pose, ForkJoinPool.commonPool())
+                                .whenComplete((output, failure) -> complete(result, output, failure));
+                    });
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private static FabricScreenshotSupport.Pose pose(LocalPlayer player) {
+            return player == null ? null : new FabricScreenshotSupport.Pose(
+                    player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
+        }
+
+        private static void complete(CompletableFuture<Map<String, Object>> target,
+                                     Map<String, Object> output, Throwable failure) {
+            if (failure == null) {
+                target.complete(output);
+                return;
+            }
+            var cause = failure instanceof CompletionException completion && completion.getCause() != null
+                    ? completion.getCause() : failure;
+            target.completeExceptionally(cause);
+        }
+
+        private record NativeCapturedImage(NativeImage image)
+                implements FabricScreenshotSupport.CapturedImage {
+            private NativeCapturedImage {
+                if (image == null) throw new IllegalArgumentException("captured image is required");
+            }
+
+            @Override public int width() { return image.getWidth(); }
+            @Override public int height() { return image.getHeight(); }
+            @Override public int[] getPixels() { return image.getPixels(); }
+            @Override public void close() { image.close(); }
         }
 
         private static Map<String, Object> searchItems(InvocationContext invocation) {
