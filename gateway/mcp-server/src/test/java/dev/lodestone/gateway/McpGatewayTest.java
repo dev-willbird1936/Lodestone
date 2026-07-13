@@ -2,9 +2,10 @@
 package dev.lodestone.gateway;
 
 import com.google.gson.JsonParser;
+import dev.lodestone.protocol.Availability;
+import dev.lodestone.protocol.JsonSupport;
 import dev.lodestone.runtime.AuthorizationPolicy;
 import dev.lodestone.runtime.LodestoneRuntime;
-import dev.lodestone.protocol.JsonSupport;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,6 +14,42 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpGatewayTest {
+    @Test
+    void placeBuildingPatternPublishesTheDonorSchemaWithHonestUnavailableState() {
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
+            var gateway = new McpGateway(runtime);
+            gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+
+            var listed = JsonParser.parseString(gateway.handle(
+                    "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}"))
+                    .getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools");
+            com.google.gson.JsonObject placement = null;
+            for (var tool : listed) {
+                if ("place_building_pattern".equals(tool.getAsJsonObject().get("name").getAsString())) {
+                    placement = tool.getAsJsonObject();
+                    break;
+                }
+            }
+            assertNotNull(placement);
+            var schema = placement.getAsJsonObject("inputSchema");
+            assertFalse(schema.get("additionalProperties").getAsBoolean());
+            assertEquals(4, schema.getAsJsonArray("required").size());
+            assertEquals(4, schema.getAsJsonObject("properties").getAsJsonObject("facing")
+                    .getAsJsonArray("enum").size());
+
+            var capability = runtime.capabilities("lodestone.building.pattern.place").get(0);
+            assertEquals(Availability.UNAVAILABLE, capability.availability());
+            assertEquals("structured-pattern-data-absent", capability.reason().code());
+
+            var response = JsonParser.parseString(gateway.handle(
+                    "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"place_building_pattern\",\"arguments\":{\"pattern_id\":\"gable_small_oak\",\"origin_x\":0,\"origin_y\":64,\"origin_z\":0}}}"))
+                    .getAsJsonObject().getAsJsonObject("result");
+            assertTrue(response.get("isError").getAsBoolean());
+            assertEquals("CAPABILITY_UNAVAILABLE", response.getAsJsonObject("structuredContent")
+                    .getAsJsonObject("error").get("code").getAsString());
+        }
+    }
+
     @Test
     void negotiatesMcpAndExposesTypedLodestoneTools() throws Exception {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {

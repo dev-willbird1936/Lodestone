@@ -59,7 +59,8 @@ public final class McpGateway {
             new CapabilityAlias("get_nearby_entities", "minecraft.entity.nearby.read", "1.0"),
             new CapabilityAlias("calculate_shape", "lodestone.geometry.calculate", "1.0"),
             new CapabilityAlias("validate_mask", "lodestone.worldedit.mask.validate", "1.0"),
-            new CapabilityAlias("place_furniture", "lodestone.furniture.place", "1.0"));
+            new CapabilityAlias("place_furniture", "lodestone.furniture.place", "1.0"),
+            new CapabilityAlias("place_building_pattern", "lodestone.building.pattern.place", "1.0"));
     private final LodestoneRuntime runtime;
     private final StaticCatalogTools staticCatalogTools;
     private final CallerGrantResolver callerGrantResolver;

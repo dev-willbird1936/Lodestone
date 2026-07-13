@@ -82,6 +82,7 @@ public final class LodestoneRuntime implements AutoCloseable {
     private final GeometryAdapter geometryAdapter = new GeometryAdapter();
     private final UiWorkflowAdapter uiWorkflowAdapter = new UiWorkflowAdapter(registry);
     private final FurnitureWorkflowAdapter furnitureWorkflowAdapter = new FurnitureWorkflowAdapter(registry);
+    private final BuildingPatternWorkflowAdapter buildingPatternWorkflowAdapter = new BuildingPatternWorkflowAdapter();
     private final EventHub eventHub = new EventHub();
     private final AuthorizationPolicy authorization;
     private final int maxIdempotencyEntries;
@@ -114,6 +115,7 @@ public final class LodestoneRuntime implements AutoCloseable {
         registry.register(geometryAdapter);
         registry.register(uiWorkflowAdapter);
         registry.register(furnitureWorkflowAdapter);
+        registry.register(buildingPatternWorkflowAdapter);
         putResource("lodestone://capabilities/manifest", "Capability manifest",
                 "Negotiated Lodestone capability descriptors.", "application/json", () -> json(Map.of(
                 "protocolVersion", ProtocolVersion.CURRENT,
