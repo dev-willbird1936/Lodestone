@@ -15,15 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class BundledResourceCatalogTest {
     private static final Map<String, String> SOURCE_HASHES = Map.of(
             "lodestone://vibecraft/furniture/catalog",
-            "3932cae42802b4dc6cb49bc9f9b011fdfaa2ee5b435805427968087fa2eeece1",
+            "186733cc81351f8de77ed2f14465f5e5819689239ef7f88b15c16672357d4db6",
             "lodestone://vibecraft/furniture/layouts",
-            "4ec8976e0f001f85636d1b74a5eb76b5cddb1c16799f4168b6ac7fb034732b63",
+            "0e9e51985e073e9d680613ddccfe87127f2005d95a936533b2c566940a377a68",
             "lodestone://vibecraft/building/patterns",
-            "28f8e0c39caf3cb2f493c97eabb9d507052dae52fffd26359353c77cff4284ba",
+            "16ac7d73a021d24da93c74847c92becaaa298a4c230507cc2a0f47e963adfed0",
             "lodestone://vibecraft/terrain/patterns",
-            "b6fbba6e116433c447fc46769a56dc770724658ac8bfe72c7b3951f675e04e40",
+            "6343c469b26a7326b57aafb370b636169d085ff8128eb7e41060e63b4acdea19",
             "lodestone://vibecraft/building/templates",
-            "3e77a7d0b7d6c7933ffeb1332c416876eff54e45219f4309bb6028c7eac39406");
+            "678ffcf96da391cb44e027405803fe8550d58c5100b52762647c87d0a0d8ff23");
 
     @Test
     void exposesVerbatimVibecraftCatalogsWithPinnedSourceHashesAndHonestMetadata() throws Exception {

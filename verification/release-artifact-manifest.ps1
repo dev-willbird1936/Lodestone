@@ -8,9 +8,13 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('Freeze', 'Verify')]
     [string]$Mode,
-    [string]$Manifest = (Join-Path $PSScriptRoot 'evidence/release-artifacts-2026-07-12.json')
+    [string]$Manifest
 )
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($Manifest)) {
+    $Manifest = Join-Path $PSScriptRoot 'evidence/release-artifacts-2026-07-12.json'
+}
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $artifactPaths = @(
@@ -38,7 +42,69 @@ $profilePaths = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'curseforg
         -Filter '*-local.zip' -File | Sort-Object Name | ForEach-Object {
             $_.FullName.Substring($projectRoot.Length + 1).Replace('\', '/')
         })
+$expectedProfileNames = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'curseforge-profiles') `
+        -Directory | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'manifest.json') } |
+        Sort-Object Name | ForEach-Object { "$($_.Name)-local.zip" })
+$actualProfileNames = @($profilePaths | ForEach-Object { Split-Path -Leaf $_ })
+if ($expectedProfileNames.Count -ne 13) {
+    throw "Expected 13 tracked CurseForge profile sources, found $($expectedProfileNames.Count)."
+}
+$profileNameDifference = @(Compare-Object -ReferenceObject $expectedProfileNames `
+        -DifferenceObject $actualProfileNames -CaseSensitive)
+if ($profileNameDifference.Count -ne 0) {
+    throw "Release profile ZIPs do not exactly match tracked profiles: $($profileNameDifference.InputObject -join ', ')"
+}
 $allArtifactPaths = @($artifactPaths + $profilePaths)
+
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+function Assert-ProfileArchive([string]$relativePath) {
+    $fullPath = Join-Path $projectRoot $relativePath
+    $archive = [IO.Compression.ZipFile]::OpenRead($fullPath)
+    try {
+        $names = @($archive.Entries | ForEach-Object FullName)
+        if (@($names | Where-Object { $_ -ceq 'manifest.json' }).Count -ne 1) {
+            throw "$relativePath must contain exactly one root manifest.json."
+        }
+        if (@($names | Where-Object { $_ -clike 'overrides/mods/*.jar' }).Count -lt 1) {
+            throw "$relativePath must contain at least one staged mod JAR."
+        }
+        $duplicateNames = @($names | Group-Object | Where-Object Count -gt 1)
+        if ($duplicateNames.Count -gt 0) {
+            throw "$relativePath contains duplicate ZIP entries: $($duplicateNames.Name -join ', ')"
+        }
+        foreach ($name in $names) {
+            $segments = @($name.Split('/'))
+            if ($name.Contains('\') -or $name.StartsWith('/') -or $name -match '^[A-Za-z]:' -or
+                    @($segments | Where-Object { $_ -in @('', '.', '..') }).Count -gt 0) {
+                throw "$relativePath contains unsafe ZIP entry: $name"
+            }
+        }
+
+        $profileName = ([IO.Path]::GetFileName($relativePath) -replace '-local\.zip$', '')
+        $sourceManifestPath = Join-Path $PSScriptRoot "curseforge-profiles/$profileName/manifest.json"
+        $manifestEntry = $archive.GetEntry('manifest.json')
+        $stream = $manifestEntry.Open()
+        try {
+            $reader = [IO.StreamReader]::new($stream, [Text.Encoding]::UTF8, $true)
+            try { $archiveManifest = $reader.ReadToEnd() }
+            finally { $reader.Dispose() }
+        } finally {
+            $stream.Dispose()
+        }
+        $sourceManifest = [IO.File]::ReadAllText($sourceManifestPath, [Text.Encoding]::UTF8)
+        $archiveManifest = $archiveManifest.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd([char[]]"`n")
+        $sourceManifest = $sourceManifest.Replace("`r`n", "`n").Replace("`r", "`n").TrimEnd([char[]]"`n")
+        if ($archiveManifest -cne $sourceManifest) {
+            throw "$relativePath manifest.json differs from its tracked profile source."
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
+foreach ($profilePath in $profilePaths) { Assert-ProfileArchive $profilePath }
 
 function Get-RelativePath([string]$path) {
     return ([IO.Path]::GetFullPath($path)).Substring($projectRoot.Length + 1).Replace('\', '/')

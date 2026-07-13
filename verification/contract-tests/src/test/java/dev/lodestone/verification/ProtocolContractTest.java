@@ -31,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipFile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -60,7 +59,7 @@ class ProtocolContractTest {
         var catalog = JsonParser.parseReader(Files.newBufferedReader(root.resolve("protocol/catalog/core-capabilities.json"), StandardCharsets.UTF_8)).getAsJsonObject();
         var ids = new HashSet<String>();
         assertEquals("0.3.0", catalog.get("catalogVersion").getAsString());
-        assertEquals(35, catalog.getAsJsonArray("capabilities").size());
+        assertEquals(47, catalog.getAsJsonArray("capabilities").size());
         for (var capability : catalog.getAsJsonArray("capabilities")) {
             var id = capability.getAsJsonObject().get("id").getAsString();
             assertTrue(ids.add(id), "duplicate capability: " + id);
@@ -204,33 +203,26 @@ class ProtocolContractTest {
     }
 
     @Test
-    void curseForgeArchivesUsePortableSafeCanonicalEntryNames() throws Exception {
+    void curseForgeProfileSourcesAreCompleteAndCanonical() throws Exception {
         var profileDirectory = root.resolve("verification/curseforge-profiles");
-        List<Path> archives;
+        List<Path> profiles;
         try (var files = Files.list(profileDirectory)) {
-            archives = files.filter(path -> path.getFileName().toString().endsWith("-local.zip"))
+            profiles = files.filter(Files::isDirectory)
+                    .filter(path -> Files.isRegularFile(path.resolve("manifest.json")))
                     .sorted().toList();
         }
-        assertEquals(13, archives.size(), "expected one import archive for every tested profile");
+        assertEquals(13, profiles.size(), "expected one tracked source directory for every tested profile");
 
-        for (var archivePath : archives) {
-            try (var archive = new ZipFile(archivePath.toFile())) {
-                var entries = archive.stream().toList();
-                assertEquals(1, entries.stream().filter(entry -> entry.getName().equals("manifest.json")).count(),
-                        archivePath + " must contain one root manifest.json");
-                assertTrue(entries.stream().anyMatch(entry -> entry.getName().startsWith("overrides/mods/")
-                                && entry.getName().endsWith(".jar")),
-                        archivePath + " must contain a staged mod JAR");
-                for (var entry : entries) {
-                    var name = entry.getName();
-                    assertFalse(name.contains("\\"), archivePath + " contains a Windows-only entry: " + name);
-                    assertFalse(name.startsWith("/") || name.matches("^[A-Za-z]:.*"),
-                            archivePath + " contains an absolute entry: " + name);
-                    var segments = List.of(name.split("/", -1));
-                    assertFalse(segments.contains("") || segments.contains(".") || segments.contains(".."),
-                            archivePath + " contains an unsafe entry: " + name);
-                }
-            }
+        for (var profile : profiles) {
+            assertTrue(profile.getFileName().toString().matches("^lodestone-[a-z0-9.-]+$"),
+                    profile + " has a noncanonical profile directory name");
+            var manifest = JsonParser.parseReader(Files.newBufferedReader(
+                    profile.resolve("manifest.json"), StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals("minecraftModpack", manifest.get("manifestType").getAsString());
+            assertEquals(1, manifest.get("manifestVersion").getAsInt());
+            assertEquals("overrides", manifest.get("overrides").getAsString());
+            assertTrue(manifest.getAsJsonObject("minecraft").get("version").isJsonPrimitive());
+            assertEquals(1, manifest.getAsJsonObject("minecraft").getAsJsonArray("modLoaders").size());
         }
     }
 
