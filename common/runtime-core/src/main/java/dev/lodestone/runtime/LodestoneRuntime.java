@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.lodestone.adapter.AdapterContext;
 import dev.lodestone.adapter.AdapterHealth;
+import dev.lodestone.adapter.ArtifactSink;
 import dev.lodestone.adapter.CapabilityHandler;
 import dev.lodestone.adapter.CancellationToken;
 import dev.lodestone.adapter.DelegatedInvoker;
@@ -84,6 +85,7 @@ public final class LodestoneRuntime implements AutoCloseable {
     private final FurnitureWorkflowAdapter furnitureWorkflowAdapter = new FurnitureWorkflowAdapter(registry);
     private final BuildingPatternWorkflowAdapter buildingPatternWorkflowAdapter = new BuildingPatternWorkflowAdapter();
     private final EventHub eventHub = new EventHub();
+    private final CallerArtifactStore artifactStore = new CallerArtifactStore();
     private final AuthorizationPolicy authorization;
     private final int maxIdempotencyEntries;
     private final ExecutorService executor = createExecutor();
@@ -302,6 +304,10 @@ public final class LodestoneRuntime implements AutoCloseable {
             return completedError(request, result, trace, "INVALID_INPUT", "capability input failed schema validation", false,
                     Map.of("violations", inputErrors));
         }
+        if (request.idempotencyKey() != null && descriptor.featureFlags().contains("staged-artifact")) {
+            return completedError(request, result, trace, "IDEMPOTENCY_NOT_SUPPORTED",
+                    "staged-artifact capabilities cannot safely replay expiring resources", false);
+        }
         var deadline = request.deadlineEpochMs() == null
                 ? System.currentTimeMillis() + descriptor.timeoutMs()
                 : request.deadlineEpochMs();
@@ -392,8 +398,10 @@ public final class LodestoneRuntime implements AutoCloseable {
                 ? rootDelegationSeed(callerKey, request)
                 : parentCancellation.delegationSeed();
         var token = new RequestCancellationToken(parentCancellation, treeSeed);
+        var active = new ActiveInvocation(request, trace, token);
         var finalCacheKey = cacheKey;
         result.bind(token, () -> {
+            active.discardArtifacts();
             if (finalCacheKey != null) {
                 idempotency.computeIfPresent(finalCacheKey,
                         (key, entryValue) -> entryValue.result() == result ? null : entryValue);
@@ -406,7 +414,6 @@ public final class LodestoneRuntime implements AutoCloseable {
             predecessor = invocationTails.getOrDefault(orderingKey, CompletableFuture.completedFuture(null));
             invocationTails.put(orderingKey, gate);
         }
-        var active = new ActiveInvocation(request, trace, token);
         final ScheduledFuture<?> timeout;
         synchronized (this) {
             if (state != State.RUNNING) {
@@ -420,6 +427,7 @@ public final class LodestoneRuntime implements AutoCloseable {
                 return completedError(request, result, trace, "RUNTIME_STOPPING",
                         "runtime is stopping or closed", true);
             }
+            active.attachArtifactSink(artifactStore.openSink(callerKey, active.ownerId()));
             result.attach(active);
             activeInvocations.put(result, active);
             try {
@@ -431,6 +439,7 @@ public final class LodestoneRuntime implements AutoCloseable {
                     }
                     token.requestCancellation();
                     token.cancelChildren();
+                    active.discardArtifacts();
                     var committed = token.mutationCommitted();
                     if (active.started()) {
                         if (committed) {
@@ -468,6 +477,7 @@ public final class LodestoneRuntime implements AutoCloseable {
                 }, Math.max(1L, deadlineNanos - System.nanoTime()), TimeUnit.NANOSECONDS);
             } catch (RejectedExecutionException stopping) {
                 activeInvocations.remove(result);
+                active.discardArtifacts();
                 gate.complete(null);
                 invocationTails.remove(orderingKey, gate);
                 if (finalCacheKey != null) {
@@ -491,6 +501,22 @@ public final class LodestoneRuntime implements AutoCloseable {
                         var attributes = new LinkedHashMap<String, Object>();
                         attributes.put(InvocationAttributes.CALLER_SESSION_ID, callerKey);
                         attributes.put(InvocationAttributes.DELEGATION_PATH, trace.path());
+                        ArtifactSink invocationArtifactSink = (mediaType, content) -> {
+                            synchronized (active) {
+                                if (state != State.RUNNING || result.outcomeIsDone()) {
+                                    active.discardArtifacts();
+                                    throw new CancellationToken.CancellationException();
+                                }
+                                try {
+                                    token.throwIfDeadlinePassed(deadlineNanos);
+                                } catch (CancellationToken.CancellationException | DeadlineExceededException stopped) {
+                                    active.discardArtifacts();
+                                    throw stopped;
+                                }
+                                return active.stageArtifact(mediaType, content);
+                            }
+                        };
+                        attributes.put(InvocationAttributes.ARTIFACT_SINK, invocationArtifactSink);
                         if (isWorkflowCapability(request.capability())
                                 && descriptor.featureFlags().contains("delegates-native")) {
                             DelegatedInvoker delegatedInvoker = (stepId, capability, capabilityVersion, childInput) ->
@@ -510,6 +536,7 @@ public final class LodestoneRuntime implements AutoCloseable {
             synchronized (active) {
                 token.requestCancellation();
                 token.cancelChildren();
+                active.discardArtifacts();
                 active.markUnderlyingCompleted();
                 activeInvocations.remove(result);
                 gate.complete(null);
@@ -571,6 +598,16 @@ public final class LodestoneRuntime implements AutoCloseable {
                 }
                 var committed = token.mutationCommitted();
                 var invalidOutput = !outputErrors.isEmpty();
+                if (!result.outcomeIsDone() && cause == null && !invalidOutput) {
+                    try {
+                        safeOutput = active.commitArtifacts(safeOutput);
+                    } catch (Throwable artifactFailure) {
+                        cause = new ArtifactPublishException(artifactFailure);
+                    }
+                }
+                if (result.outcomeIsDone() || cause != null || invalidOutput) {
+                    active.discardArtifacts();
+                }
                 var quarantinedFailure = cause instanceof CapabilityQuarantinedException;
                 if (active.outcomeIndeterminateReported()
                         || committed && (cause != null || invalidOutput)) {
@@ -596,8 +633,13 @@ public final class LodestoneRuntime implements AutoCloseable {
                         if (completeError(result, request.requestId(), ResultEnvelope.Status.ERROR, error)) {
                             recordAudit(request, trace, "error");
                         }
-                    } else if (result.completeOutcome(ResultEnvelope.ok(request.requestId(), safeOutput))) {
-                        recordAudit(request, trace, "ok");
+                    } else {
+                        var completed = result.completeOutcome(ResultEnvelope.ok(request.requestId(), safeOutput));
+                        if (completed) {
+                            recordAudit(request, trace, "ok");
+                        } else {
+                            active.rollbackArtifacts();
+                        }
                     }
                 } else {
                     var terminal = delegatedOrRuntimeFailure(request.requestId(), cause, committed);
@@ -611,6 +653,12 @@ public final class LodestoneRuntime implements AutoCloseable {
                 active.markUnderlyingCompleted();
                 activeInvocations.remove(result);
                 timeout.cancel(false);
+                if (result.outcomeIsDone()) {
+                    active.discardArtifacts();
+                } else {
+                    active.rollbackArtifacts();
+                    active.discardArtifacts();
+                }
                 var committed = token.mutationCommitted();
                 if (committed) {
                     active.markOutcomeIndeterminate();
@@ -760,6 +808,17 @@ public final class LodestoneRuntime implements AutoCloseable {
                 .toList();
     }
 
+    /** Lists trusted static resources plus ephemeral artifacts owned by the exact remote caller. */
+    public List<ResourceDescriptor> resources(String callerSessionId) {
+        if (callerSessionId == null || callerSessionId.isBlank()) {
+            throw new IllegalArgumentException("callerSessionId must not be blank");
+        }
+        var visible = new ArrayList<>(resources());
+        visible.addAll(artifactStore.list(callerSessionId.trim()));
+        visible.sort(java.util.Comparator.comparing(ResourceDescriptor::uri));
+        return List.copyOf(visible);
+    }
+
     public String readResource(String uri) {
         var resource = resources.get(uri);
         if (resource == null) {
@@ -807,6 +866,33 @@ public final class LodestoneRuntime implements AutoCloseable {
             return json(Map.of("records", auditTraceForCaller(caller)));
         }
         return readResource(uri);
+    }
+
+    /** Reads caller-filtered text resources or owner-isolated binary invocation artifacts. */
+    public ResourceContent readResourceContent(String uri, String callerSessionId) {
+        if (callerSessionId == null || callerSessionId.isBlank()) {
+            throw new IllegalArgumentException("callerSessionId must not be blank");
+        }
+        var caller = callerSessionId.trim();
+        if (uri != null && uri.startsWith("lodestone://artifacts/sha256/")) {
+            return artifactStore.read(uri, caller)
+                    .orElseThrow(() -> new IllegalArgumentException("resource not found: " + uri));
+        }
+        var resource = resources.get(uri);
+        if (resource == null) {
+            throw new IllegalArgumentException("resource not found: " + uri);
+        }
+        return ResourceContent.text(resource.mimeType(), readResource(uri, caller));
+    }
+
+    /** Immediately wipes committed and pending artifact bytes owned by a disconnected caller. */
+    public void releaseCallerArtifacts(String callerSessionId) {
+        artifactStore.releaseCaller(callerSessionId);
+    }
+
+    /** Releases only the newest caller-owned publication for one content-addressed artifact URI. */
+    public boolean releaseArtifact(String uri, String callerSessionId) {
+        return artifactStore.releaseArtifact(uri, callerSessionId);
     }
 
     public List<AuditRecord> audit() {
@@ -1084,6 +1170,11 @@ public final class LodestoneRuntime implements AutoCloseable {
             return ResultEnvelope.error(requestId, ResultEnvelope.Status.TIMED_OUT,
                     StructuredError.of("DEADLINE_EXCEEDED", "capability deadline exceeded", true));
         }
+        if (cause instanceof ArtifactPublishException) {
+            return ResultEnvelope.error(requestId, ResultEnvelope.Status.ERROR,
+                    StructuredError.of("ARTIFACT_PUBLISH_FAILED",
+                            "staged artifact metadata could not be published", false));
+        }
         var status = isCancellation(cause) ? ResultEnvelope.Status.CANCELLED : ResultEnvelope.Status.ERROR;
         return ResultEnvelope.error(requestId, status,
                 new StructuredError(status == ResultEnvelope.Status.CANCELLED ? "CANCELLED" : "ADAPTER_FAILURE",
@@ -1212,6 +1303,7 @@ public final class LodestoneRuntime implements AutoCloseable {
             synchronized (active) {
                 active.token().requestCancellation();
                 active.token().cancelChildren();
+                active.discardArtifacts();
                 if (active.token().mutationCommitted()) {
                     active.markOutcomeIndeterminate();
                     if (completeError(result, active.request().requestId(), ResultEnvelope.Status.ERROR,
@@ -1248,6 +1340,7 @@ public final class LodestoneRuntime implements AutoCloseable {
         invocationTails.forEach((key, gate) -> gate.complete(null));
         invocationTails.clear();
         quarantined.clear();
+        artifactStore.close();
         state = State.CLOSED;
         completionExecutor.shutdown();
     }
@@ -1600,12 +1693,21 @@ public final class LodestoneRuntime implements AutoCloseable {
                 return;
             }
             var publication = (Runnable) () -> outcome.whenComplete((value, failure) -> {
+                final boolean observerAccepted;
                 if (failure == null) {
-                    super.complete(value);
+                    observerAccepted = super.complete(value);
                 } else if (isCancellation(unwrap(failure))) {
-                    super.cancel(false);
+                    observerAccepted = super.cancel(false);
                 } else {
-                    super.completeExceptionally(unwrap(failure));
+                    observerAccepted = super.completeExceptionally(unwrap(failure));
+                }
+                if (!observerAccepted) {
+                    var boundActive = active;
+                    if (boundActive != null) {
+                        synchronized (boundActive) {
+                            boundActive.rollbackArtifacts();
+                        }
+                    }
                 }
             });
             executeSafely(publicationExecutor, publication);
@@ -1629,6 +1731,7 @@ public final class LodestoneRuntime implements AutoCloseable {
         private volatile boolean underlyingCompleted;
         private volatile boolean outcomeIndeterminateReported;
         private volatile Quarantine transientQuarantine;
+        private CallerArtifactStore.InvocationArtifactSink artifactSink;
 
         private ActiveInvocation(RequestEnvelope request, InvocationTrace trace,
                                  RequestCancellationToken token) {
@@ -1651,6 +1754,32 @@ public final class LodestoneRuntime implements AutoCloseable {
 
         private InvocationTrace trace() {
             return trace;
+        }
+
+        private void attachArtifactSink(CallerArtifactStore.InvocationArtifactSink sink) {
+            if (artifactSink != null) throw new IllegalStateException("artifact sink is already attached");
+            artifactSink = java.util.Objects.requireNonNull(sink, "sink");
+        }
+
+        private CallerArtifactStore.InvocationArtifactSink artifactSink() {
+            if (artifactSink == null) throw new IllegalStateException("artifact sink is not attached");
+            return artifactSink;
+        }
+
+        private dev.lodestone.adapter.ArtifactReference stageArtifact(String mediaType, byte[] content) {
+            return artifactSink().stage(mediaType, content);
+        }
+
+        private Map<String, Object> commitArtifacts(Map<String, Object> output) {
+            return artifactSink().commit(output);
+        }
+
+        private void discardArtifacts() {
+            if (artifactSink != null) artifactSink.discard();
+        }
+
+        private void rollbackArtifacts() {
+            if (artifactSink != null) artifactSink.rollback();
         }
 
         private boolean started() {
@@ -1736,6 +1865,12 @@ public final class LodestoneRuntime implements AutoCloseable {
     private static final class DeadlineExceededException extends RuntimeException {
         private DeadlineExceededException() {
             super("capability deadline exceeded before native dispatch");
+        }
+    }
+
+    private static final class ArtifactPublishException extends RuntimeException {
+        private ArtifactPublishException(Throwable cause) {
+            super("staged artifact publication failed", cause);
         }
     }
 

@@ -15,7 +15,84 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(48, CoreCatalog.load().size());
+        assertEquals(49, CoreCatalog.load().size());
+    }
+
+    @Test
+    void screenshotCaptureRequiresDedicatedPermission() {
+        var screenshot = CoreCatalog.load().stream()
+                .filter(capability -> capability.id().equals("minecraft.client.screenshot.capture"))
+                .findFirst().orElseThrow();
+
+        assertEquals(java.util.Set.of(dev.lodestone.protocol.PermissionClass.CAPTURE_SCREEN),
+                screenshot.permissions());
+        assertFalse(AuthorizationPolicy.observeOnly().allows(screenshot));
+        assertTrue(new AuthorizationPolicy(java.util.Set.of(
+                dev.lodestone.protocol.PermissionClass.CAPTURE_SCREEN)).allows(screenshot));
+    }
+
+    @Test
+    void screenshotCaptureRunsOnClientRenderWithoutWorldPrerequisites() {
+        var screenshot = CoreCatalog.load().stream()
+                .filter(capability -> capability.id().equals("minecraft.client.screenshot.capture"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", screenshot.version());
+        assertEquals(dev.lodestone.protocol.Stability.EXPERIMENTAL, screenshot.stability());
+        assertEquals(dev.lodestone.protocol.Availability.UNAVAILABLE, screenshot.availability());
+        assertEquals("native-handler-not-installed", screenshot.reason().code());
+        assertEquals(dev.lodestone.protocol.Environment.CLIENT, screenshot.environment());
+        assertEquals(dev.lodestone.protocol.SideEffect.NONE, screenshot.sideEffect());
+        assertEquals(dev.lodestone.protocol.Idempotency.NON_IDEMPOTENT, screenshot.idempotency());
+        assertEquals("client-render", screenshot.nativeThread());
+        assertFalse(screenshot.prerequisites().requiresWorld());
+        assertFalse(screenshot.prerequisites().requiresPlayer());
+        assertFalse(screenshot.prerequisites().requiresScreen());
+        assertFalse(screenshot.prerequisites().requiresContainer());
+    }
+
+    @Test
+    void screenshotCapturePublishesBoundedPngArtifactSchema() {
+        var screenshot = CoreCatalog.load().stream()
+                .filter(capability -> capability.id().equals("minecraft.client.screenshot.capture"))
+                .findFirst().orElseThrow();
+        var hash = "a".repeat(64);
+        var artifact = Map.<String, Object>ofEntries(
+                Map.entry("uri", "lodestone://artifacts/sha256/" + hash),
+                Map.entry("mediaType", "image/png"), Map.entry("sha256", hash),
+                Map.entry("sizeBytes", 1024), Map.entry("expiresAtEpochMs", 60_000));
+        var metadata = Map.<String, Object>ofEntries(
+                Map.entry("artifact", artifact),
+                Map.entry("width", 1920), Map.entry("height", 1080),
+                Map.entry("originalWidth", 2560), Map.entry("originalHeight", 1440),
+                Map.entry("playerPosition", Map.of("x", 1.5, "y", 64.0, "z", -2.5)),
+                Map.entry("playerRotation", Map.of("yaw", 90.0, "pitch", -15.0)));
+
+        assertTrue(SchemaValidator.validate(screenshot.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(screenshot.inputSchema(),
+                Map.of("maxWidth", 1, "maxHeight", 8192)).isEmpty());
+        assertFalse(SchemaValidator.validate(screenshot.inputSchema(), Map.of("maxWidth", 0)).isEmpty());
+        assertFalse(SchemaValidator.validate(screenshot.inputSchema(), Map.of("maxHeight", 8193)).isEmpty());
+        assertFalse(SchemaValidator.validate(screenshot.inputSchema(), Map.of("maxWidth", 1920,
+                "maxHeight", 1080, "extra", true)).isEmpty());
+        assertTrue(SchemaValidator.validate(screenshot.outputSchema(), metadata).isEmpty());
+        var missingHashArtifact = new java.util.LinkedHashMap<>(artifact);
+        missingHashArtifact.remove("sha256");
+        var missingHash = new java.util.LinkedHashMap<>(metadata);
+        missingHash.put("artifact", missingHashArtifact);
+        assertFalse(SchemaValidator.validate(screenshot.outputSchema(), missingHash).isEmpty());
+        var invalidArtifact = new java.util.LinkedHashMap<>(artifact);
+        invalidArtifact.put("mediaType", "image/jpeg");
+        var invalidMediaType = new java.util.LinkedHashMap<>(metadata);
+        invalidMediaType.put("artifact", invalidArtifact);
+        assertFalse(SchemaValidator.validate(screenshot.outputSchema(), invalidMediaType).isEmpty());
+        var oversizedArtifact = new java.util.LinkedHashMap<>(artifact);
+        oversizedArtifact.put("sizeBytes", 11L * 1024L * 1024L + 1L);
+        var oversized = new java.util.LinkedHashMap<>(metadata);
+        oversized.put("artifact", oversizedArtifact);
+        assertFalse(SchemaValidator.validate(screenshot.outputSchema(), oversized).isEmpty());
+        assertTrue(screenshot.featureFlags().contains("staged-artifact"));
+        assertTrue(screenshot.featureFlags().contains("total-pixel-bound"));
     }
 
     @Test

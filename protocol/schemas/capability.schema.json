@@ -20,7 +20,7 @@
     "inputSchema": {"type": "object"},
     "outputSchema": {"type": "object"},
     "eventSchema": {"type": "object"},
-    "permissions": {"type": "array", "items": {"enum": ["observe", "communicate", "control-player", "modify-world", "administer-server", "manage-files-or-processes"]}, "uniqueItems": true},
+    "permissions": {"type": "array", "items": {"enum": ["observe", "capture-screen", "communicate", "control-player", "modify-world", "administer-server", "manage-files-or-processes"]}, "uniqueItems": true},
     "sideEffect": {"enum": ["none", "communicate", "control-player", "modify-world", "administer-server", "manage-files-or-processes"]},
     "idempotency": {"enum": ["idempotent", "non-idempotent", "unknown"]},
     "prerequisites": {"$ref": "#/$defs/prerequisites"},

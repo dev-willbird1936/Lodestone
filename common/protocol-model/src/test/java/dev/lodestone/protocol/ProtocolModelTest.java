@@ -14,6 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ProtocolModelTest {
     @Test
+    void serializesCaptureScreenPermissionAsStableWireValue() {
+        assertEquals("capture-screen", PermissionClass.CAPTURE_SCREEN.toString());
+    }
+
+    @Test
     void serializesWireEnumsAsStableLowercaseValues() throws Exception {
         var adapter = new AdapterDescriptor("test", "1.0", "minecraft", "test", "test", Environment.REMOTE);
         var descriptor = new CapabilityDescriptor("test.read", CapabilityKind.QUERY, "1.0", Stability.STABLE,

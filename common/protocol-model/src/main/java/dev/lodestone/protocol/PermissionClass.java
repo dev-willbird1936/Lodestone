@@ -3,6 +3,7 @@ package dev.lodestone.protocol;
 
 public enum PermissionClass {
     OBSERVE,
+    CAPTURE_SCREEN,
     COMMUNICATE,
     CONTROL_PLAYER,
     MODIFY_WORLD,
