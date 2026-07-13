@@ -1,0 +1,972 @@
+{
+  "formatVersion": 1,
+  "kind": "lodestone.vibecraft-parity-inventory",
+  "generatedDate": "2026-07-13",
+  "phase": "C1",
+  "liveEvidence": null,
+  "sources": {
+    "local": {
+      "repository": "../Vibecraft",
+      "revision": "be5779e40bd72acf03e1eaf585b076e97c0c065d",
+      "worktreeState": "dirty"
+    },
+    "upstream": {
+      "repository": "https://github.com/amenti-labs/vibecraft",
+      "revision": "be5045f20027b60dd1d1a8604379c51ebf84e2f4"
+    }
+  },
+  "inventorySha256": {
+    "value": "795111d671aeb9145c1b92cac5b2a7b5f9efaf5b269f032dd5ae206358aecbce",
+    "definition": "SHA-256 from completed read-only 83-row source inventory; not this JSON file's byte hash"
+  },
+  "invariants": {
+    "rowCount": 83,
+    "uniqueKey": ["surface", "sourceOperation"],
+    "allowedSurfaces": ["mcp", "websocket"],
+    "allowedStatuses": ["implemented", "partial", "missing"],
+    "allowedVerificationLevels": ["catalog", "unit", "compiled", "live"],
+    "counts": {
+      "total": 83,
+      "bySurface": {
+        "mcp": 50,
+        "websocket": 33
+      },
+      "byStatus": {
+        "implemented": 16,
+        "partial": 50,
+        "missing": 17
+      },
+      "bySurfaceAndStatus": {
+        "mcp": {"implemented": 5, "partial": 34, "missing": 11},
+        "websocket": {"implemented": 11, "partial": 16, "missing": 6}
+      }
+    }
+  },
+  "semantics": {
+    "implemented": "Semantically covered by current capability primitives on supported adapters; not a wire-compatibility claim.",
+    "partial": "Usable primitives exist, but an exact actor, workflow, or contract remains absent.",
+    "missing": "An essential native primitive, resource, or controller remains absent or deliberately unavailable.",
+    "verificationLevel": "All rows are catalog/source-audit evidence only. C1 live verification remains null and per-profile runtime availability remains separate."
+  },
+  "evidenceIndex": {
+    "E-AUDIT": "audit:vibecraft-parity-source-inspection-2026-07-13",
+    "E-CATALOG": "common/runtime-core/src/main/java/dev/lodestone/runtime/CoreCatalog.java",
+    "E-FABRIC-UI-V2": "hosts/fabric/1.21.1/src/client/java/dev/lodestone/fabric/FabricClientController.java",
+    "E-NEOFORGE-UI-V2": "adapters/neoforge/1.21.1/src/main/java/dev/lodestone/neoforge/NeoForgeClientController.java"
+  },
+  "rows": [
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_selection",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["actor-scope-mismatch", "typed-contract-absent"],
+      "requiredNext": ["Add player-scoped WorldEdit actor/session and typed validation."],
+      "platformScope": ["command-capable", "rcon-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_region",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute", "minecraft.world.blocks.write"],
+      "gapCodes": ["workflow-absent", "typed-contract-absent"],
+      "requiredNext": ["Add selection workflow and full WorldEdit pattern/mask contracts."],
+      "platformScope": ["command-capable", "world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_generation",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute", "minecraft.world.blocks.read", "minecraft.world.blocks.write"],
+      "gapCodes": ["workflow-absent", "dependency-negotiation-absent"],
+      "requiredNext": ["Add shape workflow and WorldEdit dependency negotiation."],
+      "platformScope": ["command-capable", "world-read-capable", "world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_clipboard",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["workflow-absent", "state-contract-absent"],
+      "requiredNext": ["Add structured clipboard and player-session lifecycle."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_schematic",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["artifact-lifecycle-absent", "workflow-absent"],
+      "requiredNext": ["Add artifact/file transfer and schematic lifecycle."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_history",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["workflow-absent", "state-contract-absent"],
+      "requiredNext": ["Add typed undo/redo workflow and history state."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_utility",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["typed-contract-absent"],
+      "requiredNext": ["Add typed WorldEdit utility contract."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_biome",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["native-query-absent", "native-write-absent"],
+      "requiredNext": ["Add native biome query and write primitives."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_brush",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["actor-scope-mismatch", "state-contract-absent"],
+      "requiredNext": ["Add player tool and brush context."],
+      "platformScope": ["command-capable", "client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_general",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["typed-contract-absent"],
+      "requiredNext": ["Add typed WorldEdit general-operation contract."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_navigation",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute", "minecraft.player.state.read", "minecraft.player.look", "minecraft.player.move"],
+      "gapCodes": ["actor-scope-mismatch", "workflow-absent"],
+      "requiredNext": ["Add player-scoped actor and navigation workflow."],
+      "platformScope": ["command-capable", "client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_chunk",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["native-primitive-absent"],
+      "requiredNext": ["Add bounded native chunk operations."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_snapshot",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["artifact-lifecycle-absent", "workflow-absent"],
+      "requiredNext": ["Add snapshot artifact lifecycle."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_scripting",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["sandbox-absent", "workflow-absent"],
+      "requiredNext": ["Add bounded sandboxed scripting."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_reference",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.discover", "minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["resource-absent"],
+      "requiredNext": ["Add WorldEdit-aware reference resource."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_tools",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute", "minecraft.inventory.slot.select"],
+      "gapCodes": ["actor-scope-mismatch", "state-contract-absent"],
+      "requiredNext": ["Add player tool semantics."],
+      "platformScope": ["command-capable", "client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "validate_mask",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["native-primitive-absent"],
+      "requiredNext": ["Add WorldEdit-compatible mask parser and validator."],
+      "platformScope": ["gateway-workflow"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "get_server_info",
+      "status": "partial",
+      "lodestoneCapabilities": ["lodestone.system.handshake", "lodestone.system.health", "minecraft.command.discover"],
+      "gapCodes": ["atomic-snapshot-absent"],
+      "requiredNext": ["Add atomic time, difficulty, player, and server projection."],
+      "platformScope": ["capability-negotiated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "search_minecraft_item",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["registry-query-absent"],
+      "requiredNext": ["Add runtime item and block registry search."],
+      "platformScope": ["registry-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "get_player_position",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.player.state.read"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "get_surface_level",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.block.read", "minecraft.world.blocks.read"],
+      "gapCodes": ["native-query-absent"],
+      "requiredNext": ["Add bounded heightmap/surface primitive with dimension semantics."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "furniture_lookup",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["resource-absent"],
+      "requiredNext": ["Author and expose a furniture resource."],
+      "platformScope": ["gateway-workflow"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "place_furniture",
+      "status": "missing",
+      "lodestoneCapabilities": ["minecraft.world.blocks.write", "minecraft.command.execute"],
+      "gapCodes": ["resource-absent", "workflow-absent"],
+      "requiredNext": ["Add furniture resource and transactional placement workflow."],
+      "platformScope": ["world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "spatial_awareness_scan",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.state.read", "minecraft.world.block.read", "minecraft.world.blocks.read", "minecraft.world.region.scan", "minecraft.entity.list"],
+      "gapCodes": ["analysis-workflow-absent"],
+      "requiredNext": ["Add synthesized bounded spatial analysis."],
+      "platformScope": ["client-integrated", "world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "calculate_shape",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add bounded geometry library and workflow."],
+      "platformScope": ["gateway-workflow"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "generate_terrain",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.region.scan", "minecraft.world.blocks.write", "minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["algorithm-absent", "workflow-absent"],
+      "requiredNext": ["Add bounded terrain generation algorithm and workflow."],
+      "platformScope": ["world-read-capable", "world-write-capable", "command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "texture_terrain",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.region.scan", "minecraft.world.blocks.write", "minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["algorithm-absent", "workflow-absent"],
+      "requiredNext": ["Add bounded terrain texturing algorithm and workflow."],
+      "platformScope": ["world-read-capable", "world-write-capable", "command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "smooth_terrain",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.region.scan", "minecraft.world.blocks.write", "minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["algorithm-absent", "workflow-absent"],
+      "requiredNext": ["Add bounded terrain smoothing algorithm and workflow."],
+      "platformScope": ["world-read-capable", "world-write-capable", "command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "building_pattern_lookup",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["resource-absent"],
+      "requiredNext": ["Author and expose a building-pattern resource."],
+      "platformScope": ["gateway-workflow"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "place_building_pattern",
+      "status": "missing",
+      "lodestoneCapabilities": ["minecraft.world.blocks.write"],
+      "gapCodes": ["resource-absent", "workflow-absent"],
+      "requiredNext": ["Add pattern resource and transactional placer."],
+      "platformScope": ["world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "terrain_pattern_lookup",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["resource-absent"],
+      "requiredNext": ["Author and expose a terrain-pattern resource."],
+      "platformScope": ["gateway-workflow"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "building_template",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["resource-absent", "workflow-absent"],
+      "requiredNext": ["Add building-template resource and workflow."],
+      "platformScope": ["gateway-workflow"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_deform",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["actor-scope-mismatch", "typed-contract-absent"],
+      "requiredNext": ["Add player-scoped WorldEdit actor and typed deformation validation."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_vegetation",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["actor-scope-mismatch", "typed-contract-absent"],
+      "requiredNext": ["Add player-scoped WorldEdit actor and typed vegetation validation."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_terrain_advanced",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["actor-scope-mismatch", "typed-contract-absent"],
+      "requiredNext": ["Add player-scoped WorldEdit actor and typed advanced-terrain validation."],
+      "platformScope": ["command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "worldedit_analysis",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute", "minecraft.world.region.scan"],
+      "gapCodes": ["analysis-workflow-absent", "typed-contract-absent"],
+      "requiredNext": ["Add typed WorldEdit analysis and structured output."],
+      "platformScope": ["command-capable", "world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "build",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute", "minecraft.world.blocks.write"],
+      "gapCodes": ["workflow-absent", "sandbox-absent"],
+      "requiredNext": ["Add bounded planner, sandbox, and rollback workflow."],
+      "platformScope": ["command-capable", "world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "capture_screenshot",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["native-primitive-absent", "artifact-lifecycle-absent"],
+      "requiredNext": ["Add native capture plus content-addressed artifact/resource store."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "get_heightmap",
+      "status": "missing",
+      "lodestoneCapabilities": ["minecraft.world.block.read", "minecraft.world.blocks.read"],
+      "gapCodes": ["native-query-absent"],
+      "requiredNext": ["Add native bounded heightmap query."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "get_player_context",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.state.read", "minecraft.world.block.read", "minecraft.entity.list"],
+      "gapCodes": ["atomic-snapshot-absent", "raycast-absent"],
+      "requiredNext": ["Add atomic player-context and raycast snapshot."],
+      "platformScope": ["client-integrated", "world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "get_nearby_entities",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.state.read", "minecraft.entity.list"],
+      "gapCodes": ["typed-contract-absent"],
+      "requiredNext": ["Add player-relative radius and current-dimension filtering."],
+      "platformScope": ["client-integrated", "entity-query-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "build_schematic",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.blocks.write", "minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["artifact-lifecycle-absent", "workflow-absent"],
+      "requiredNext": ["Add schematic contract/parser and transactional workflow."],
+      "platformScope": ["world-write-capable", "command-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "scan_region",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.world.blocks.read"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["world-read-capable", "bounded-scope"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "analyze_palette",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.block.read", "minecraft.world.blocks.read", "minecraft.world.region.scan"],
+      "gapCodes": ["analysis-workflow-absent"],
+      "requiredNext": ["Add bounded spherical palette workflow."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "analyze_palette_region",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.region.scan"],
+      "gapCodes": ["typed-contract-absent"],
+      "requiredNext": ["Add exact current-dimension contract and metadata."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "ui_state",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.ui.state.read"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "ui_click",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.ui.state.read", "minecraft.ui.click"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "ui_key",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.ui.key"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "ui_navigate",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.ui.state.read", "minecraft.ui.click", "minecraft.ui.key"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add guarded navigation for provable known flows."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "mcp",
+      "sourceOperation": "ui_wait",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.ui.state.read"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add deadline- and cancellation-aware polling workflow."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "hello",
+      "status": "implemented",
+      "lodestoneCapabilities": ["lodestone.system.handshake"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["capability-negotiated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "server.info",
+      "status": "partial",
+      "lodestoneCapabilities": ["lodestone.system.handshake", "lodestone.system.health", "minecraft.player.state.read"],
+      "gapCodes": ["atomic-snapshot-absent"],
+      "requiredNext": ["Add atomic world and server information snapshot."],
+      "platformScope": ["capability-negotiated", "client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "state.snapshot",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.state.read", "minecraft.ui.state.read", "minecraft.inventory.read", "minecraft.entity.list"],
+      "gapCodes": ["atomic-snapshot-absent"],
+      "requiredNext": ["Add single-client-thread atomic player, UI, inventory, and entity snapshot."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "command.execute",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.command.execute", "minecraft.command.rcon.execute"],
+      "gapCodes": ["actor-scope-mismatch", "output-capture-absent"],
+      "requiredNext": ["Add connected-player command actor with bounded output capture and dispatch certainty."],
+      "platformScope": ["server-command-capable", "rcon-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "screenshot.capture",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["native-primitive-absent", "artifact-lifecycle-absent"],
+      "requiredNext": ["Add native capture and content-addressed artifact resource."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "region.scan",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.world.blocks.read"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["world-read-capable", "bounded-scope"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "region.heightmap",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["native-query-absent"],
+      "requiredNext": ["Add native bounded heightmap query."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.context",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.state.read", "minecraft.world.block.read", "minecraft.entity.list"],
+      "gapCodes": ["atomic-snapshot-absent", "raycast-absent"],
+      "requiredNext": ["Add atomic player-context and raycast snapshot."],
+      "platformScope": ["client-integrated", "world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.entities",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.entity.list", "minecraft.player.state.read"],
+      "gapCodes": ["typed-contract-absent"],
+      "requiredNext": ["Add player-relative radius and current-dimension filtering."],
+      "platformScope": ["client-integrated", "entity-query-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "ui.state",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.ui.state.read"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "ui.click",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.ui.state.read", "minecraft.ui.click"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "ui.key",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.ui.key"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "ui.navigate",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.ui.state.read", "minecraft.ui.click", "minecraft.ui.key"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add guarded known-flow navigation workflow."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG", "E-FABRIC-UI-V2", "E-NEOFORGE-UI-V2"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.control",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.player.move"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.stop",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.input.release-all"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.look",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.player.look", "minecraft.player.state.read", "minecraft.entity.list"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.navigate",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.state.read", "minecraft.player.look", "minecraft.player.move"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add bounded pathfinding/navigation workflow."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.interact",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.player.interact", "minecraft.entity.interact", "minecraft.player.look"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.place_block",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.look", "minecraft.player.interact", "minecraft.world.block.read", "minecraft.world.blocks.write"],
+      "gapCodes": ["actor-scope-mismatch", "workflow-absent"],
+      "requiredNext": ["Add survival-mode targeted placement actor."],
+      "platformScope": ["client-integrated", "world-read-capable", "world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.break_block",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.look", "minecraft.player.interact", "minecraft.world.block.read", "minecraft.world.blocks.write"],
+      "gapCodes": ["actor-scope-mismatch", "workflow-absent"],
+      "requiredNext": ["Add targeted progressive break actor."],
+      "platformScope": ["client-integrated", "world-read-capable", "world-write-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.gather_block",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.player.move", "minecraft.player.look", "minecraft.player.interact", "minecraft.world.block.read"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add bounded gather workflow."],
+      "platformScope": ["client-integrated", "world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.collect_items",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.entity.list", "minecraft.player.move", "minecraft.entity.interact"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add bounded item-collection workflow."],
+      "platformScope": ["client-integrated", "entity-query-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.hunt",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.entity.list", "minecraft.player.move", "minecraft.player.look", "minecraft.entity.interact"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add bounded hunt workflow."],
+      "platformScope": ["client-integrated", "entity-query-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "inventory.state",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.inventory.read", "minecraft.inventory.container.read"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "inventory.select_hotbar",
+      "status": "implemented",
+      "lodestoneCapabilities": ["minecraft.inventory.slot.select"],
+      "gapCodes": [],
+      "requiredNext": [],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "craft.item",
+      "status": "missing",
+      "lodestoneCapabilities": ["minecraft.inventory.craft"],
+      "gapCodes": ["native-actor-absent"],
+      "requiredNext": ["Implement real recipe and container crafting actor; capability is deliberately unavailable today."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "survival.assist.state",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["automation-absent", "state-contract-absent"],
+      "requiredNext": ["Add persistent assist state and hazard sensors."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "survival.assist.set",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["automation-absent"],
+      "requiredNext": ["Add tick-driven safety controller."],
+      "platformScope": ["client-integrated"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "palette.analyze",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.block.read", "minecraft.world.blocks.read", "minecraft.world.region.scan"],
+      "gapCodes": ["analysis-workflow-absent"],
+      "requiredNext": ["Add bounded spherical palette analyzer."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "palette.region",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.region.scan"],
+      "gapCodes": ["typed-contract-absent"],
+      "requiredNext": ["Add exact current-dimension palette contract."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "light.analyze",
+      "status": "missing",
+      "lodestoneCapabilities": [],
+      "gapCodes": ["native-query-absent"],
+      "requiredNext": ["Add native sky-light and block-light query."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "symmetry.check",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.world.blocks.read"],
+      "gapCodes": ["analysis-workflow-absent"],
+      "requiredNext": ["Add bounded symmetry analyzer."],
+      "platformScope": ["world-read-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    },
+    {
+      "surface": "websocket",
+      "sourceOperation": "player.autofight",
+      "status": "partial",
+      "lodestoneCapabilities": ["minecraft.entity.list", "minecraft.player.look", "minecraft.player.move", "minecraft.entity.interact"],
+      "gapCodes": ["workflow-absent"],
+      "requiredNext": ["Add bounded combat workflow."],
+      "platformScope": ["client-integrated", "entity-query-capable"],
+      "verificationLevel": "catalog",
+      "evidence": ["E-AUDIT", "E-CATALOG"]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "source": "amenti-labs/vibecraft",
+  "sourceUrl": "https://github.com/amenti-labs/vibecraft",
+  "upstreamRevision": "be5045f20027b60dd1d1a8604379c51ebf84e2f4",
+  "localAuditedRevision": "be5779e40bd72acf03e1eaf585b076e97c0c065d",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2024 VibeCraft Contributors",
+  "files": [
+    "minecraft_furniture_catalog.json",
+    "minecraft_furniture_layouts.json",
+    "building_patterns_complete.json",
+    "terrain_patterns_complete.json",
+    "building_templates.json"
+  ],
+  "semantics": {
+    "furnitureLayouts": "Executable source layouts; Lodestone placement remains unavailable until state-aware transactional compilation is implemented.",
+    "buildingPatterns": "Metadata and construction guidance only; Vibecraft's referenced structured placement file is absent.",
+    "terrainPatterns": "Metadata and manual guidance only; no structured placement representation is present.",
+    "buildingTemplates": "Prompt and command-sequence guidance; not an executable compiler."
+  }
+}

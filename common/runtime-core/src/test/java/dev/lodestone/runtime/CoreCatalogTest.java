@@ -1,0 +1,256 @@
+// SPDX-License-Identifier: MIT
+package dev.lodestone.runtime;
+
+import dev.lodestone.protocol.SchemaValidator;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+final class CoreCatalogTest {
+    @Test
+    void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
+        assertEquals(47, CoreCatalog.load().size());
+    }
+
+    @Test
+    void stableImplementedCapabilitiesPublishEnforcedSchemas() {
+        var capabilities = CoreCatalog.load();
+        for (var capability : capabilities) {
+            if (capability.stability() != dev.lodestone.protocol.Stability.STABLE) {
+                continue;
+            }
+            assertFalse(isBareObject(capability.inputSchema()), capability.id() + " has a placeholder input schema");
+            assertFalse(isBareObject(capability.outputSchema()), capability.id() + " has a placeholder output schema");
+        }
+    }
+
+    @Test
+    void promotedCommandBlockAndMouseContractsRejectMalformedInputs() {
+        var capabilities = CoreCatalog.load().stream()
+                .collect(Collectors.toMap(dev.lodestone.protocol.CapabilityDescriptor::id, Function.identity()));
+        var command = capabilities.get("minecraft.command.execute");
+        assertFalse(command.prerequisites().requiresPlayer());
+        assertTrue(SchemaValidator.validate(command.inputSchema(), Map.of("command", "say lodestone")).isEmpty());
+        assertFalse(SchemaValidator.validate(command.inputSchema(), Map.of()).isEmpty());
+        assertFalse(SchemaValidator.validate(command.inputSchema(), Map.of("command", "say hi", "extra", true)).isEmpty());
+
+        var blockRead = capabilities.get("minecraft.world.block.read");
+        assertTrue(SchemaValidator.validate(blockRead.inputSchema(), Map.of("x", 0, "y", 64, "z", 0)).isEmpty());
+        assertFalse(SchemaValidator.validate(blockRead.inputSchema(), Map.of("x", 0, "z", 0)).isEmpty());
+
+        var mouse = capabilities.get("minecraft.input.mouse.set");
+        assertTrue(SchemaValidator.validate(mouse.inputSchema(), Map.of("button", 0, "down", true)).isEmpty());
+        assertTrue(SchemaValidator.validate(mouse.inputSchema(), Map.of("key", "attack", "down", true)).isEmpty());
+        assertFalse(SchemaValidator.validate(mouse.inputSchema(), Map.of("down", true)).isEmpty());
+    }
+
+    @Test
+    void catalogPublishesGuardedUiLeasedMovementReleaseAndHonestCraftContracts() {
+        var capabilities = CoreCatalog.load().stream()
+                .collect(Collectors.toMap(dev.lodestone.protocol.CapabilityDescriptor::id, Function.identity()));
+        var revision = "a".repeat(64);
+
+        var uiState = capabilities.get("minecraft.ui.state.read");
+        assertEquals("2.0", uiState.version());
+        assertTrue(SchemaValidator.validate(uiState.outputSchema(), Map.ofEntries(
+                Map.entry("open", true), Map.entry("inWorld", true), Map.entry("screen", "pause"),
+                Map.entry("screenClass", "net.minecraft.client.gui.screens.PauseScreen"),
+                Map.entry("title", "Game Menu"), Map.entry("screenToken", "screen-2"),
+                Map.entry("snapshotRevision", revision), Map.entry("capturedAtTick", 20),
+                Map.entry("width", 426), Map.entry("height", 240), Map.entry("guiScale", 2),
+                Map.entry("coverage", "partial"), Map.entry("truncated", true),
+                Map.entry("truncationCauses", java.util.List.of("unsupported-widget")),
+                Map.entry("widgets", java.util.List.of(Map.of("nodeId", "n0", "path", java.util.List.of(0),
+                        "depth", 0, "type", "button", "focused", true, "actions", java.util.List.of("click"))))
+        )).isEmpty());
+
+        var click = capabilities.get("minecraft.ui.click");
+        assertEquals("2.0", click.version());
+        assertTrue(SchemaValidator.validate(click.inputSchema(), Map.of("screenToken", "screen-2",
+                "snapshotRevision", revision, "button", 0, "label", "Back to Game")).isEmpty());
+        assertTrue(SchemaValidator.validate(click.inputSchema(), Map.of("screenToken", "screen-2",
+                "snapshotRevision", revision, "label", "Back to Game")).isEmpty());
+        assertFalse(SchemaValidator.validate(click.inputSchema(), Map.of("screenToken", "screen-2",
+                "snapshotRevision", revision, "button", 0, "x", 12)).isEmpty());
+        assertFalse(SchemaValidator.validate(click.inputSchema(), Map.of("screenToken", "screen-2",
+                "snapshotRevision", revision, "nodeId", "n0", "label", "Back to Game")).isEmpty());
+
+        var move = capabilities.get("minecraft.player.move");
+        assertEquals("2.0", move.version());
+        assertTrue(SchemaValidator.validate(move.outputSchema(), Map.of("forward", 1, "strafe", 0,
+                "jump", false, "sprint", true, "sneak", false, "durationMs", 100,
+                "leaseGeneration", 3)).isEmpty());
+        assertFalse(SchemaValidator.validate(move.outputSchema(), Map.of("forward", 1, "strafe", 0,
+                "jump", false, "sprint", true, "sneak", false, "durationMs", 100)).isEmpty());
+
+        var release = capabilities.get("minecraft.input.release-all");
+        assertEquals(dev.lodestone.protocol.CapabilityKind.INPUT, release.kind());
+        assertEquals(java.util.Set.of(dev.lodestone.protocol.PermissionClass.CONTROL_PLAYER), release.permissions());
+        assertTrue(SchemaValidator.validate(release.inputSchema(), Map.of()).isEmpty());
+        assertFalse(SchemaValidator.validate(release.inputSchema(), Map.of("extra", true)).isEmpty());
+
+        var craft = capabilities.get("minecraft.inventory.craft");
+        assertEquals(dev.lodestone.protocol.Stability.EXPERIMENTAL, craft.stability());
+        assertEquals(dev.lodestone.protocol.Availability.UNAVAILABLE, craft.availability());
+        assertFalse(craft.prerequisites().requiresScreen());
+        assertFalse(craft.prerequisites().requiresContainer());
+        assertTrue(SchemaValidator.validate(craft.outputSchema(), Map.of("item", "minecraft:torch",
+                "requestedCount", 4, "craftedCount", 4, "complete", true)).isEmpty());
+        assertFalse(SchemaValidator.validate(craft.outputSchema(), Map.of("item", "minecraft:torch",
+                "requestedCount", 4, "craftedCount", 4)).isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void uiWaitPublishesAnExactUiStateV2ProjectionAndBoundedPollingContract() {
+        var capabilities = CoreCatalog.load().stream()
+                .collect(Collectors.toMap(dev.lodestone.protocol.CapabilityDescriptor::id, Function.identity()));
+        var uiState = capabilities.get("minecraft.ui.state.read");
+        var wait = capabilities.get("lodestone.ui.wait");
+        var outputProperties = (Map<String, Object>) wait.outputSchema().get("properties");
+
+        assertEquals("1.0", wait.version());
+        assertEquals(dev.lodestone.protocol.Stability.EXPERIMENTAL, wait.stability());
+        assertEquals(uiState.outputSchema(), outputProperties.get("state"));
+        assertTrue(wait.featureFlags().containsAll(java.util.Set.of(
+                "delegates-native", "asynchronous-polling", "deterministic-polling", "ui-state-v2")));
+        assertTrue(SchemaValidator.validate(wait.inputSchema(), Map.of("until", "in_world")).isEmpty());
+        assertTrue(SchemaValidator.validate(wait.inputSchema(), Map.of("until", "screen_class:PauseScreen",
+                "timeoutMs", 60_000, "pollIntervalMs", 100)).isEmpty());
+        assertFalse(SchemaValidator.validate(wait.inputSchema(), Map.of("until", "screen_class:")).isEmpty());
+        assertFalse(SchemaValidator.validate(wait.inputSchema(), Map.of("until", "screen_open",
+                "pollIntervalMs", 99)).isEmpty());
+        assertTrue(SchemaValidator.validate(wait.outputSchema(), Map.of(
+                "timedOut", false, "waitedFor", "screen_open", "pollCount", 1, "elapsedMs", 0,
+                "state", uiStateOutput(true, "pause", "net.minecraft.client.gui.screens.PauseScreen"))).isEmpty());
+
+        var click = capabilities.get("minecraft.ui.click");
+        var navigate = capabilities.get("lodestone.ui.navigate");
+        var navigateProperties = (Map<String, Object>) navigate.outputSchema().get("properties");
+        assertEquals(uiState.outputSchema(), navigateProperties.get("before"));
+        assertEquals(click.outputSchema(), navigateProperties.get("click"));
+        assertEquals(uiState.outputSchema(), navigateProperties.get("after"));
+        assertTrue(SchemaValidator.validate(navigate.inputSchema(), Map.of("target", "singleplayer")).isEmpty());
+        assertFalse(SchemaValidator.validate(navigate.inputSchema(), Map.of("target", "inventory")).isEmpty());
+        assertTrue(SchemaValidator.validate(navigate.outputSchema(), Map.ofEntries(
+                Map.entry("target", "singleplayer"), Map.entry("label", "Singleplayer"),
+                Map.entry("match", "exact"), Map.entry("handled", true),
+                Map.entry("before", uiStateOutput(true, "title", "net.minecraft.client.gui.screens.TitleScreen")),
+                Map.entry("click", Map.of("handled", true, "x", 100, "y", 80,
+                        "screenToken", "screen-2", "snapshotRevision", "a".repeat(64), "nodeId", "n0")),
+                Map.entry("after", uiStateOutput(true, "select-world",
+                        "net.minecraft.client.gui.screens.worldselection.SelectWorldScreen"))
+        )).isEmpty());
+    }
+
+    @Test
+    void parityReadAndPlayerActorCommandContractsAreBoundedAndTyped() {
+        var capabilities = CoreCatalog.load().stream()
+                .collect(Collectors.toMap(dev.lodestone.protocol.CapabilityDescriptor::id, Function.identity()));
+        var itemSearch = capabilities.get("minecraft.registry.item.search");
+        assertTrue(SchemaValidator.validate(itemSearch.inputSchema(), Map.of("query", "stone", "limit", 50)).isEmpty());
+        assertFalse(SchemaValidator.validate(itemSearch.inputSchema(), Map.of("query", "", "limit", 51)).isEmpty());
+
+        var serverInfo = capabilities.get("minecraft.server.info.read");
+        assertTrue(SchemaValidator.validate(serverInfo.inputSchema(), Map.of()).isEmpty());
+        assertFalse(SchemaValidator.validate(serverInfo.inputSchema(), Map.of("extra", true)).isEmpty());
+
+        var context = capabilities.get("minecraft.player.context.read");
+        assertTrue(SchemaValidator.validate(context.inputSchema(), Map.of("reach", 128)).isEmpty());
+        assertFalse(SchemaValidator.validate(context.inputSchema(), Map.of("reach", 257)).isEmpty());
+
+        var nearby = capabilities.get("minecraft.entity.nearby.read");
+        assertTrue(SchemaValidator.validate(nearby.inputSchema(), Map.of(
+                "radius", 32, "limit", 64, "includePlayers", false)).isEmpty());
+        assertFalse(SchemaValidator.validate(nearby.inputSchema(), Map.of("limit", 0)).isEmpty());
+
+        var playerCommand = capabilities.get("minecraft.player.command.execute");
+        assertTrue(SchemaValidator.validate(playerCommand.inputSchema(), Map.of(
+                "player", Map.of("uuid", "00000000-0000-0000-0000-000000000001"),
+                "command", "//pos1", "capture", Map.of("enabled", true, "maxMessages", 64))).isEmpty());
+        assertFalse(SchemaValidator.validate(playerCommand.inputSchema(), Map.of(
+                "player", Map.of(), "command", "//pos1")).isEmpty());
+        assertEquals(dev.lodestone.protocol.PermissionClass.ADMINISTER_SERVER,
+                playerCommand.permissions().iterator().next());
+        assertEquals(dev.lodestone.protocol.SideEffect.ADMINISTER_SERVER, playerCommand.sideEffect());
+
+        var furniture = capabilities.get("lodestone.furniture.place");
+        assertTrue(SchemaValidator.validate(furniture.inputSchema(), Map.of(
+                "furniture_id", "corner_table", "origin_x", 10, "origin_y", 64, "origin_z", -5,
+                "facing", "east", "place_on_surface", true, "preview_only", true)).isEmpty());
+        assertFalse(SchemaValidator.validate(furniture.inputSchema(), Map.of(
+                "furniture_id", "corner_table", "origin_x", 10, "origin_y", 64, "origin_z", -5,
+                "facing", "up")).isEmpty());
+        assertEquals(java.util.Set.of(dev.lodestone.protocol.PermissionClass.MODIFY_WORLD),
+                furniture.permissions());
+        assertTrue(furniture.featureFlags().contains("delegates-native"));
+
+        var maskValidation = capabilities.get("lodestone.worldedit.mask.validate");
+        assertEquals(dev.lodestone.protocol.Stability.EXPERIMENTAL, maskValidation.stability());
+        assertEquals(java.util.Set.of(dev.lodestone.protocol.PermissionClass.OBSERVE),
+                maskValidation.permissions());
+        assertEquals(dev.lodestone.protocol.SideEffect.NONE, maskValidation.sideEffect());
+        assertTrue(maskValidation.featureFlags().containsAll(java.util.Set.of(
+                "local-structural-validation", "no-worldedit-dependency", "no-evaluation",
+                "server-validation-required")));
+        assertTrue(SchemaValidator.validate(maskValidation.inputSchema(), Map.of("mask", "#existing")).isEmpty());
+        assertFalse(SchemaValidator.validate(maskValidation.inputSchema(), Map.of("mask", "")).isEmpty());
+
+        var heightmap = capabilities.get("minecraft.world.heightmap.read");
+        assertTrue(SchemaValidator.validate(heightmap.inputSchema(), Map.of(
+                "x", 0, "z", 0, "sizeX", 256, "sizeZ", 256, "includeSurfaceBlocks", true)).isEmpty());
+        assertFalse(SchemaValidator.validate(heightmap.inputSchema(), Map.of(
+                "x", 0, "z", 0, "sizeX", 257, "sizeZ", 1)).isEmpty());
+        assertTrue(SchemaValidator.validate(heightmap.outputSchema(), Map.of(
+                "dimension", "minecraft:overworld", "origin", Map.of("x", 0, "z", 0),
+                "size", Map.of("x", 1, "z", 1), "columnCount", 1, "loadedColumns", 0,
+                "unloadedColumns", 1, "columns", java.util.List.of(Map.of(
+                        "x", 0, "z", 0, "loaded", false, "empty", false)),
+                "stats", Map.of("hasHeightData", false, "minHeight", 0, "maxHeight", 0,
+                        "heightRange", 0))).isEmpty());
+
+        var light = capabilities.get("minecraft.world.light.analyze");
+        assertTrue(SchemaValidator.validate(light.inputSchema(), Map.of(
+                "x", 0, "y", 64, "z", 0, "sizeX", 1, "sizeY", 1, "sizeZ", 1,
+                "resolution", 4, "darkSpotLimit", 0, "lightSourceLimit", 0)).isEmpty());
+        assertFalse(SchemaValidator.validate(light.inputSchema(), Map.of(
+                "x", 0, "y", 64, "z", 0, "sizeX", 1, "sizeY", 1, "sizeZ", 1,
+                "resolution", 5)).isEmpty());
+        var emptyDistribution = Map.of("count", 0, "percentage", 0);
+        assertTrue(SchemaValidator.validate(light.outputSchema(), Map.ofEntries(
+                Map.entry("dimension", "minecraft:overworld"),
+                Map.entry("origin", Map.of("x", 0, "y", 64, "z", 0)),
+                Map.entry("size", Map.of("x", 1, "y", 1, "z", 1)), Map.entry("resolution", 1),
+                Map.entry("candidateSamples", 1), Map.entry("analyzedSamples", 0),
+                Map.entry("solidSamples", 0), Map.entry("unloadedSamples", 1),
+                Map.entry("averageCombinedLight", 0),
+                Map.entry("histogram", java.util.Collections.nCopies(16, 0)),
+                Map.entry("distribution", Map.of("wellLit", emptyDistribution,
+                        "dim", emptyDistribution, "dark", emptyDistribution)),
+                Map.entry("darkSpotCount", 0), Map.entry("darkSpotsTruncated", false),
+                Map.entry("darkSpots", java.util.List.of()), Map.entry("lightSourceCount", 0),
+                Map.entry("lightSourcesTruncated", false), Map.entry("lightSources", java.util.List.of()),
+                Map.entry("mobSpawnRisk", "none"), Map.entry("suggestions", java.util.List.of())
+        )).isEmpty());
+    }
+
+    private static Map<String, Object> uiStateOutput(boolean open, String screen, String screenClass) {
+        return Map.ofEntries(
+                Map.entry("open", open), Map.entry("inWorld", true), Map.entry("screen", screen),
+                Map.entry("screenClass", screenClass), Map.entry("title", open ? "Game Menu" : ""),
+                Map.entry("screenToken", "screen-2"), Map.entry("snapshotRevision", "a".repeat(64)),
+                Map.entry("capturedAtTick", 20), Map.entry("width", 426), Map.entry("height", 240),
+                Map.entry("guiScale", 2), Map.entry("coverage", "complete"), Map.entry("truncated", false),
+                Map.entry("truncationCauses", java.util.List.of()), Map.entry("widgets", java.util.List.of()));
+    }
+
+    private static boolean isBareObject(Map<String, Object> schema) {
+        return schema.size() == 1 && "object".equals(schema.get("type"));
+    }
+}

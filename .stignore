@@ -1,0 +1,13 @@
+.gradle/
+**/build/
+**/run/
+**/runs/
+**/logs/
+**/crash-reports/
+.idea/
+.vscode/
+out/
+bin/
+*.log
+*.jar
+*.zip

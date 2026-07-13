@@ -1,0 +1,19 @@
+{
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Lodestone Compatibility - Quilt 1.20.1",
+  "version": "0.1.0-SNAPSHOT",
+  "author": "Lodestone contributors",
+  "projectVersion": "local-build",
+  "minecraft": {
+    "version": "1.20.1",
+    "modLoaders": [
+      {
+        "id": "quilt-0.29.2",
+        "primary": true
+      }
+    ]
+  },
+  "files": [],
+  "overrides": "overrides"
+}

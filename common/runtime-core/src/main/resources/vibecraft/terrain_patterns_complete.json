@@ -1,0 +1,1377 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Comprehensive terrain pattern library for VibeCraft",
+    "last_updated": "2025-11-01"
+  },
+  "patterns": {
+    "tree_oak_small": {
+      "id": "tree_oak_small",
+      "name": "Oak Tree (Small)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "oak",
+        "small",
+        "natural"
+      ],
+      "description": "Small oak tree with natural leaf pattern",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 5,
+        "height": 7,
+        "depth": 5
+      },
+      "center": {
+        "x": 2,
+        "z": 2
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_log": 4,
+        "oak_leaves": 15
+      },
+      "placement_notes": "Center trunk on desired location. Clear 5x7x5 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural oak tree shape"
+    },
+    "tree_oak_medium": {
+      "id": "tree_oak_medium",
+      "name": "Oak Tree (Medium)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "oak",
+        "medium",
+        "natural"
+      ],
+      "description": "Medium oak tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 7,
+        "height": 10,
+        "depth": 7
+      },
+      "center": {
+        "x": 3,
+        "z": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_log": 7,
+        "oak_leaves": 29
+      },
+      "placement_notes": "Center trunk on desired location. Clear 7x10x7 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural oak tree shape"
+    },
+    "tree_oak_large": {
+      "id": "tree_oak_large",
+      "name": "Oak Tree (Large)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "oak",
+        "large",
+        "natural"
+      ],
+      "description": "Large oak tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 14,
+        "depth": 9
+      },
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_log": 11,
+        "oak_leaves": 48
+      },
+      "placement_notes": "Center trunk on desired location. Clear 9x14x9 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural oak tree shape"
+    },
+    "tree_birch_small": {
+      "id": "tree_birch_small",
+      "name": "Birch Tree (Small)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "birch",
+        "small",
+        "natural"
+      ],
+      "description": "Small birch tree with natural leaf pattern",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 5,
+        "height": 8,
+        "depth": 5
+      },
+      "center": {
+        "x": 2,
+        "z": 2
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "birch_log": 5,
+        "birch_leaves": 15
+      },
+      "placement_notes": "Center trunk on desired location. Clear 5x8x5 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural birch tree shape"
+    },
+    "tree_birch_medium": {
+      "id": "tree_birch_medium",
+      "name": "Birch Tree (Medium)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "birch",
+        "medium",
+        "natural"
+      ],
+      "description": "Medium birch tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 7,
+        "height": 11,
+        "depth": 7
+      },
+      "center": {
+        "x": 3,
+        "z": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "birch_log": 8,
+        "birch_leaves": 29
+      },
+      "placement_notes": "Center trunk on desired location. Clear 7x11x7 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural birch tree shape"
+    },
+    "tree_birch_large": {
+      "id": "tree_birch_large",
+      "name": "Birch Tree (Large)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "birch",
+        "large",
+        "natural"
+      ],
+      "description": "Large birch tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 15,
+        "depth": 9
+      },
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "birch_log": 12,
+        "birch_leaves": 48
+      },
+      "placement_notes": "Center trunk on desired location. Clear 9x15x9 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural birch tree shape"
+    },
+    "tree_spruce_small": {
+      "id": "tree_spruce_small",
+      "name": "Spruce Tree (Small)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "spruce",
+        "small",
+        "natural"
+      ],
+      "description": "Small spruce tree with natural leaf pattern",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 5,
+        "height": 9,
+        "depth": 5
+      },
+      "center": {
+        "x": 2,
+        "z": 2
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "spruce_log": 6,
+        "spruce_leaves": 15
+      },
+      "placement_notes": "Center trunk on desired location. Clear 5x9x5 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural spruce tree shape"
+    },
+    "tree_spruce_medium": {
+      "id": "tree_spruce_medium",
+      "name": "Spruce Tree (Medium)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "spruce",
+        "medium",
+        "natural"
+      ],
+      "description": "Medium spruce tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 7,
+        "height": 13,
+        "depth": 7
+      },
+      "center": {
+        "x": 3,
+        "z": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "spruce_log": 10,
+        "spruce_leaves": 29
+      },
+      "placement_notes": "Center trunk on desired location. Clear 7x13x7 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural spruce tree shape"
+    },
+    "tree_spruce_large": {
+      "id": "tree_spruce_large",
+      "name": "Spruce Tree (Large)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "spruce",
+        "large",
+        "natural"
+      ],
+      "description": "Large spruce tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 18,
+        "depth": 9
+      },
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "spruce_log": 15,
+        "spruce_leaves": 48
+      },
+      "placement_notes": "Center trunk on desired location. Clear 9x18x9 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural spruce tree shape"
+    },
+    "tree_jungle_small": {
+      "id": "tree_jungle_small",
+      "name": "Jungle Tree (Small)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "jungle",
+        "small",
+        "natural"
+      ],
+      "description": "Small jungle tree with natural leaf pattern",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 7,
+        "height": 12,
+        "depth": 7
+      },
+      "center": {
+        "x": 3,
+        "z": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "jungle_log": 9,
+        "jungle_leaves": 29
+      },
+      "placement_notes": "Center trunk on desired location. Clear 7x12x7 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural jungle tree shape"
+    },
+    "tree_jungle_medium": {
+      "id": "tree_jungle_medium",
+      "name": "Jungle Tree (Medium)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "jungle",
+        "medium",
+        "natural"
+      ],
+      "description": "Medium jungle tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 16,
+        "depth": 9
+      },
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "jungle_log": 13,
+        "jungle_leaves": 48
+      },
+      "placement_notes": "Center trunk on desired location. Clear 9x16x9 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural jungle tree shape"
+    },
+    "tree_jungle_large": {
+      "id": "tree_jungle_large",
+      "name": "Jungle Tree (Large)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "jungle",
+        "large",
+        "natural"
+      ],
+      "description": "Large jungle tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 11,
+        "height": 22,
+        "depth": 11
+      },
+      "center": {
+        "x": 5,
+        "z": 5
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "jungle_log": 19,
+        "jungle_leaves": 72
+      },
+      "placement_notes": "Center trunk on desired location. Clear 11x22x11 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural jungle tree shape"
+    },
+    "tree_acacia_small": {
+      "id": "tree_acacia_small",
+      "name": "Acacia Tree (Small)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "acacia",
+        "small",
+        "natural"
+      ],
+      "description": "Small acacia tree with natural leaf pattern",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 7,
+        "height": 8,
+        "depth": 7
+      },
+      "center": {
+        "x": 3,
+        "z": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "acacia_log": 5,
+        "acacia_leaves": 29
+      },
+      "placement_notes": "Center trunk on desired location. Clear 7x8x7 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural acacia tree shape"
+    },
+    "tree_acacia_medium": {
+      "id": "tree_acacia_medium",
+      "name": "Acacia Tree (Medium)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "acacia",
+        "medium",
+        "natural"
+      ],
+      "description": "Medium acacia tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 10,
+        "depth": 9
+      },
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "acacia_log": 7,
+        "acacia_leaves": 48
+      },
+      "placement_notes": "Center trunk on desired location. Clear 9x10x9 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural acacia tree shape"
+    },
+    "tree_dark_oak_medium": {
+      "id": "tree_dark_oak_medium",
+      "name": "Dark_Oak Tree (Medium)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "dark_oak",
+        "medium",
+        "natural"
+      ],
+      "description": "Medium dark_oak tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 7,
+        "height": 10,
+        "depth": 7
+      },
+      "center": {
+        "x": 3,
+        "z": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "dark_oak_log": 7,
+        "dark_oak_leaves": 29
+      },
+      "placement_notes": "Center trunk on desired location. Clear 7x10x7 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural dark_oak tree shape"
+    },
+    "tree_dark_oak_large": {
+      "id": "tree_dark_oak_large",
+      "name": "Dark_Oak Tree (Large)",
+      "category": "vegetation",
+      "subcategory": "trees",
+      "tags": [
+        "tree",
+        "dark_oak",
+        "large",
+        "natural"
+      ],
+      "description": "Large dark_oak tree with natural leaf pattern",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 14,
+        "depth": 9
+      },
+      "center": {
+        "x": 4,
+        "z": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "dark_oak_log": 11,
+        "dark_oak_leaves": 48
+      },
+      "placement_notes": "Center trunk on desired location. Clear 9x14x9 space.",
+      "construction_method": "Build trunk vertically, add leaves in layers starting at 60% height",
+      "use_cases": [
+        "forests",
+        "natural landscapes",
+        "parks",
+        "decoration"
+      ],
+      "visual_notes": "Natural dark_oak tree shape"
+    },
+    "bush_oak_leafy": {
+      "id": "bush_oak_leafy",
+      "name": "Oak Leafy Bush",
+      "category": "vegetation",
+      "subcategory": "bushes",
+      "tags": [
+        "bush",
+        "shrub",
+        "oak"
+      ],
+      "description": "Small oak leafy bush",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 2,
+        "depth": 3
+      },
+      "center": {
+        "x": 1,
+        "z": 1
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "leaves": 12,
+        "log": 1
+      },
+      "placement_notes": "Place on grass or dirt",
+      "construction_method": "Single log base with leaves surrounding",
+      "use_cases": [
+        "decoration",
+        "gardens",
+        "natural areas"
+      ]
+    },
+    "bush_berry": {
+      "id": "bush_berry",
+      "name": "Berry Bush",
+      "category": "vegetation",
+      "subcategory": "bushes",
+      "tags": [
+        "bush",
+        "shrub",
+        "berry"
+      ],
+      "description": "Small berry bush",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 2,
+        "depth": 3
+      },
+      "center": {
+        "x": 1,
+        "z": 1
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "leaves": 12,
+        "log": 1
+      },
+      "placement_notes": "Place on grass or dirt",
+      "construction_method": "Single log base with leaves surrounding",
+      "use_cases": [
+        "decoration",
+        "gardens",
+        "natural areas"
+      ]
+    },
+    "bush_flowering": {
+      "id": "bush_flowering",
+      "name": "Flowering Bush",
+      "category": "vegetation",
+      "subcategory": "bushes",
+      "tags": [
+        "bush",
+        "shrub",
+        "flowering"
+      ],
+      "description": "Small flowering bush",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 2,
+        "depth": 3
+      },
+      "center": {
+        "x": 1,
+        "z": 1
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "leaves": 12,
+        "log": 1
+      },
+      "placement_notes": "Place on grass or dirt",
+      "construction_method": "Single log base with leaves surrounding",
+      "use_cases": [
+        "decoration",
+        "gardens",
+        "natural areas"
+      ]
+    },
+    "bush_dead": {
+      "id": "bush_dead",
+      "name": "Dead Bush",
+      "category": "vegetation",
+      "subcategory": "bushes",
+      "tags": [
+        "bush",
+        "shrub",
+        "dead"
+      ],
+      "description": "Small dead bush",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 2,
+        "depth": 3
+      },
+      "center": {
+        "x": 1,
+        "z": 1
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "leaves": 12,
+        "log": 1
+      },
+      "placement_notes": "Place on grass or dirt",
+      "construction_method": "Single log base with leaves surrounding",
+      "use_cases": [
+        "decoration",
+        "gardens",
+        "natural areas"
+      ]
+    },
+    "rock_small_boulder": {
+      "id": "rock_small_boulder",
+      "name": "Small Boulder",
+      "category": "features",
+      "subcategory": "rocks",
+      "tags": [
+        "rock",
+        "boulder",
+        "natural",
+        "small"
+      ],
+      "description": "Small Boulder formation",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 2,
+        "height": 2,
+        "depth": 2
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone": 5,
+        "cobblestone": 2
+      },
+      "placement_notes": "Place on ground, partially bury for natural look",
+      "construction_method": "Mix stone and cobblestone for texture",
+      "use_cases": [
+        "decoration",
+        "natural terrain",
+        "gardens",
+        "paths"
+      ]
+    },
+    "rock_medium_boulder": {
+      "id": "rock_medium_boulder",
+      "name": "Medium Boulder",
+      "category": "features",
+      "subcategory": "rocks",
+      "tags": [
+        "rock",
+        "boulder",
+        "natural",
+        "medium"
+      ],
+      "description": "Medium Boulder formation",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 3,
+        "depth": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone": 18,
+        "cobblestone": 8
+      },
+      "placement_notes": "Place on ground, partially bury for natural look",
+      "construction_method": "Mix stone and cobblestone for texture",
+      "use_cases": [
+        "decoration",
+        "natural terrain",
+        "gardens",
+        "paths"
+      ]
+    },
+    "rock_large_boulder": {
+      "id": "rock_large_boulder",
+      "name": "Large Boulder",
+      "category": "features",
+      "subcategory": "rocks",
+      "tags": [
+        "rock",
+        "boulder",
+        "natural",
+        "large"
+      ],
+      "description": "Large Boulder formation",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 4,
+        "height": 4,
+        "depth": 4
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone": 44,
+        "cobblestone": 19
+      },
+      "placement_notes": "Place on ground, partially bury for natural look",
+      "construction_method": "Mix stone and cobblestone for texture",
+      "use_cases": [
+        "decoration",
+        "natural terrain",
+        "gardens",
+        "paths"
+      ]
+    },
+    "rock_rock_cluster": {
+      "id": "rock_rock_cluster",
+      "name": "Rock Cluster",
+      "category": "features",
+      "subcategory": "rocks",
+      "tags": [
+        "rock",
+        "boulder",
+        "natural",
+        "rock"
+      ],
+      "description": "Rock Cluster formation",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 5,
+        "height": 2,
+        "depth": 5
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone": 35,
+        "cobblestone": 15
+      },
+      "placement_notes": "Place on ground, partially bury for natural look",
+      "construction_method": "Mix stone and cobblestone for texture",
+      "use_cases": [
+        "decoration",
+        "natural terrain",
+        "gardens",
+        "paths"
+      ]
+    },
+    "water_small_pond": {
+      "id": "water_small_pond",
+      "name": "Small Pond",
+      "category": "features",
+      "subcategory": "water",
+      "tags": [
+        "water",
+        "pond",
+        "small"
+      ],
+      "description": "Small Pond water feature",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 5,
+        "height": 2,
+        "depth": 5
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "water": 25,
+        "dirt": 25,
+        "grass_block": 20
+      },
+      "placement_notes": "Dig depression, line with dirt, fill with water",
+      "construction_method": "Excavate, create bowl shape, add water source blocks",
+      "use_cases": [
+        "gardens",
+        "natural areas",
+        "decoration"
+      ]
+    },
+    "water_medium_pond": {
+      "id": "water_medium_pond",
+      "name": "Medium Pond",
+      "category": "features",
+      "subcategory": "water",
+      "tags": [
+        "water",
+        "pond",
+        "medium"
+      ],
+      "description": "Medium Pond water feature",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 7,
+        "height": 3,
+        "depth": 7
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "water": 49,
+        "dirt": 49,
+        "grass_block": 28
+      },
+      "placement_notes": "Dig depression, line with dirt, fill with water",
+      "construction_method": "Excavate, create bowl shape, add water source blocks",
+      "use_cases": [
+        "gardens",
+        "natural areas",
+        "decoration"
+      ]
+    },
+    "water_large_pond": {
+      "id": "water_large_pond",
+      "name": "Large Pond",
+      "category": "features",
+      "subcategory": "water",
+      "tags": [
+        "water",
+        "pond",
+        "large"
+      ],
+      "description": "Large Pond water feature",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 9,
+        "height": 3,
+        "depth": 9
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "water": 81,
+        "dirt": 81,
+        "grass_block": 36
+      },
+      "placement_notes": "Dig depression, line with dirt, fill with water",
+      "construction_method": "Excavate, create bowl shape, add water source blocks",
+      "use_cases": [
+        "gardens",
+        "natural areas",
+        "decoration"
+      ]
+    },
+    "path_cobblestone_path": {
+      "id": "path_cobblestone_path",
+      "name": "Cobblestone Path",
+      "category": "paths",
+      "subcategory": "cobblestone",
+      "tags": [
+        "path",
+        "walkway",
+        "cobblestone"
+      ],
+      "description": "Cobblestone Path walkway",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 10
+      },
+      "construction_type": "template",
+      "materials": {
+        "cobblestone": 30
+      },
+      "placement_notes": "Place on ground level, 3 blocks wide standard",
+      "construction_method": "Lay material in straight or curved line",
+      "use_cases": [
+        "gardens",
+        "connections",
+        "decoration"
+      ]
+    },
+    "path_gravel_path": {
+      "id": "path_gravel_path",
+      "name": "Gravel Path",
+      "category": "paths",
+      "subcategory": "gravel",
+      "tags": [
+        "path",
+        "walkway",
+        "gravel"
+      ],
+      "description": "Gravel Path walkway",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 10
+      },
+      "construction_type": "template",
+      "materials": {
+        "gravel": 30
+      },
+      "placement_notes": "Place on ground level, 3 blocks wide standard",
+      "construction_method": "Lay material in straight or curved line",
+      "use_cases": [
+        "gardens",
+        "connections",
+        "decoration"
+      ]
+    },
+    "path_stepping_stones": {
+      "id": "path_stepping_stones",
+      "name": "Stepping Stones",
+      "category": "paths",
+      "subcategory": "stepping",
+      "tags": [
+        "path",
+        "walkway",
+        "stepping"
+      ],
+      "description": "Stepping Stones walkway",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 10
+      },
+      "construction_type": "template",
+      "materials": {
+        "stepping": 30
+      },
+      "placement_notes": "Place on ground level, 3 blocks wide standard",
+      "construction_method": "Lay material in straight or curved line",
+      "use_cases": [
+        "gardens",
+        "connections",
+        "decoration"
+      ]
+    },
+    "path_dirt_path": {
+      "id": "path_dirt_path",
+      "name": "Dirt Path",
+      "category": "paths",
+      "subcategory": "dirt",
+      "tags": [
+        "path",
+        "walkway",
+        "dirt"
+      ],
+      "description": "Dirt Path walkway",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 10
+      },
+      "construction_type": "template",
+      "materials": {
+        "dirt": 30
+      },
+      "placement_notes": "Place on ground level, 3 blocks wide standard",
+      "construction_method": "Lay material in straight or curved line",
+      "use_cases": [
+        "gardens",
+        "connections",
+        "decoration"
+      ]
+    },
+    "fallen_log_oak": {
+      "id": "fallen_log_oak",
+      "name": "Fallen Oak Log",
+      "category": "details",
+      "subcategory": "logs",
+      "tags": [
+        "log",
+        "fallen",
+        "oak",
+        "natural"
+      ],
+      "description": "Fallen oak log with moss",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 6,
+        "height": 1,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "oak_log": 6,
+        "moss_carpet": 3
+      },
+      "placement_notes": "Place horizontally on ground",
+      "construction_method": "Lay logs horizontally, add moss on top",
+      "use_cases": [
+        "forest floor",
+        "natural decay",
+        "decoration"
+      ]
+    },
+    "fallen_log_spruce": {
+      "id": "fallen_log_spruce",
+      "name": "Fallen Spruce Log",
+      "category": "details",
+      "subcategory": "logs",
+      "tags": [
+        "log",
+        "fallen",
+        "spruce",
+        "natural"
+      ],
+      "description": "Fallen spruce log with moss",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 6,
+        "height": 1,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "spruce_log": 6,
+        "moss_carpet": 3
+      },
+      "placement_notes": "Place horizontally on ground",
+      "construction_method": "Lay logs horizontally, add moss on top",
+      "use_cases": [
+        "forest floor",
+        "natural decay",
+        "decoration"
+      ]
+    },
+    "fallen_log_birch": {
+      "id": "fallen_log_birch",
+      "name": "Fallen Birch Log",
+      "category": "details",
+      "subcategory": "logs",
+      "tags": [
+        "log",
+        "fallen",
+        "birch",
+        "natural"
+      ],
+      "description": "Fallen birch log with moss",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 6,
+        "height": 1,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "birch_log": 6,
+        "moss_carpet": 3
+      },
+      "placement_notes": "Place horizontally on ground",
+      "construction_method": "Lay logs horizontally, add moss on top",
+      "use_cases": [
+        "forest floor",
+        "natural decay",
+        "decoration"
+      ]
+    },
+    "mushroom_cluster_red": {
+      "id": "mushroom_cluster_red",
+      "name": "Red Mushroom Cluster",
+      "category": "details",
+      "subcategory": "mushrooms",
+      "tags": [
+        "mushroom",
+        "red",
+        "cluster",
+        "natural"
+      ],
+      "description": "Cluster of red mushrooms",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "red_mushroom": 5
+      },
+      "placement_notes": "Place on grass or dirt in shaded areas",
+      "construction_method": "Scatter mushrooms in small group",
+      "use_cases": [
+        "forest floor",
+        "dark areas",
+        "decoration"
+      ]
+    },
+    "mushroom_cluster_brown": {
+      "id": "mushroom_cluster_brown",
+      "name": "Brown Mushroom Cluster",
+      "category": "details",
+      "subcategory": "mushrooms",
+      "tags": [
+        "mushroom",
+        "brown",
+        "cluster",
+        "natural"
+      ],
+      "description": "Cluster of brown mushrooms",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "brown_mushroom": 5
+      },
+      "placement_notes": "Place on grass or dirt in shaded areas",
+      "construction_method": "Scatter mushrooms in small group",
+      "use_cases": [
+        "forest floor",
+        "dark areas",
+        "decoration"
+      ]
+    },
+    "flower_patch_dandelion": {
+      "id": "flower_patch_dandelion",
+      "name": "Dandelion Flower Patch",
+      "category": "details",
+      "subcategory": "flowers",
+      "tags": [
+        "flower",
+        "dandelion",
+        "patch",
+        "decoration"
+      ],
+      "description": "Small patch of dandelion flowers",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "dandelion": 7
+      },
+      "placement_notes": "Place on grass blocks",
+      "construction_method": "Scatter flowers in natural pattern",
+      "use_cases": [
+        "gardens",
+        "decoration",
+        "natural areas"
+      ]
+    },
+    "flower_patch_poppy": {
+      "id": "flower_patch_poppy",
+      "name": "Poppy Flower Patch",
+      "category": "details",
+      "subcategory": "flowers",
+      "tags": [
+        "flower",
+        "poppy",
+        "patch",
+        "decoration"
+      ],
+      "description": "Small patch of poppy flowers",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "poppy": 7
+      },
+      "placement_notes": "Place on grass blocks",
+      "construction_method": "Scatter flowers in natural pattern",
+      "use_cases": [
+        "gardens",
+        "decoration",
+        "natural areas"
+      ]
+    },
+    "flower_patch_blue_orchid": {
+      "id": "flower_patch_blue_orchid",
+      "name": "Blue_Orchid Flower Patch",
+      "category": "details",
+      "subcategory": "flowers",
+      "tags": [
+        "flower",
+        "blue_orchid",
+        "patch",
+        "decoration"
+      ],
+      "description": "Small patch of blue_orchid flowers",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "blue_orchid": 7
+      },
+      "placement_notes": "Place on grass blocks",
+      "construction_method": "Scatter flowers in natural pattern",
+      "use_cases": [
+        "gardens",
+        "decoration",
+        "natural areas"
+      ]
+    },
+    "flower_patch_allium": {
+      "id": "flower_patch_allium",
+      "name": "Allium Flower Patch",
+      "category": "details",
+      "subcategory": "flowers",
+      "tags": [
+        "flower",
+        "allium",
+        "patch",
+        "decoration"
+      ],
+      "description": "Small patch of allium flowers",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "allium": 7
+      },
+      "placement_notes": "Place on grass blocks",
+      "construction_method": "Scatter flowers in natural pattern",
+      "use_cases": [
+        "gardens",
+        "decoration",
+        "natural areas"
+      ]
+    },
+    "flower_patch_tulip": {
+      "id": "flower_patch_tulip",
+      "name": "Tulip Flower Patch",
+      "category": "details",
+      "subcategory": "flowers",
+      "tags": [
+        "flower",
+        "tulip",
+        "patch",
+        "decoration"
+      ],
+      "description": "Small patch of tulip flowers",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 1,
+        "depth": 3
+      },
+      "construction_type": "template",
+      "materials": {
+        "tulip": 7
+      },
+      "placement_notes": "Place on grass blocks",
+      "construction_method": "Scatter flowers in natural pattern",
+      "use_cases": [
+        "gardens",
+        "decoration",
+        "natural areas"
+      ]
+    }
+  }
+}

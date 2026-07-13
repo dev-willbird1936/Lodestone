@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lodestone.dev/protocol/v1/capability.schema.json",
+  "title": "Lodestone Capability",
+  "type": "object",
+  "required": ["id", "kind", "version", "stability", "availability", "reason", "adapterId", "adapterVersion", "gameEdition", "gameVersion", "loader", "environment", "inputSchema", "outputSchema", "eventSchema", "permissions", "sideEffect", "idempotency", "prerequisites", "nativeThread", "rateLimit", "timeoutMs", "cancellable", "delivery", "documentation", "featureFlags"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9][a-z0-9-]*)+$"},
+    "kind": {"enum": ["command", "input", "action", "query", "event"]},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"},
+    "stability": {"enum": ["experimental", "stable", "deprecated"]},
+    "availability": {"enum": ["available", "unavailable", "restricted", "degraded"]},
+    "reason": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/reason"}]},
+    "adapterId": {"type": "string", "minLength": 1},
+    "adapterVersion": {"type": "string", "minLength": 1},
+    "gameEdition": {"type": "string", "minLength": 1},
+    "gameVersion": {"type": "string", "minLength": 1},
+    "loader": {"type": "string", "minLength": 1},
+    "environment": {"enum": ["client", "integrated-server", "dedicated-server", "remote"]},
+    "inputSchema": {"type": "object"},
+    "outputSchema": {"type": "object"},
+    "eventSchema": {"type": "object"},
+    "permissions": {"type": "array", "items": {"enum": ["observe", "communicate", "control-player", "modify-world", "administer-server", "manage-files-or-processes"]}, "uniqueItems": true},
+    "sideEffect": {"enum": ["none", "communicate", "control-player", "modify-world", "administer-server", "manage-files-or-processes"]},
+    "idempotency": {"enum": ["idempotent", "non-idempotent", "unknown"]},
+    "prerequisites": {"$ref": "#/$defs/prerequisites"},
+    "nativeThread": {"type": "string", "minLength": 1},
+    "rateLimit": {"$ref": "#/$defs/rateLimit"},
+    "timeoutMs": {"type": "integer", "minimum": 1},
+    "cancellable": {"type": "boolean"},
+    "delivery": {"$ref": "#/$defs/delivery"},
+    "documentation": {"type": "string", "minLength": 1},
+    "featureFlags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  },
+  "allOf": [{
+    "if": {"properties": {"availability": {"const": "available"}}},
+    "then": {"properties": {"reason": {"type": "null"}}},
+    "else": {"properties": {"reason": {"$ref": "#/$defs/reason"}}}
+  }],
+  "$defs": {
+    "reason": {
+      "type": "object",
+      "required": ["code", "message", "details"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string", "minLength": 1}, "details": {"type": "object"}},
+      "additionalProperties": false
+    },
+    "prerequisites": {
+      "type": "object",
+      "required": ["requiresWorld", "requiresPlayer", "requiresScreen", "requiresContainer"],
+      "properties": {"requiresWorld": {"type": "boolean"}, "requiresPlayer": {"type": "boolean"}, "requiresScreen": {"type": "boolean"}, "requiresContainer": {"type": "boolean"}},
+      "additionalProperties": false
+    },
+    "rateLimit": {
+      "type": "object",
+      "required": ["permits", "windowMs", "burst"],
+      "properties": {"permits": {"type": "integer", "minimum": 1}, "windowMs": {"type": "integer", "minimum": 1}, "burst": {"type": "integer", "minimum": 1}},
+      "additionalProperties": false
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["ordering", "delivery", "bufferLimit"],
+      "properties": {"ordering": {"type": "string", "minLength": 1}, "delivery": {"type": "string", "minLength": 1}, "bufferLimit": {"type": "integer", "minimum": 1}},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

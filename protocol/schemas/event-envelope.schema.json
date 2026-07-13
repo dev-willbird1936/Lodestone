@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lodestone.dev/protocol/v1/event-envelope.schema.json",
+  "title": "Lodestone Event Envelope",
+  "type": "object",
+  "required": ["protocolVersion", "sessionId", "event", "sequence", "payload", "gameTick", "occurredAt"],
+  "properties": {
+    "protocolVersion": {"type": "string", "const": "1.0"},
+    "sessionId": {"type": "string", "minLength": 1},
+    "event": {"type": "string", "minLength": 1},
+    "sequence": {"type": "integer", "minimum": 0},
+    "payload": {"type": "object"},
+    "gameTick": {"type": "integer", "minimum": -1},
+    "occurredAt": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

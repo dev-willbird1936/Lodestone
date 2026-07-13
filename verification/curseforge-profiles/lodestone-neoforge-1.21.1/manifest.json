@@ -1,0 +1,19 @@
+{
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Lodestone Compatibility - NeoForge 1.21.1",
+  "version": "0.1.0-SNAPSHOT",
+  "author": "Lodestone contributors",
+  "projectVersion": "local-build",
+  "minecraft": {
+    "version": "1.21.1",
+    "modLoaders": [
+      {
+        "id": "neoforge-21.1.211",
+        "primary": true
+      }
+    ]
+  },
+  "files": [],
+  "overrides": "overrides"
+}

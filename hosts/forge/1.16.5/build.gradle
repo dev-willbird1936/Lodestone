@@ -1,0 +1,93 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '[5.1,5.2)'
+    id 'java'
+    id 'maven-publish'
+}
+
+group = project.maven_group
+version = project.mod_version
+
+def adapterProject = project(':adapters:forge:mc1_16_5')
+
+base {
+    archivesName = project.mod_id
+}
+
+repositories {
+    maven { url = 'https://maven.minecraftforge.net/' }
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java.srcDir("${rootDir}/adapters/forge/1.16.5/src/main/java")
+    }
+}
+
+minecraft {
+    mappings channel: 'snapshot', version: '20210309-1.16.5'
+}
+
+configurations {
+    embedded
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+    implementation project(':gateway:mcp-server')
+    embedded(project(':common:protocol-model')) { transitive = false }
+    embedded(project(':common:adapter-api')) { transitive = false }
+    embedded(project(':common:runtime-core')) { transitive = false }
+    embedded(project(':gateway:mcp-server')) { transitive = false }
+}
+
+jar {
+    dependsOn adapterProject.tasks.named('jar')
+    from { zipTree(adapterProject.tasks.named('jar').get().archiveFile.get().asFile) }
+    dependsOn project(':common:protocol-model').tasks.named('jar')
+    dependsOn project(':common:adapter-api').tasks.named('jar')
+    dependsOn project(':common:runtime-core').tasks.named('jar')
+    dependsOn project(':gateway:mcp-server').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.embedded.collect { dependency ->
+            dependency.isDirectory() ? dependency : zipTree(dependency)
+        }
+    }
+    from(rootProject.file('LICENSE')) { into 'META-INF'; rename { 'LODESTONE-LICENSE' } }
+    from(rootProject.file('THIRD_PARTY_NOTICES.md')) { into 'META-INF'; rename { 'LODESTONE-THIRD_PARTY_NOTICES.md' } }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand version: project.version
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn adapterProject.tasks.named('classes')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = null
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}

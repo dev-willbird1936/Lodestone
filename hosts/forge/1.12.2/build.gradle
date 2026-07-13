@@ -1,0 +1,63 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:3.+'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'java'
+
+version = project.mod_version
+group = project.maven_group
+archivesBaseName = project.mod_id
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+minecraft {
+    mappings channel: 'snapshot', version: '20171003-1.12'
+    runs {
+        server {
+            workingDirectory project.file('run')
+            property 'lodestone.legacy.port', System.getProperty('lodestone.legacy.port', '37940')
+            property 'lodestone.legacy.token', System.getProperty('lodestone.legacy.token', System.getenv('LODESTONE_LEGACY_TOKEN') ?: '')
+        }
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2859'
+}
+
+sourceSets {
+    main {
+        java.srcDir("${rootDir}/../../../adapters/forge/1.12.2/src/main/java")
+        java.srcDir("${rootDir}/../../../common/legacy-java8/src/main/java")
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', '1.12.2'
+    filesMatching('mcmod.info') {
+        expand version: project.version, mcversion: '1.12.2'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                'FMLCorePluginContainsFMLMod': 'true',
+                'Specification-Title': 'Lodestone',
+                'Specification-Vendor': 'Lodestone contributors',
+                'Specification-Version': '1',
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'Lodestone contributors'
+        )
+    }
+}

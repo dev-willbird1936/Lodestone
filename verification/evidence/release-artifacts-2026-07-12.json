@@ -1,0 +1,170 @@
+﻿{
+    "formatVersion":  1,
+    "generatedAtUtc":  "2026-07-12T23:14:09.2806744Z",
+    "sourceSnapshot":  {
+                           "fileCount":  219,
+                           "sha256":  "409ab51a08c2f0107d943a703f6b6a033761303f1606207aada3c658cc2fcf45"
+                       },
+    "artifacts":  [
+                      {
+                          "path":  "hosts/fabric/1.18.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  159342,
+                          "sha256":  "d6e5b47071f94ac78e76c506e3ca651c690ef1cb0e66e388b0eefd9751406157"
+                      },
+                      {
+                          "path":  "hosts/fabric/1.19.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  159278,
+                          "sha256":  "1e4fd2302d381d63993da1987cb45f569a68a982f76278b605e7d10dcca1fc3d"
+                      },
+                      {
+                          "path":  "hosts/fabric/1.20.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  159267,
+                          "sha256":  "a15ab25920465a4bb0415ac4022cedca1a119c3c402ad74c7bce8a7383ab754b"
+                      },
+                      {
+                          "path":  "hosts/fabric/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  159301,
+                          "sha256":  "9d9a9baaa27aee84573ed0516c04efeb7feafebb24cca11679c77ab449817974"
+                      },
+                      {
+                          "path":  "hosts/fabric/26.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  146272,
+                          "sha256":  "dab0d216a87b8fb0f36587403dc6362fdf0cc0bf43bab38f18620ca99279b467"
+                      },
+                      {
+                          "path":  "hosts/neoforge/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  159359,
+                          "sha256":  "d86fe6bc76e10db41861d3aad6476002020ca6be18a3c6e18674d39d2fc4bb8d"
+                      },
+                      {
+                          "path":  "hosts/forge/1.16.5/build/reobfJar/output.jar",
+                          "bytes":  143079,
+                          "sha256":  "246e6b1adf53642839ab109c199b6da1b806c7a2dad488a195e2b01d4ffa5f2d"
+                      },
+                      {
+                          "path":  "hosts/forge/1.18.2/build/reobfJar/output.jar",
+                          "bytes":  143105,
+                          "sha256":  "18bfc7a8e15067d48d3ad2f96f6f4e3f52c224bd1f21072010f8300705ce4690"
+                      },
+                      {
+                          "path":  "hosts/forge/1.19.2/build/reobfJar/output.jar",
+                          "bytes":  143048,
+                          "sha256":  "91f5b0663e8e2de21c4ddd9b201598100c9b5c9571005469236aec8ee260a523"
+                      },
+                      {
+                          "path":  "hosts/forge/1.20.1/build/reobfJar/output.jar",
+                          "bytes":  143249,
+                          "sha256":  "ffd85517d15cc766a84311210b4accf814cef20ac739e56638e2a9d75f5eded7"
+                      },
+                      {
+                          "path":  "hosts/forge/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  142258,
+                          "sha256":  "6157c40ef63beecf29c36342d0dd14a0b88a001e152f35bb635e93d4478280be"
+                      },
+                      {
+                          "path":  "hosts/forge/1.12.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  25913,
+                          "sha256":  "b79a2408cd158118b00141885f6ada6aecbbe94e7b4dcb962a52b057a5436e25"
+                      },
+                      {
+                          "path":  "hosts/forge/1.7.10/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  26844,
+                          "sha256":  "db43cec6cdd3215f47f0e3f1d8a08071dd247ddd52c8019d4d20a1dfd273d158"
+                      },
+                      {
+                          "path":  "hosts/forge/1.8.9/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  26233,
+                          "sha256":  "2f985b1d08c7445db52e27d004755baae0e2b88687fadfb213f420e04773b932"
+                      },
+                      {
+                          "path":  "hosts/paper/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  142712,
+                          "sha256":  "676f3241f62bdb4595956ac4105b5990c2ffa7fe72e88ffa2b0436018f4b48b0"
+                      },
+                      {
+                          "path":  "hosts/spigot/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  145320,
+                          "sha256":  "4ed9e74301be04dfda062bd2379ec5bc7ccf43548e2f567c943c44e1aca4e4e7"
+                      },
+                      {
+                          "path":  "hosts/folia/1.21.4/build/libs/lodestone-0.1.0-SNAPSHOT.jar",
+                          "bytes":  146737,
+                          "sha256":  "2b25cc567d5c5997675d5005ca61c14473e68d27a529d451abd9ae5ead3fe94d"
+                      },
+                      {
+                          "path":  "gateway/rcon-launcher/build/distributions/rcon-launcher.zip",
+                          "bytes":  387722,
+                          "sha256":  "699a213e0a6ab7aee3ca5946669bd01df3d1c511f10a3967e80fa763bad23cda"
+                      },
+                      {
+                          "path":  "gateway/legacy-bridge-launcher/build/distributions/legacy-bridge-launcher.zip",
+                          "bytes":  382051,
+                          "sha256":  "9cadda073b1c6f89b20dd825c8355c52dc8bee84b887e26dcd4a06b241493df7"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-fabric-1.18.2-local.zip",
+                          "bytes":  1638434,
+                          "sha256":  "07ad6a5abc77630fe053c1f1e00d9f5263bc4eeebc1d0c1a4d03d918d8e545cb"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-fabric-1.19.2-local.zip",
+                          "bytes":  2026679,
+                          "sha256":  "109addf5c6b5d9072e9b7da10df53f042b309139f33c253dc6f06165aa0bb840"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-fabric-1.20.1-local.zip",
+                          "bytes":  2252073,
+                          "sha256":  "a7f044c5d5f0e9747c094a1ad77172e440691a80e330fb78d5c60c3e3a40c409"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-fabric-1.21.1-local.zip",
+                          "bytes":  2570895,
+                          "sha256":  "f7dec7f6c63916772061099c54043405af4ecd81fd97d7159770c947f53e98a4"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-fabric-26.2-local.zip",
+                          "bytes":  2655768,
+                          "sha256":  "23108364cd0c8a18e54e0f067b8194737a706270a1dd7a278a1e569341a20e44"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-forge-1.16.5-local.zip",
+                          "bytes":  133962,
+                          "sha256":  "fc3b829b35c6afc6ca96db77fdca276420e1ec9f40b5705619b1c12fe6c44409"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-forge-1.18.2-local.zip",
+                          "bytes":  134092,
+                          "sha256":  "87ab7b9b28ee98fa8f5baf5411b637a0b756261d67cd68ed2c2614670382cecf"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-forge-1.19.2-local.zip",
+                          "bytes":  134024,
+                          "sha256":  "8cc471d38b1807b4d405829d6e33a669d9c9487fd9385edeb0a5c6bf391c517d"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-forge-1.20.1-local.zip",
+                          "bytes":  134242,
+                          "sha256":  "97a928e0d9a3a3fd6827cc0ca05b69696ba47d4c768eca3f886e66f681fac686"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-forge-1.21.1-local.zip",
+                          "bytes":  134459,
+                          "sha256":  "862c2976067a0ef16f029011fef9a6ed5a00323534cbbea246bad864e80152d2"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-neoforge-1.21.1-local.zip",
+                          "bytes":  151180,
+                          "sha256":  "7fa5e2514b7cba6ba4d0b4943516901036804215e84b46e7bec5d786a694083e"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-quilt-1.20.1-local.zip",
+                          "bytes":  2252055,
+                          "sha256":  "846977fc4bef5e81e27000e63ed4e47d8165857dd5ef71d043d5b34eb119d7b3"
+                      },
+                      {
+                          "path":  "verification/curseforge-profiles/lodestone-quilt-1.21.1-local.zip",
+                          "bytes":  2570875,
+                          "sha256":  "a5238477718b9dc2020d6a4109b0f14416991571bb7168843f06b4b78e01cc9d"
+                      }
+                  ]
+}

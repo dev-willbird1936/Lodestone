@@ -1,0 +1,5 @@
+name: Lodestone
+version: ${version}
+main: dev.lodestone.spigot.LodestoneSpigotPlugin
+description: Lodestone MCP control bridge for Spigot 1.21.1
+api-version: '1.21.1'

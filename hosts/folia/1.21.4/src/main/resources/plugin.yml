@@ -1,0 +1,6 @@
+name: Lodestone
+version: ${version}
+main: dev.lodestone.folia.LodestoneFoliaPlugin
+description: Lodestone MCP control bridge for Folia 1.21.4
+api-version: '1.21.4'
+folia-supported: true

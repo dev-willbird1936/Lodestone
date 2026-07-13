@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lodestone.dev/protocol/v1/capability-manifest.schema.json",
+  "title": "Lodestone Capability Manifest",
+  "type": "object",
+  "required": ["adapter", "capabilities"],
+  "properties": {
+    "adapter": {"$ref": "#/$defs/adapter"},
+    "capabilities": {"type": "array", "items": {"$ref": "capability.schema.json#"}}
+  },
+  "$defs": {
+    "adapter": {
+      "type": "object",
+      "required": ["id", "version", "gameEdition", "gameVersion", "loader", "environment"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "gameEdition": {"type": "string", "minLength": 1},
+        "gameVersion": {"type": "string", "minLength": 1},
+        "loader": {"type": "string", "minLength": 1},
+        "environment": {"enum": ["client", "integrated-server", "dedicated-server", "remote"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

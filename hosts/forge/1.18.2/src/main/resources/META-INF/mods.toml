@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[40,41)"
+license="MIT"
+showAsResourcePack=false
+
+[[mods]]
+modId="lodestone"
+version="${version}"
+displayName="Lodestone"
+authors="Lodestone contributors"
+description='''Version-aware Minecraft MCP control host.'''
+
+[[dependencies.lodestone]]
+modId="forge"
+mandatory=true
+versionRange="[40.3.12,40.3.13)"
+ordering="NONE"
+side="SERVER"
+
+[[dependencies.lodestone]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.18.2,1.18.3)"
+ordering="NONE"
+side="SERVER"

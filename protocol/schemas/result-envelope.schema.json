@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lodestone.dev/protocol/v1/result-envelope.schema.json",
+  "title": "Lodestone Result Envelope",
+  "type": "object",
+  "required": ["protocolVersion", "requestId", "status", "output", "progress"],
+  "properties": {
+    "protocolVersion": {"type": "string", "const": "1.0"},
+    "requestId": {"type": "string", "minLength": 1},
+    "status": {"enum": ["ok", "error", "cancelled", "timed-out"]},
+    "output": {"type": "object"},
+    "error": {"$ref": "error.schema.json#"},
+    "progress": {"type": "object"}
+  },
+  "allOf": [{
+    "if": {"properties": {"status": {"const": "ok"}}},
+    "then": {"not": {"required": ["error"]}},
+    "else": {"required": ["error"]}
+  }],
+  "additionalProperties": false
+}

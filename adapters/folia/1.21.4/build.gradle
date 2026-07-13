@@ -1,0 +1,26 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'dev.lodestone.folia'
+version = rootProject.version
+
+base {
+    archivesName = 'lodestone-folia-adapter'
+}
+
+repositories {
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'dev.folia:folia-api:1.21.4-R0.1-SNAPSHOT'
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+    testImplementation 'dev.folia:folia-api:1.21.4-R0.1-SNAPSHOT'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}

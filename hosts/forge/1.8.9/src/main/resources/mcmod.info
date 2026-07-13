@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "lodestone",
+    "name": "Lodestone",
+    "description": "Version-aware Minecraft MCP control bridge.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": ["Lodestone contributors"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

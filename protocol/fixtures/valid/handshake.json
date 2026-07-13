@@ -1,0 +1,14 @@
+{
+  "protocolVersion": "1.0",
+  "sessionId": "session-demo",
+  "adapter": {
+    "id": "neoforge-1.21.1",
+    "version": "0.1.0-draft",
+    "gameEdition": "java",
+    "gameVersion": "1.21.1",
+    "loader": "neoforge",
+    "environment": "client"
+  },
+  "capabilities": [],
+  "serverRevision": "fixture"
+}

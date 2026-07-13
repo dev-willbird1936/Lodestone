@@ -1,0 +1,27 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'dev.lodestone.spigot'
+version = rootProject.version
+
+base {
+    archivesName = 'lodestone-spigot-adapter'
+}
+
+repositories {
+    maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT'
+    implementation project(':adapters:paper:mc1_21_1')
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}

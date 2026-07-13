@@ -1,0 +1,57 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.anatawa12.forge:ForgeGradle:1.2-1.0.+'
+    }
+}
+
+apply plugin: 'forge'
+apply plugin: 'java'
+
+version = project.mod_version
+group = project.maven_group
+archivesBaseName = project.mod_id
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+minecraft {
+    version = '1.7.10-10.13.4.1614-1.7.10'
+    assetDir = 'eclipse/assets'
+}
+
+sourceSets {
+    main {
+        java.srcDir("${rootDir}/../../../adapters/forge/1.7.10/src/main/java")
+        java.srcDir("${rootDir}/../../../common/legacy-java8/src/main/java")
+    }
+}
+
+dependencies {
+    compile 'com.google.code.gson:gson:2.2.4'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'mcversion', '1.7.10'
+    filesMatching('mcmod.info') {
+        expand version: project.version, mcversion: '1.7.10'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                'FMLCorePluginContainsFMLMod': 'true',
+                'Specification-Title': 'Lodestone',
+                'Specification-Vendor': 'Lodestone contributors',
+                'Specification-Version': '1',
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'Lodestone contributors'
+        )
+    }
+}

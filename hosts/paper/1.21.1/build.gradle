@@ -1,0 +1,54 @@
+plugins {
+    id 'java-library'
+}
+
+group = rootProject.group
+version = rootProject.version
+
+base {
+    archivesName = 'lodestone'
+}
+
+repositories {
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+def adapterProject = project(':adapters:paper:mc1_21_1')
+configurations { embedded }
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    implementation adapterProject
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+    implementation project(':gateway:mcp-server')
+    embedded(project(':common:protocol-model')) { transitive = false }
+    embedded(project(':common:adapter-api')) { transitive = false }
+    embedded(project(':common:runtime-core')) { transitive = false }
+    embedded(project(':gateway:mcp-server')) { transitive = false }
+}
+
+jar {
+    dependsOn adapterProject.tasks.named('jar')
+    from { zipTree(adapterProject.tasks.named('jar').get().archiveFile.get().asFile) }
+    dependsOn project(':common:protocol-model').tasks.named('jar')
+    dependsOn project(':common:adapter-api').tasks.named('jar')
+    dependsOn project(':common:runtime-core').tasks.named('jar')
+    dependsOn project(':gateway:mcp-server').tasks.named('jar')
+    from { configurations.embedded.collect { dependency -> dependency.isDirectory() ? dependency : zipTree(dependency) } }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(rootProject.file('LICENSE')) { into 'META-INF'; rename { 'LODESTONE-LICENSE' } }
+    from(rootProject.file('THIRD_PARTY_NOTICES.md')) { into 'META-INF'; rename { 'LODESTONE-THIRD_PARTY_NOTICES.md' } }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('plugin.yml') { expand version: project.version }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}

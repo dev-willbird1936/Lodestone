@@ -1,0 +1,114 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.gradle.userdev' version '7.1.38'
+}
+
+group = mod_group_id
+version = mod_version
+
+def adapterProject = project(':adapters:neoforge:mc1_21_1')
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven { url = 'https://maven.neoforged.net/releases' }
+}
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+    embedded
+    libraries
+}
+
+sourceSets {
+    main {
+        java.srcDir("${rootDir}/adapters/neoforge/1.21.1/src/main/java")
+    }
+}
+
+runs {
+    configureEach {
+        workingDirectory project.file("runs/${name}")
+        modSource project.sourceSets.main
+        dependencies {
+            runtime project.configurations.libraries
+        }
+    }
+    client {
+        systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37821')
+        systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+        systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+    }
+    server {
+        argument '--nogui'
+        systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37821')
+        systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+        systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+    }
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:${neo_version}"
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+    implementation project(':gateway:mcp-server')
+    embedded(project(':common:protocol-model')) { transitive = false }
+    embedded(project(':common:adapter-api')) { transitive = false }
+    embedded(project(':common:runtime-core')) { transitive = false }
+    embedded(project(':gateway:mcp-server')) { transitive = false }
+}
+
+jar {
+    dependsOn adapterProject.tasks.named('jar')
+    from { zipTree(adapterProject.tasks.named('jar').get().archiveFile.get().asFile) }
+    dependsOn project(':common:protocol-model').tasks.named('jar')
+    dependsOn project(':common:adapter-api').tasks.named('jar')
+    dependsOn project(':common:runtime-core').tasks.named('jar')
+    dependsOn project(':gateway:mcp-server').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.embedded.collect { dependency ->
+            dependency.isDirectory() ? dependency : zipTree(dependency)
+        }
+    }
+    from rootProject.file('LICENSE')
+    from rootProject.file('THIRD_PARTY_NOTICES.md')
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    exclude 'module-info.class'
+    exclude 'META-INF/versions/**/module-info.class'
+}
+
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('compileJava') {
+    dependsOn adapterProject.tasks.named('jar')
+}
+
+tasks.matching { it.name == 'writeMinecraftClasspathServer' }.configureEach {
+    dependsOn adapterProject.tasks.named('jar')
+}

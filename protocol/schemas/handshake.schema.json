@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lodestone.dev/protocol/v1/handshake.schema.json",
+  "title": "Lodestone Handshake",
+  "type": "object",
+  "required": ["protocolVersion", "sessionId", "adapter", "capabilities"],
+  "properties": {
+    "protocolVersion": {"type": "string", "const": "1.0"},
+    "sessionId": {"type": "string", "minLength": 1},
+    "adapter": {"$ref": "capability-manifest.schema.json#/$defs/adapter"},
+    "capabilities": {"type": "array", "items": {"$ref": "capability.schema.json#"}},
+    "serverRevision": {"type": "string"}
+  },
+  "additionalProperties": false
+}

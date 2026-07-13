@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lodestone.dev/protocol/v1/request-envelope.schema.json",
+  "title": "Lodestone Request Envelope",
+  "type": "object",
+  "required": ["protocolVersion", "requestId", "sessionId", "capability", "input", "dryRun"],
+  "properties": {
+    "protocolVersion": {"type": "string", "const": "1.0"},
+    "requestId": {"type": "string", "minLength": 1},
+    "sessionId": {"type": "string", "minLength": 1},
+    "capability": {"type": "string", "minLength": 1},
+    "capabilityVersion": {"type": "string"},
+    "input": {"type": "object"},
+    "deadlineEpochMs": {"type": "integer"},
+    "idempotencyKey": {"type": "string"},
+    "dryRun": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}

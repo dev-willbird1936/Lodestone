@@ -1,0 +1,19 @@
+{
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Lodestone Compatibility - Forge 1.16.5",
+  "version": "0.1.0-SNAPSHOT",
+  "author": "Lodestone contributors",
+  "projectVersion": "local-build",
+  "minecraft": {
+    "version": "1.16.5",
+    "modLoaders": [
+      {
+        "id": "forge-36.2.42",
+        "primary": true
+      }
+    ]
+  },
+  "files": [],
+  "overrides": "overrides"
+}

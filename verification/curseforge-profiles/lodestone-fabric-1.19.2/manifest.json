@@ -1,0 +1,19 @@
+{
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "Lodestone Compatibility - Fabric 1.19.2",
+  "version": "0.1.0-SNAPSHOT",
+  "author": "Lodestone contributors",
+  "projectVersion": "local-build",
+  "minecraft": {
+    "version": "1.19.2",
+    "modLoaders": [
+      {
+        "id": "fabric-0.14.25",
+        "primary": true
+      }
+    ]
+  },
+  "files": [],
+  "overrides": "overrides"
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "query",
+  "version": "1.0",
+  "stability": "stable",
+  "availability": "available",
+  "permissions": ["observe"],
+  "sideEffect": "none",
+  "idempotency": "idempotent",
+  "reason": null
+}

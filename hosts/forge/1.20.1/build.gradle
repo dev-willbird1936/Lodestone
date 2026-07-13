@@ -1,0 +1,106 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.25,6.2)'
+    id 'maven-publish'
+}
+
+group = project.maven_group
+version = project.mod_version
+
+def adapterProject = project(':adapters:forge:mc1_20_1')
+
+base {
+    archivesName = project.mod_id
+}
+
+repositories {
+    maven { url = 'https://maven.minecraftforge.net/' }
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java.srcDir("${rootDir}/adapters/forge/1.20.1/src/main/java")
+    }
+}
+
+minecraft {
+    mappings channel: 'official', version: project.minecraft_version
+    copyIdeResources = true
+    runs {
+        server {
+            workingDirectory project.file('run')
+            args '--nogui'
+            property 'lodestone.port', System.getProperty('lodestone.port', '37821')
+            property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+            property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+            mods {
+                lodestone {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+configurations {
+    embedded
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+    implementation project(':gateway:mcp-server')
+    embedded(project(':common:protocol-model')) { transitive = false }
+    embedded(project(':common:adapter-api')) { transitive = false }
+    embedded(project(':common:runtime-core')) { transitive = false }
+    embedded(project(':gateway:mcp-server')) { transitive = false }
+}
+
+jar {
+    dependsOn adapterProject.tasks.named('jar')
+    from { zipTree(adapterProject.tasks.named('jar').get().archiveFile.get().asFile) }
+    dependsOn project(':common:protocol-model').tasks.named('jar')
+    dependsOn project(':common:adapter-api').tasks.named('jar')
+    dependsOn project(':common:runtime-core').tasks.named('jar')
+    dependsOn project(':gateway:mcp-server').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.embedded.collect { dependency ->
+            dependency.isDirectory() ? dependency : zipTree(dependency)
+        }
+    }
+    from(rootProject.file('LICENSE')) { into 'META-INF'; rename { 'LODESTONE-LICENSE' } }
+    from(rootProject.file('THIRD_PARTY_NOTICES.md')) { into 'META-INF'; rename { 'LODESTONE-THIRD_PARTY_NOTICES.md' } }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand version: project.version
+    }
+}
+
+tasks.named('compileJava') {
+    dependsOn adapterProject.tasks.named('classes')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}

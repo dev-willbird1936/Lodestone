@@ -1,0 +1,843 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Comprehensive building pattern library for VibeCraft",
+    "last_updated": "2025-11-01"
+  },
+  "patterns": {
+    "gable_small_oak": {
+      "id": "gable_small_oak",
+      "name": "Oak Gable Small Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_small",
+        "oak",
+        "easy"
+      ],
+      "description": "Gable Small roof in oak",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 10,
+        "height": 5,
+        "depth": 8,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_stairs": 40
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 8x10 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_medium_oak": {
+      "id": "gable_medium_oak",
+      "name": "Oak Gable Medium Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_medium",
+        "oak",
+        "easy"
+      ],
+      "description": "Gable Medium roof in oak",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 14,
+        "height": 6,
+        "depth": 12,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_stairs": 84
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x14 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_large_oak": {
+      "id": "gable_large_oak",
+      "name": "Oak Gable Large Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_large",
+        "oak",
+        "medium"
+      ],
+      "description": "Gable Large roof in oak",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 18,
+        "height": 8,
+        "depth": 16,
+        "difficulty": "medium"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_stairs": 144
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 16x18 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "slab_low_pitch_oak": {
+      "id": "slab_low_pitch_oak",
+      "name": "Oak Slab Low Pitch Roof",
+      "category": "roofing",
+      "subcategory": "slab",
+      "tags": [
+        "roof",
+        "slab_low_pitch",
+        "oak",
+        "medium"
+      ],
+      "description": "Slab Low Pitch roof in oak",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 14,
+        "height": 4,
+        "depth": 12,
+        "difficulty": "medium"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_stairs": 84
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x14 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "hip_roof_oak": {
+      "id": "hip_roof_oak",
+      "name": "Oak Hip Roof Roof",
+      "category": "roofing",
+      "subcategory": "hip",
+      "tags": [
+        "roof",
+        "hip_roof",
+        "oak",
+        "hard"
+      ],
+      "description": "Hip Roof roof in oak",
+      "difficulty": "hard",
+      "dimensions": {
+        "width": 12,
+        "height": 6,
+        "depth": 12,
+        "difficulty": "hard"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_stairs": 72
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x12 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "flat_modern_oak": {
+      "id": "flat_modern_oak",
+      "name": "Oak Flat Modern Roof",
+      "category": "roofing",
+      "subcategory": "flat",
+      "tags": [
+        "roof",
+        "flat_modern",
+        "oak",
+        "easy"
+      ],
+      "description": "Flat Modern roof in oak",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 10,
+        "height": 1,
+        "depth": 10,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "oak_stairs": 50
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 10x10 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_small_stone_brick": {
+      "id": "gable_small_stone_brick",
+      "name": "Stone Brick Gable Small Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_small",
+        "stone_brick",
+        "easy"
+      ],
+      "description": "Gable Small roof in stone_brick",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 10,
+        "height": 5,
+        "depth": 8,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_brick_stairs": 40
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 8x10 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_medium_stone_brick": {
+      "id": "gable_medium_stone_brick",
+      "name": "Stone Brick Gable Medium Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_medium",
+        "stone_brick",
+        "easy"
+      ],
+      "description": "Gable Medium roof in stone_brick",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 14,
+        "height": 6,
+        "depth": 12,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_brick_stairs": 84
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x14 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_large_stone_brick": {
+      "id": "gable_large_stone_brick",
+      "name": "Stone Brick Gable Large Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_large",
+        "stone_brick",
+        "medium"
+      ],
+      "description": "Gable Large roof in stone_brick",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 18,
+        "height": 8,
+        "depth": 16,
+        "difficulty": "medium"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_brick_stairs": 144
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 16x18 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "slab_low_pitch_stone_brick": {
+      "id": "slab_low_pitch_stone_brick",
+      "name": "Stone Brick Slab Low Pitch Roof",
+      "category": "roofing",
+      "subcategory": "slab",
+      "tags": [
+        "roof",
+        "slab_low_pitch",
+        "stone_brick",
+        "medium"
+      ],
+      "description": "Slab Low Pitch roof in stone_brick",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 14,
+        "height": 4,
+        "depth": 12,
+        "difficulty": "medium"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_brick_stairs": 84
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x14 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "hip_roof_stone_brick": {
+      "id": "hip_roof_stone_brick",
+      "name": "Stone Brick Hip Roof Roof",
+      "category": "roofing",
+      "subcategory": "hip",
+      "tags": [
+        "roof",
+        "hip_roof",
+        "stone_brick",
+        "hard"
+      ],
+      "description": "Hip Roof roof in stone_brick",
+      "difficulty": "hard",
+      "dimensions": {
+        "width": 12,
+        "height": 6,
+        "depth": 12,
+        "difficulty": "hard"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_brick_stairs": 72
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x12 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "flat_modern_stone_brick": {
+      "id": "flat_modern_stone_brick",
+      "name": "Stone Brick Flat Modern Roof",
+      "category": "roofing",
+      "subcategory": "flat",
+      "tags": [
+        "roof",
+        "flat_modern",
+        "stone_brick",
+        "easy"
+      ],
+      "description": "Flat Modern roof in stone_brick",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 10,
+        "height": 1,
+        "depth": 10,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_brick_stairs": 50
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 10x10 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_small_sandstone": {
+      "id": "gable_small_sandstone",
+      "name": "Sandstone Gable Small Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_small",
+        "sandstone",
+        "easy"
+      ],
+      "description": "Gable Small roof in sandstone",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 10,
+        "height": 5,
+        "depth": 8,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "sandstone_stairs": 40
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 8x10 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_medium_sandstone": {
+      "id": "gable_medium_sandstone",
+      "name": "Sandstone Gable Medium Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_medium",
+        "sandstone",
+        "easy"
+      ],
+      "description": "Gable Medium roof in sandstone",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 14,
+        "height": 6,
+        "depth": 12,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "sandstone_stairs": 84
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x14 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "gable_large_sandstone": {
+      "id": "gable_large_sandstone",
+      "name": "Sandstone Gable Large Roof",
+      "category": "roofing",
+      "subcategory": "gable",
+      "tags": [
+        "roof",
+        "gable_large",
+        "sandstone",
+        "medium"
+      ],
+      "description": "Gable Large roof in sandstone",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 18,
+        "height": 8,
+        "depth": 16,
+        "difficulty": "medium"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "sandstone_stairs": 144
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 16x18 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "slab_low_pitch_sandstone": {
+      "id": "slab_low_pitch_sandstone",
+      "name": "Sandstone Slab Low Pitch Roof",
+      "category": "roofing",
+      "subcategory": "slab",
+      "tags": [
+        "roof",
+        "slab_low_pitch",
+        "sandstone",
+        "medium"
+      ],
+      "description": "Slab Low Pitch roof in sandstone",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 14,
+        "height": 4,
+        "depth": 12,
+        "difficulty": "medium"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "sandstone_stairs": 84
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x14 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "hip_roof_sandstone": {
+      "id": "hip_roof_sandstone",
+      "name": "Sandstone Hip Roof Roof",
+      "category": "roofing",
+      "subcategory": "hip",
+      "tags": [
+        "roof",
+        "hip_roof",
+        "sandstone",
+        "hard"
+      ],
+      "description": "Hip Roof roof in sandstone",
+      "difficulty": "hard",
+      "dimensions": {
+        "width": 12,
+        "height": 6,
+        "depth": 12,
+        "difficulty": "hard"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "sandstone_stairs": 72
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 12x12 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "flat_modern_sandstone": {
+      "id": "flat_modern_sandstone",
+      "name": "Sandstone Flat Modern Roof",
+      "category": "roofing",
+      "subcategory": "flat",
+      "tags": [
+        "roof",
+        "flat_modern",
+        "sandstone",
+        "easy"
+      ],
+      "description": "Flat Modern roof in sandstone",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 10,
+        "height": 1,
+        "depth": 10,
+        "difficulty": "easy"
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "sandstone_stairs": 50
+      },
+      "use_cases": [
+        "houses",
+        "buildings",
+        "structures"
+      ],
+      "placement_notes": "Place on 10x10 building",
+      "construction_method": "Build layer by layer from eaves to ridge"
+    },
+    "window_small_1x1": {
+      "id": "window_small_1x1",
+      "name": "Window Small 1X1",
+      "category": "facades",
+      "subcategory": "windows",
+      "tags": [
+        "window",
+        "facade",
+        "small"
+      ],
+      "description": "Standard window opening small_1x1",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 3,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "glass_pane": 9,
+        "trim_material": 12
+      },
+      "placement_notes": "Cut opening in wall, place glass, frame with trim material",
+      "construction_method": "Frame with contrasting material, fill center with glass panes"
+    },
+    "window_medium_2x2": {
+      "id": "window_medium_2x2",
+      "name": "Window Medium 2X2",
+      "category": "facades",
+      "subcategory": "windows",
+      "tags": [
+        "window",
+        "facade",
+        "medium"
+      ],
+      "description": "Standard window opening medium_2x2",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 4,
+        "height": 4,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "glass_pane": 16,
+        "trim_material": 16
+      },
+      "placement_notes": "Cut opening in wall, place glass, frame with trim material",
+      "construction_method": "Frame with contrasting material, fill center with glass panes"
+    },
+    "window_large_3x2": {
+      "id": "window_large_3x2",
+      "name": "Window Large 3X2",
+      "category": "facades",
+      "subcategory": "windows",
+      "tags": [
+        "window",
+        "facade",
+        "large"
+      ],
+      "description": "Standard window opening large_3x2",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 5,
+        "height": 4,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "glass_pane": 20,
+        "trim_material": 18
+      },
+      "placement_notes": "Cut opening in wall, place glass, frame with trim material",
+      "construction_method": "Frame with contrasting material, fill center with glass panes"
+    },
+    "door_single": {
+      "id": "door_single",
+      "name": "Single Door Entry",
+      "category": "facades",
+      "subcategory": "doors",
+      "tags": [
+        "door",
+        "entrance",
+        "single"
+      ],
+      "description": "Single door with frame",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 3,
+        "height": 4,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "door": 1,
+        "trim_material": 14
+      },
+      "placement_notes": "Cut opening, place door(s), frame with trim",
+      "construction_method": "Frame opening with trim material, place door blocks"
+    },
+    "door_double": {
+      "id": "door_double",
+      "name": "Double Door Entry",
+      "category": "facades",
+      "subcategory": "doors",
+      "tags": [
+        "door",
+        "entrance",
+        "double"
+      ],
+      "description": "Double door with frame",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 4,
+        "height": 4,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "door": 2,
+        "trim_material": 16
+      },
+      "placement_notes": "Cut opening, place door(s), frame with trim",
+      "construction_method": "Frame opening with trim material, place door blocks"
+    },
+    "door_grand": {
+      "id": "door_grand",
+      "name": "Grand Door Entry",
+      "category": "facades",
+      "subcategory": "doors",
+      "tags": [
+        "door",
+        "entrance",
+        "grand"
+      ],
+      "description": "Grand door with frame",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 5,
+        "height": 5,
+        "depth": 1
+      },
+      "construction_type": "template",
+      "materials": {
+        "door": 2,
+        "trim_material": 20
+      },
+      "placement_notes": "Cut opening, place door(s), frame with trim",
+      "construction_method": "Frame opening with trim material, place door blocks"
+    },
+    "pillar_1x1_simple": {
+      "id": "pillar_1x1_simple",
+      "name": "Corner Pillar 1X1 Simple",
+      "category": "corners",
+      "subcategory": "pillars",
+      "tags": [
+        "pillar",
+        "corner",
+        "structural",
+        "simple"
+      ],
+      "description": "1X1 Simple corner pillar",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 1,
+        "height": 10,
+        "depth": 1,
+        "difficulty": "easy"
+      },
+      "construction_type": "template",
+      "materials": {
+        "structural_material": 10
+      },
+      "placement_notes": "Place at building corners, use contrasting material from walls",
+      "construction_method": "Vertical column from foundation to roof"
+    },
+    "pillar_2x2_grand": {
+      "id": "pillar_2x2_grand",
+      "name": "Corner Pillar 2X2 Grand",
+      "category": "corners",
+      "subcategory": "pillars",
+      "tags": [
+        "pillar",
+        "corner",
+        "structural",
+        "grand"
+      ],
+      "description": "2X2 Grand corner pillar",
+      "difficulty": "easy",
+      "dimensions": {
+        "width": 2,
+        "height": 15,
+        "depth": 2,
+        "difficulty": "easy"
+      },
+      "construction_type": "template",
+      "materials": {
+        "structural_material": 60
+      },
+      "placement_notes": "Place at building corners, use contrasting material from walls",
+      "construction_method": "Vertical column from foundation to roof"
+    },
+    "pillar_1x1_detailed": {
+      "id": "pillar_1x1_detailed",
+      "name": "Corner Pillar 1X1 Detailed",
+      "category": "corners",
+      "subcategory": "pillars",
+      "tags": [
+        "pillar",
+        "corner",
+        "structural",
+        "detailed"
+      ],
+      "description": "1X1 Detailed corner pillar",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 1,
+        "height": 12,
+        "depth": 1,
+        "difficulty": "medium"
+      },
+      "construction_type": "template",
+      "materials": {
+        "structural_material": 12
+      },
+      "placement_notes": "Place at building corners, use contrasting material from walls",
+      "construction_method": "Vertical column from foundation to roof"
+    },
+    "chimney_brick_small": {
+      "id": "chimney_brick_small",
+      "name": "Chimney Brick Small",
+      "category": "details",
+      "subcategory": "chimneys",
+      "tags": [
+        "chimney",
+        "detail",
+        "bricks"
+      ],
+      "description": "Brick Small chimney",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 2,
+        "height": 8,
+        "depth": 2
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "bricks": 32
+      },
+      "placement_notes": "Place on roof, extends from fireplace below",
+      "construction_method": "Build vertical stack, wider base inside roof, narrower stack above"
+    },
+    "chimney_stone_medium": {
+      "id": "chimney_stone_medium",
+      "name": "Chimney Stone Medium",
+      "category": "details",
+      "subcategory": "chimneys",
+      "tags": [
+        "chimney",
+        "detail",
+        "stone_bricks"
+      ],
+      "description": "Stone Medium chimney",
+      "difficulty": "medium",
+      "dimensions": {
+        "width": 3,
+        "height": 10,
+        "depth": 3
+      },
+      "construction_type": "layer_by_layer",
+      "materials": {
+        "stone_bricks": 90
+      },
+      "placement_notes": "Place on roof, extends from fireplace below",
+      "construction_method": "Build vertical stack, wider base inside roof, narrower stack above"
+    }
+  }
+}

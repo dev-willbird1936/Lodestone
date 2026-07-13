@@ -1,0 +1,3771 @@
+[
+  {
+    "name": "Corner Table",
+    "id": "corner_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood",
+      "simple",
+      "corner"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_pressure_plate"
+      }
+    ],
+    "materials": {
+      "oak_fence": 1,
+      "oak_pressure_plate": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Compact 1-block corner table. Perfect for room corners or small spaces. Can be made with any wood type (oak, spruce, birch, jungle, acacia, dark_oak, mangrove, cherry, bamboo). Alternatively, use carpet or trapdoor on top instead of pressure plate.",
+    "variants": [
+      {
+        "name": "Corner Table (Trapdoor)",
+        "id": "corner_table_trapdoor",
+        "changes": "Uses trapdoor instead of pressure plate for a solid top",
+        "material_overrides": {
+          "oak_pressure_plate": "oak_trapdoor"
+        }
+      }
+    ],
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Simple Dining Table",
+    "id": "simple_dining_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "wood",
+      "dining",
+      "medium"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 2
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 1
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 1
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 1,
+          "z": 1
+        },
+        "block": "oak_pressure_plate"
+      }
+    ],
+    "materials": {
+      "oak_fence": 4,
+      "oak_pressure_plate": 6
+    },
+    "clearance": {
+      "front": 1,
+      "back": 1,
+      "left": 1,
+      "right": 1,
+      "top": 2
+    },
+    "notes": "Classic dining table design using fence posts as legs and pressure plates as tabletop. The pressure plates allow players to walk through the table area. Works well with 4 chairs around it (1 on each side).",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Wall Cabinet",
+    "id": "wall_cabinet",
+    "category": "kitchen",
+    "subcategory": "storage",
+    "tags": [
+      "storage",
+      "wall",
+      "compact"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "bookshelf"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=north,half=top,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "bookshelf"
+      }
+    ],
+    "materials": {
+      "bookshelf": 1,
+      "oak_trapdoor": 2
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 0
+    },
+    "notes": "Simple wall-mounted cabinet. Place against a wall (Z=0 should be flush with wall). Bookshelf gives the illusion of items inside. Trapdoors act as cabinet doors. Can be placed in series for a larger cabinet. For kitchen use, consider using stone/concrete blocks instead of bookshelf.",
+    "variants": [
+      {
+        "name": "Kitchen Cabinet",
+        "id": "kitchen_cabinet",
+        "changes": "Uses smooth stone instead of bookshelf for modern kitchen look",
+        "material_overrides": {
+          "bookshelf": "smooth_stone"
+        }
+      }
+    ],
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Simple Chair",
+    "id": "simple_chair",
+    "category": "living_room",
+    "subcategory": "seating",
+    "tags": [
+      "seating",
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=north,half=bottom]"
+      }
+    ],
+    "materials": {
+      "oak_stairs": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Most basic chair design using a single stair block. Facing direction determines which way the chair faces (player would sit facing that direction). Commonly used around tables. For armchairs, add fence posts or signs on the sides.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Floor Lamp (Fence)",
+    "id": "floor_lamp_fence",
+    "category": "living_room",
+    "subcategory": "lighting",
+    "tags": [
+      "lighting",
+      "tall",
+      "compact"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 3,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        "block": "torch"
+      }
+    ],
+    "materials": {
+      "oak_fence": 2,
+      "torch": 1
+    },
+    "clearance": {
+      "front": 0,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Classic floor lamp using fence post as stand and torch as light source. Can use glowstone, sea lantern, or end rod instead of torch for different lighting effects. Light level 14 from torch (sufficient to prevent mob spawning).",
+    "variants": [
+      {
+        "name": "Floor Lamp (Glowstone)",
+        "id": "floor_lamp_glowstone",
+        "changes": "Uses glowstone block instead of torch for modern look",
+        "material_overrides": {
+          "torch": "glowstone"
+        }
+      },
+      {
+        "name": "Floor Lamp (End Rod)",
+        "id": "floor_lamp_endrod",
+        "changes": "Uses end rod for sleek modern aesthetic",
+        "material_overrides": {
+          "oak_fence": "end_rod",
+          "torch": "end_rod"
+        }
+      }
+    ],
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Coffee Table",
+    "id": "coffee_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "low",
+      "compact",
+      "modern"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "to": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_slab",
+        "state": "[type=bottom]"
+      }
+    ],
+    "materials": {
+      "oak_slab": 2
+    },
+    "clearance": {
+      "front": 1,
+      "back": 1,
+      "left": 1,
+      "right": 1,
+      "top": 2
+    },
+    "notes": "Low coffee table using slabs. Place near sofas or seating areas. Can be extended to any size by adding more slabs. For decoration, add flower pots (as mugs) or sea pickles on top. Very compact and doesn't block movement.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Closet",
+    "id": "simple_closet",
+    "category": "bedroom",
+    "subcategory": "storage",
+    "tags": [
+      "storage",
+      "interactive",
+      "medium"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 3,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=east,half=bottom]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=west,half=bottom]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=east,half=top]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=west,half=top]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_door",
+        "state": "[facing=north,half=lower,hinge=left]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        "block": "oak_door",
+        "state": "[facing=north,half=upper,hinge=left]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_door",
+        "state": "[facing=north,half=lower,hinge=right]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 2,
+          "z": 0
+        },
+        "block": "oak_door",
+        "state": "[facing=north,half=upper,hinge=right]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=west,half=bottom,open=true]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=east,half=bottom,open=true]"
+      }
+    ],
+    "materials": {
+      "oak_stairs": 4,
+      "oak_door": 2,
+      "oak_trapdoor": 2
+    },
+    "clearance": {
+      "front": 2,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 0
+    },
+    "notes": "Interactive closet with working doors. Stairs create depth illusion, doors open/close, trapdoors add side detail. Place against wall (Z=0 flush with wall). Doors should have handles closest to each other for double-door effect. Can add armor stands inside for display.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Bedroom furniture",
+    "id": "bedroom_furniture",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "The most essential piece to a bedroom is the bed. Once you've placed a bed, you can start decorating your bedroom with furniture. Dressers, desks, and bookshelves are the basic furniture you can put i...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Dressers",
+    "id": "dressers",
+    "category": "bedroom",
+    "subcategory": "storage",
+    "tags": [
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "chest"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "chest"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "chest"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "chest"
+      }
+    ],
+    "materials": {
+      "chest": 4
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "A dresser is a stack of double chests. An idea for a more interesting home is to have themed chests with only certain things (e.x. Only store armor in the dresser). You can place item frames next to t...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Closets",
+    "id": "closets",
+    "category": "bedroom",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Here is a design for a cool and interactive closet that is simple to make. You will need: Place the blocks like this (the grid is from the side view): Then, place the doors over it so they look like t...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Cabinets",
+    "id": "cabinets",
+    "category": "bedroom",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Here is how to make a simple cabinet. Place the block against a wall. Then, place one trapdoor on top of the block and one on the front side. If desired, place multiple blocks with trapdoors next to e...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Bunk Bed",
+    "id": "bunk_bed",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 4,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 2,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_bed",
+        "state": "[facing=north]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_bed",
+        "state": "[facing=north,part=foot]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 3,
+          "z": 0
+        },
+        "block": "white_bed",
+        "state": "[facing=north]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 3,
+          "z": 0
+        },
+        "block": "white_bed",
+        "state": "[facing=north,part=foot]"
+      }
+    ],
+    "materials": {
+      "oak_fence": 6,
+      "white_bed": 2
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "For the bunk bed, you need a wall that has at least a width of 4 and a height of 4. Get fences and place them each on the outer rim of the wall, and then place wood planks in the wall spaces on the bo...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Bookshelves",
+    "id": "bookshelves",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "To make a bookshelf, stack as many bookshelf blocks as you desire. You can also use slabs and stairs stacked on top of each other to simulate normal shelves. The back of looms can be used to look like...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Shelves",
+    "id": "shelves",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "An Aquarium To make a shelf, place a row of 4 wood planks on the ground, and add a stack of 3 wood planks at each end. Close off the space at the top with 2 more planks. Finally, add slabs in the midd...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Potted plant",
+    "id": "potted_plant",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 3
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 1
+        },
+        "block": "dirt"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 1
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=north,half=bottom,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 1,
+          "z": 1
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=south,half=bottom,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=west,half=bottom,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 2
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=east,half=bottom,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        },
+        "block": "oak_leaves"
+      }
+    ],
+    "materials": {
+      "dirt": 1,
+      "oak_trapdoor": 4,
+      "oak_leaves": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "A plant vase using bamboo and jungle leaves. Note: As of Java Edition 1.4.2, there are now flower pots made out of three bricks crafted the same way as a Bucket, making this method not quite as useful...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Desks",
+    "id": "desks",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_fence",
+        "state": "[axis=y]"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "block": "oak_slab",
+        "state": "[type=bottom]"
+      }
+    ],
+    "materials": {
+      "oak_fence": 2,
+      "oak_slab": 3
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "To make a desk, take your choice of support, (Fence or fence gate look the best) and place 2 of them for a freestanding desk, 1 for a desk attached to the wall. Then make a surface (wooden slabs work ...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Computers",
+    "id": "computers",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Place an iron block, a painting on the side, and a \"keyboard\" in front of it. Some people use a powered minecart rail, mostly because it looks like there's buttons on it in the original resource pack....",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Lamps or light sources",
+    "id": "lamps_or_light_sources",
+    "category": "bedroom",
+    "subcategory": "lighting",
+    "tags": [
+      "compact",
+      "wood",
+      "lighting"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Using a redstone lamp is the easiest way to create a toggle-able light source. Alternatively, you can use one of the following methods: To make a lamp, place a fence block and put a torch (or some glo...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Curtains",
+    "id": "curtains",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Curtains can be useful for the sides of bathtubs, or just as decoration anywhere. Attach a row of blocks under your ceiling, and then attach vines to the sides. The vines will grow hanging down, and c...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Other furniture",
+    "id": "other_furniture",
+    "category": "bedroom",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "It's a good idea to add a crafting table to your bedroom, and possibly a jukebox. Crafting tables and jukeboxes already exist in the game, so there is no need to build them differently. You can also m...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Living room furniture",
+    "id": "living_room_furniture",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "The living room is your house's heart, where you can gather with friends (if you're on a server) and spend your time, if you want to.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Tables",
+    "id": "tables",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Tables are an essential furniture item in every living room. Read on to find out how to make many different table designs!",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Dining room table",
+    "id": "dining_room_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Modern table",
+    "id": "modern_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Place two glowstone blocks where you want the center of your table to be, then surround the glowstone blocks with glass panes for a cake and coffee table that will light up your living room! You can a...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Piston table",
+    "id": "piston_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Extended pistons are usually more aesthetically pleasing than fences with pressure plates, as they form a solid top, rather than one with gaps. You need 6 pistons and 6 redstone torches. Dig the floor...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Simple table",
+    "id": "simple_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Place 2 blocks above where you want your table, now create a 2 block deep hole below the blocks above your table (3 if you include the gap for the table which should already be there), get into the ho...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Tablecloths",
+    "id": "tablecloths",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Using carpet blocks, you can replace the pressure plates on tables with carpet, or perhaps top your piston arms with the aforementioned block. This will create a nice-looking tablecloth. Use it anywhe...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Stone age table",
+    "id": "stone_age_table",
+    "category": "living_room",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "This table is simple, yet looks glorious on medieval structures or mansions. Start by putting a cobblestone slab at the top, and surround it with upside-down cobblestone stairs- don't forget to destro...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "TV",
+    "id": "tv",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "decorative"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "black_concrete"
+      }
+    ],
+    "materials": {
+      "black_concrete": 4
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "There are two main designs for televisions in Minecraft. You can make a decorative TV that is really just coal blocks, black wool, or obsidian decoratively in or on the wall or floor. You could also j...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Sofa and chairs",
+    "id": "sofa_and_chairs",
+    "category": "living_room",
+    "subcategory": "seating",
+    "tags": [
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=north,half=bottom]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=north,half=bottom]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_stairs",
+        "state": "[facing=north,half=bottom]"
+      }
+    ],
+    "materials": {
+      "oak_stairs": 3
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "More Chair Designs. From top left clockwise: Sitting chairs (4 of them), low chair, bar chair, piano chair, \"sofa\" made from warped items and two cyan beds, and a orange sofa set. A sofa can be made u...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Fireplace",
+    "id": "fireplace",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 4,
+      "depth": 2
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 1
+        },
+        "block": "netherrack"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 2,
+          "z": 0
+        },
+        "block": "bricks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 2,
+          "z": 0
+        },
+        "block": "bricks"
+      }
+    ],
+    "materials": {
+      "bricks": 9,
+      "netherrack": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Fireplaces give your living room a more \"homey\" feel. A fireplace can literally be a little hole in the wall with netherrack in it. Or it can be a sleek, ultra-modern piece of contemporary Minecraft a...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Ceiling fan",
+    "id": "ceiling_fan",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 1,
+      "depth": 3
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 1
+        },
+        "block": "oak_planks"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 1
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=north,half=top,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 1
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=south,half=top,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=west,half=top,open=false]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 2
+        },
+        "block": "oak_trapdoor",
+        "state": "[facing=east,half=top,open=false]"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1,
+      "oak_trapdoor": 4
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Place any block on the ceiling, then put 4 trapdoors on each side of the block to give it the look of a ceiling fan.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Piano",
+    "id": "piano",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "decorative"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 2
+    },
+    "placements": [
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 0,
+          "z": 1
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        },
+        "block": "note_block"
+      }
+    ],
+    "materials": {
+      "black_concrete": 7,
+      "note_block": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Need some music in your house? Here's how to make a piano that plays music or just notes. All you need is: Now to the building:",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Concert piano",
+    "id": "concert_piano",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "decorative"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 2
+    },
+    "placements": [
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 0,
+          "z": 1
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "block": "black_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        },
+        "block": "note_block"
+      }
+    ],
+    "materials": {
+      "black_concrete": 7,
+      "note_block": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "or or The Grand Piano (By Sky_Ninja99) North Notes for the below diagram: North",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Cool fences",
+    "id": "cool_fences",
+    "category": "living_room",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "To make a \"cool\" fence, place a stair where you want your fence to go, then place a slab block on top of each stair. Glass panes, iron bars and cobblestone walls with slabs on top will also work.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Kitchen",
+    "id": "kitchen",
+    "category": "kitchen",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "A kitchen may consist of a small chest with food products, such as meats, bread, or raw ingredients. You may wish to add a crafting table as well as a few furnaces, to simulate a working area and an o...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Sink",
+    "id": "sink",
+    "category": "kitchen",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "cauldron"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "iron_block"
+      }
+    ],
+    "materials": {
+      "cauldron": 1,
+      "iron_block": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "A sink allows you to have a water supply right in your kitchen. Many sinks use a 2\u00d72 square. You could also create a 1\u00d71 block sink just for show, or a flowing sink. You can use a cauldron filled with...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Fridge",
+    "id": "fridge",
+    "category": "kitchen",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "iron_block"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "iron_block"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "iron_door",
+        "state": "[facing=north,half=lower]"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 2,
+          "z": 0
+        },
+        "block": "iron_door",
+        "state": "[facing=north,half=upper]"
+      }
+    ],
+    "materials": {
+      "iron_block": 2,
+      "iron_door": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "You can make a refrigerator for a nice finish, and to make your kitchen more distinguished. Many fridge designs allow you to store food inside them, making them functional as well as decorative. Desig...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Cupboards",
+    "id": "cupboards",
+    "category": "kitchen",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "All you need is a bookshelf and trapdoor. Place down a bookshelf (preferably next to a fridge or furnace) and on the side of the bookshelf facing you place a trapdoor and close it. Now it looks like a...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Stove",
+    "id": "stove",
+    "category": "kitchen",
+    "subcategory": "storage",
+    "tags": [
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "furnace"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "block": "iron_block"
+      }
+    ],
+    "materials": {
+      "furnace": 1,
+      "iron_block": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "take two smokers/furnaces and put them side-by-side. Then, in front of each, put any trapdoor (preferably spruce) and close them. Last, put a carpet (aesthetic) or a campfire (functional) on top of bo...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Bathroom",
+    "id": "bathroom",
+    "category": "bathroom",
+    "subcategory": "functional",
+    "tags": [
+      "decorative"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "block": "white_concrete"
+      }
+    ],
+    "materials": {
+      "white_concrete": 5
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Most nicely built bathrooms have some kind of tiles for the floor. Slabs can help you save time and resources if you're in survival. Quartz looks attractive in bathrooms as they add a clean, polished ...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Toilet",
+    "id": "toilet",
+    "category": "bathroom",
+    "subcategory": "functional",
+    "tags": [
+      "compact"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "block": "water"
+      }
+    ],
+    "materials": {
+      "white_concrete": 2
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Place a hopper then put a trapdoor on it, then you put a lever by the side. Now you have a realistic toilet! Or, take a cauldron, place it, then take an iron trapdoor, put that on top of the cauldron,...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Shower",
+    "id": "shower",
+    "category": "bathroom",
+    "subcategory": "functional",
+    "tags": [
+      "decorative"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 2,
+      "height": 3,
+      "depth": 2
+    },
+    "placements": [
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "to": {
+          "x": 1,
+          "y": 0,
+          "z": 1
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 1,
+          "y": 2,
+          "z": 0
+        },
+        "block": "glass"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        },
+        "block": "cauldron"
+      }
+    ],
+    "materials": {
+      "white_concrete": 4,
+      "glass": 4,
+      "cauldron": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "You can place slabs on the ground to mark off the edges of the shower. This should usually be built in a corner. Then place a piston in the ceiling or wall and place water behind it. You can use a lev...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Bath",
+    "id": "bath",
+    "category": "bathroom",
+    "subcategory": "functional",
+    "tags": [
+      "decorative"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 3,
+      "height": 2,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "block",
+        "pos": {
+          "x": 2,
+          "y": 0,
+          "z": 0
+        },
+        "block": "white_concrete"
+      },
+      {
+        "type": "fill",
+        "from": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "to": {
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "block": "white_concrete"
+      }
+    ],
+    "materials": {
+      "white_concrete": 5
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Use a fence, wall or block and surround a 2\u00d71 area near a wall. Get a dispenser and place it in the wall near a button (or lever if you want it to look more like a tap) and place a water bucket into t...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Sink and mirror",
+    "id": "sink_and_mirror",
+    "category": "bathroom",
+    "subcategory": "functional",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "For the sink, you can use a hopper, a cauldron (full or empty), or a minecart (try the rail removal trick from above). For a tap, you can use an item frame and place it above the cauldron. Then place ...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Games room",
+    "id": "games_room",
+    "category": "functional",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Chessboard or checkerboard",
+    "id": "chessboard_or_checkerboard",
+    "category": "functional",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Simple (recommended) design",
+    "id": "simple_recommended_design",
+    "category": "functional",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "To make a chess/checkerboard, place a note block anywhere to form the table and board. You can build any type of chairs you like for the table. Notice how the note block looks a lot like a chess/check...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Design 2",
+    "id": "design_2",
+    "category": "functional",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Note: Make this in a snowy biome. Dig a 1 deep hole in the ground. Add two layers of snow. Put an armor stand there (preferable to make next to a wall). Put a chainmail helmet on the stand. Then, usin...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Alternate (overkill) design",
+    "id": "alternate_overkill_design",
+    "category": "functional",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "If you are a perfectionist and have the time and resources, you could also do this: You can then clone the map to simplify the process and skip to step 9. Notes: To fill the entire map, you will need ...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Pool table",
+    "id": "pool_table",
+    "category": "functional",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Put down 3\u00d76 dark green wool blocks, with closed trapdoors for sides. Or, you can put down wood planks and cover them with green or lime carpet. Use fence posts to 'suspend' three jack o'lanterns in a...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Ping pong table",
+    "id": "ping_pong_table",
+    "category": "functional",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Lay down 5\u00d73 wooden slabs. At the two long ends, make a 3\u00d71 fence. Cover the whole lot in green carpet/rug. In the middle of the long sides and at the side, place 3 high wooden blocks, with tripwire h...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Pac-Man arcade cabinet",
+    "id": "pac_man_arcade_cabinet",
+    "category": "functional",
+    "subcategory": "storage",
+    "tags": [
+      "compact",
+      "wood",
+      "storage"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "A simple way is to place two stairs, one on the ground, and one on top of it, upside down. Another way is to put 2 yellow wool (gold blocks work as well), one on the ground, put glass on top of it, an...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Miscellaneous",
+    "id": "miscellaneous",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "This section is for pieces of furniture that really don't fit in any categories listed above.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Water spigot",
+    "id": "water_spigot",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Use this if you're making an outside enclosure for your farm animals. It looks nice and is refillable with rain water. First put a 3\u00d73 base of cobblestone. Then place a cobblestone wall on top of the ...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Pet door",
+    "id": "pet_door",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "A pet door is actually quite simple to create and will save you the trouble of having to keep the door open for your pets, such as wolves. To make a pet door make a 1\u00d71 hole in the wall then put press...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Radio",
+    "id": "radio",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Basically, all you need are 2 note blocks and an Iron block. First, place the note blocks. Make sure you have a 1 block gap between them. Then, place the iron block in the gap. You could even place bu...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Fancy jukebox",
+    "id": "fancy_jukebox",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "For this, you will need 4 stair blocks, a jukebox, and a redstone lamp. Optional items are a chest, 2 more stair blocks, a slab, and maybe a few buttons for decoration. First, place the redstone lamp ...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Redstone",
+    "id": "redstone",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Try using Redstone to \"deploy\" furniture. You can even try to make a barren room with everything hidden, with a lever that reveals or creates furniture. This may sound weird, however, it has a cool ef...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Maps",
+    "id": "maps",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Maps can be useful, or merely decorative.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Wall map",
+    "id": "wall_map",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Floor or table map",
+    "id": "floor_or_table_map",
+    "category": "decorative",
+    "subcategory": "tables",
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Wall clock",
+    "id": "wall_clock",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "All you really have to do is place a clock into an item frame and hang it up. Now you can have a wall clock in your house or anywhere you'd like to place it!",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Classical clock",
+    "id": "classical_clock",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "Take two of any block you want (you must be able to put an item frame on it!), place one of the blocks on the floor, and then place the other one on top of the block. Add an item frame with a clock on...",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Grill",
+    "id": "grill",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "To make a barbecue on the patio or outside of your house, you can craft an anvil and place it where you want on your outdoor space.",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  },
+  {
+    "name": "Videos",
+    "id": "videos",
+    "category": "decorative",
+    "subcategory": null,
+    "tags": [
+      "compact",
+      "wood"
+    ],
+    "origin": {
+      "type": "front_left_bottom",
+      "facing": "north"
+    },
+    "bounds": {
+      "width": 1,
+      "height": 1,
+      "depth": 1
+    },
+    "placements": [
+      {
+        "type": "block",
+        "pos": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "block": "oak_planks"
+      }
+    ],
+    "materials": {
+      "oak_planks": 1
+    },
+    "clearance": {
+      "front": 1,
+      "back": 0,
+      "left": 0,
+      "right": 0,
+      "top": 1
+    },
+    "notes": "",
+    "source": {
+      "type": "minecraft_wiki",
+      "url": "https://minecraft.wiki/w/Tutorials/Furniture"
+    }
+  }
+]

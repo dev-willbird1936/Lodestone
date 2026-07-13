@@ -1,0 +1,5 @@
+name: Lodestone
+version: '${version}'
+main: dev.lodestone.paper.LodestonePaperPlugin
+description: Version-aware Minecraft MCP and control platform
+api-version: '1.21.1'

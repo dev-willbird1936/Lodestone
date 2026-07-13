@@ -1,0 +1,115 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+group = project.maven_group
+version = project.mod_version
+
+def adapterProject = project(':adapters:fabric:mc1_18_2')
+
+base {
+    archivesName = project.mod_id
+}
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        lodestone {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgs '--nogui'
+        }
+    }
+}
+
+configurations {
+    embedded
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    implementation files(adapterProject.layout.buildDirectory.dir('classes/java/main'))
+    implementation project(':common:adapter-api')
+    implementation project(':common:runtime-core')
+    implementation project(':gateway:mcp-server')
+
+    embedded(project(':common:protocol-model')) { transitive = false }
+    embedded(project(':common:adapter-api')) { transitive = false }
+    embedded(project(':common:runtime-core')) { transitive = false }
+    embedded(project(':gateway:mcp-server')) { transitive = false }
+}
+
+jar {
+    dependsOn adapterProject.tasks.named('jar')
+    from { zipTree(adapterProject.tasks.named('jar').get().archiveFile.get().asFile) }
+    dependsOn project(':common:protocol-model').tasks.named('jar')
+    dependsOn project(':common:adapter-api').tasks.named('jar')
+    dependsOn project(':common:runtime-core').tasks.named('jar')
+    dependsOn project(':gateway:mcp-server').tasks.named('jar')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.embedded.collect { dependency ->
+            dependency.isDirectory() ? dependency : zipTree(dependency)
+        }
+    }
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+        rename { 'LODESTONE-LICENSE' }
+    }
+    from(rootProject.file('THIRD_PARTY_NOTICES.md')) {
+        into 'META-INF'
+        rename { 'LODESTONE-THIRD_PARTY_NOTICES.md' }
+    }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+tasks.named('compileJava') {
+    dependsOn adapterProject.tasks.named('classes')
+}
+
+tasks.named('remapSourcesJar') {
+    dependsOn adapterProject.tasks.named('classes')
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}

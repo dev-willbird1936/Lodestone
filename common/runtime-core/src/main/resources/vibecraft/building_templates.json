@@ -1,0 +1,736 @@
+{
+  "$schema": "./building_template_schema.json",
+  "version": "1.0.0",
+  "templates": {
+    "medieval_round_tower": {
+      "template_id": "medieval_round_tower",
+      "metadata": {
+        "name": "Medieval Round Tower",
+        "description": "Classic stone tower with spiral staircase, arrow slit windows, and crenellated battlements",
+        "category": "towers",
+        "difficulty": "intermediate",
+        "style_tags": ["medieval", "defensive", "stone", "circular"],
+        "estimated_time_seconds": 120,
+        "author": "VibeCraft",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "height": {
+          "type": "integer",
+          "min": 15,
+          "max": 50,
+          "default": 25,
+          "description": "Tower height in blocks"
+        },
+        "radius": {
+          "type": "integer",
+          "min": 4,
+          "max": 10,
+          "default": 6,
+          "description": "Tower radius (larger = wider tower)"
+        },
+        "wall_material": {
+          "type": "enum",
+          "options": ["stone_bricks", "cobblestone", "dark_prismarine", "blackstone"],
+          "default": "stone_bricks",
+          "description": "Primary wall material"
+        },
+        "floor_material": {
+          "type": "enum",
+          "options": ["oak_planks", "dark_oak_planks", "spruce_planks", "stone"],
+          "default": "oak_planks",
+          "description": "Floor material"
+        },
+        "num_floors": {
+          "type": "integer",
+          "min": 2,
+          "max": 6,
+          "default": 3,
+          "description": "Number of internal floors"
+        },
+        "roof_style": {
+          "type": "enum",
+          "options": ["cone", "crenellated", "flat"],
+          "default": "crenellated",
+          "description": "Roof/top style"
+        },
+        "has_windows": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include arrow slit windows"
+        }
+      },
+      "components": {
+        "foundation": {
+          "description": "Solid circular foundation (2 blocks tall)",
+          "steps": [
+            {
+              "action": "Create circular foundation base",
+              "tool": "worldedit_generation",
+              "command": "//cyl {{wall_material}} {{radius}} 2"
+            }
+          ]
+        },
+        "hollow_walls": {
+          "description": "Hollow circular walls with 1-block thickness",
+          "dependencies": ["foundation"],
+          "steps": [
+            {
+              "action": "Create outer wall cylinder",
+              "tool": "worldedit_generation",
+              "command": "//cyl {{wall_material}} {{radius}} {{height}}"
+            },
+            {
+              "action": "Hollow out interior",
+              "tool": "worldedit_generation",
+              "command": "//cyl air {{radius - 1}} {{height - 1}}"
+            }
+          ]
+        },
+        "floors": {
+          "description": "Wooden floors dividing the tower into levels",
+          "dependencies": ["hollow_walls"],
+          "steps": [
+            {
+              "action": "Place floor circles at calculated heights",
+              "tool": "worldedit_generation",
+              "command": "//cyl {{floor_material}} {{radius - 1}} 1",
+              "note": "Repeat at Y intervals of {{height / num_floors}}"
+            }
+          ]
+        },
+        "spiral_staircase": {
+          "description": "Spiral staircase connecting all floors",
+          "dependencies": ["floors"],
+          "steps": [
+            {
+              "action": "Manually place spiral stairs using setblock",
+              "tool": "rcon_command",
+              "note": "Place oak_stairs in spiral pattern around inner wall, rising 1 block every 2-3 horizontal blocks"
+            }
+          ]
+        },
+        "windows": {
+          "description": "Arrow slit windows on cardinal directions",
+          "dependencies": ["hollow_walls"],
+          "condition": "{{has_windows}} == true",
+          "steps": [
+            {
+              "action": "Create vertical arrow slits (1 block wide, 3 blocks tall)",
+              "tool": "rcon_command",
+              "command": "fill X Y Z X Y+2 Z air",
+              "note": "Place every 5 blocks vertically on N/S/E/W sides"
+            }
+          ]
+        },
+        "crenellations": {
+          "description": "Battlements at the top of the tower",
+          "dependencies": ["hollow_walls"],
+          "condition": "{{roof_style}} == 'crenellated'",
+          "steps": [
+            {
+              "action": "Create crenellated pattern (alternating blocks and gaps)",
+              "tool": "rcon_command",
+              "note": "Around top perimeter: place 2 blocks, skip 1 block, repeat"
+            }
+          ]
+        },
+        "cone_roof": {
+          "description": "Conical roof with stairs",
+          "dependencies": ["hollow_walls"],
+          "condition": "{{roof_style}} == 'cone'",
+          "steps": [
+            {
+              "action": "Build layered cone with stairs",
+              "tool": "rcon_command",
+              "note": "Each layer: reduce radius by 1, use stairs facing outward, rise 1 block"
+            }
+          ]
+        }
+      },
+      "build_sequence": [
+        {"component_id": "foundation"},
+        {"component_id": "hollow_walls"},
+        {"component_id": "floors", "checkpoint": true},
+        {"component_id": "spiral_staircase"},
+        {"component_id": "windows"},
+        {"component_id": "crenellations"},
+        {"component_id": "cone_roof"}
+      ],
+      "dimensions": {
+        "footprint": "{{radius * 2 + 1}}×{{radius * 2 + 1}}",
+        "total_height": "{{height + (roof_style == 'cone' ? radius : 2)}}",
+        "interior_space": "{{(radius - 1) * 2 + 1}}×{{(radius - 1) * 2 + 1}} per floor"
+      },
+      "material_palette": "medieval_castle"
+    },
+    "simple_cottage": {
+      "template_id": "simple_cottage",
+      "metadata": {
+        "name": "Simple Cottage",
+        "description": "Cozy rectangular cottage with gabled roof, windows, and door",
+        "category": "houses",
+        "difficulty": "beginner",
+        "style_tags": ["rustic", "cottage", "cozy", "wood"],
+        "estimated_time_seconds": 60,
+        "author": "VibeCraft",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "width": {
+          "type": "integer",
+          "min": 7,
+          "max": 15,
+          "default": 9,
+          "description": "Cottage width (X dimension)"
+        },
+        "depth": {
+          "type": "integer",
+          "min": 7,
+          "max": 15,
+          "default": 11,
+          "description": "Cottage depth (Z dimension)"
+        },
+        "wall_height": {
+          "type": "integer",
+          "min": 4,
+          "max": 6,
+          "default": 5,
+          "description": "Wall height before roof"
+        },
+        "wall_material": {
+          "type": "enum",
+          "options": ["oak_planks", "spruce_planks", "birch_planks", "cobblestone"],
+          "default": "oak_planks",
+          "description": "Wall material"
+        },
+        "roof_material": {
+          "type": "enum",
+          "options": ["oak_stairs", "spruce_stairs", "dark_oak_stairs", "stone_brick_stairs"],
+          "default": "oak_stairs",
+          "description": "Roof material"
+        },
+        "foundation_material": {
+          "type": "enum",
+          "options": ["cobblestone", "stone", "stone_bricks"],
+          "default": "cobblestone",
+          "description": "Foundation material"
+        },
+        "has_chimney": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include stone chimney"
+        }
+      },
+      "components": {
+        "floor": {
+          "description": "Wooden floor AT ground level (replaces top layer of ground - NO raised foundation!)",
+          "steps": [
+            {
+              "action": "Place floor at surface_y (flush with ground)",
+              "tool": "worldedit_region",
+              "command": "//set {{wall_material}}",
+              "note": "CRITICAL: Floor Y = surface_y (NOT surface_y + 1). Building sits flush with ground."
+            }
+          ]
+        },
+        "walls": {
+          "description": "Wooden walls with corner post accents",
+          "dependencies": ["foundation"],
+          "steps": [
+            {
+              "action": "Build hollow walls",
+              "tool": "worldedit_region",
+              "command": "//walls {{wall_material}}"
+            },
+            {
+              "action": "Add dark oak log corner posts",
+              "tool": "rcon_command",
+              "command": "fill X Y Z X Y+{{wall_height}} Z dark_oak_log[axis=y]",
+              "note": "Place at all 4 corners"
+            }
+          ]
+        },
+        "door": {
+          "description": "Entrance door centered on front wall",
+          "dependencies": ["walls"],
+          "steps": [
+            {
+              "action": "Cut door opening (2 blocks tall)",
+              "tool": "worldedit_region",
+              "command": "//set air"
+            },
+            {
+              "action": "Place oak door",
+              "tool": "rcon_command",
+              "command": "setblock X Y Z oak_door[facing=north,half=lower]; setblock X Y+1 Z oak_door[facing=north,half=upper]"
+            }
+          ]
+        },
+        "windows": {
+          "description": "Windows on side walls with oak fence frames",
+          "dependencies": ["walls"],
+          "steps": [
+            {
+              "action": "Cut window openings (1×1 glass_pane)",
+              "tool": "rcon_command",
+              "note": "Place 2-3 windows per long wall, centered vertically"
+            },
+            {
+              "action": "Add oak_fence frames around each window",
+              "tool": "rcon_command"
+            }
+          ]
+        },
+        "floor": {
+          "description": "Interior wooden floor",
+          "dependencies": ["foundation"],
+          "steps": [
+            {
+              "action": "Fill interior with planks",
+              "tool": "worldedit_region",
+              "command": "//set {{wall_material}}"
+            }
+          ]
+        },
+        "gabled_roof": {
+          "description": "Gabled roof with stairs",
+          "dependencies": ["walls"],
+          "steps": [
+            {
+              "action": "Build north-facing roof slope",
+              "tool": "worldedit_region",
+              "command": "//set {{roof_material}}[facing=north,half=bottom]",
+              "note": "Layer-by-layer, stepping inward"
+            },
+            {
+              "action": "Build south-facing roof slope",
+              "tool": "worldedit_region",
+              "command": "//set {{roof_material}}[facing=south,half=bottom]"
+            },
+            {
+              "action": "Fill ridge with planks",
+              "tool": "worldedit_region",
+              "command": "//set {{wall_material}}"
+            }
+          ]
+        },
+        "chimney": {
+          "description": "Stone chimney on one side",
+          "dependencies": ["roof"],
+          "condition": "{{has_chimney}} == true",
+          "steps": [
+            {
+              "action": "Build 2×2 cobblestone chimney stack",
+              "tool": "rcon_command",
+              "note": "From floor through roof, 2-3 blocks above roof peak"
+            },
+            {
+              "action": "Cap with stairs for chimney top",
+              "tool": "rcon_command"
+            }
+          ]
+        }
+      },
+      "build_sequence": [
+        {"component_id": "foundation"},
+        {"component_id": "walls"},
+        {"component_id": "floor"},
+        {"component_id": "door"},
+        {"component_id": "windows"},
+        {"component_id": "gabled_roof", "checkpoint": true},
+        {"component_id": "chimney"}
+      ],
+      "dimensions": {
+        "footprint": "{{width}}×{{depth}}",
+        "total_height": "{{wall_height + Math.ceil(width / 2) + 1}}",
+        "interior_space": "{{width - 2}}×{{depth - 2}}×{{wall_height - 1}}"
+      },
+      "material_palette": "rustic_cottage"
+    },
+    "guard_tower": {
+      "template_id": "guard_tower",
+      "metadata": {
+        "name": "Guard Tower",
+        "description": "Square defensive tower with observation platform and crenellations",
+        "category": "defensive",
+        "difficulty": "beginner",
+        "style_tags": ["medieval", "defensive", "square", "simple"],
+        "estimated_time_seconds": 45,
+        "author": "VibeCraft",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "size": {
+          "type": "integer",
+          "min": 5,
+          "max": 9,
+          "default": 7,
+          "description": "Tower width and depth (square)"
+        },
+        "height": {
+          "type": "integer",
+          "min": 12,
+          "max": 30,
+          "default": 18,
+          "description": "Tower height"
+        },
+        "material": {
+          "type": "enum",
+          "options": ["stone_bricks", "cobblestone", "brick"],
+          "default": "stone_bricks",
+          "description": "Primary material"
+        }
+      },
+      "components": {
+        "solid_base": {
+          "description": "Solid square base (3 blocks tall)",
+          "steps": [
+            {
+              "action": "Fill base",
+              "tool": "worldedit_region",
+              "command": "//set {{material}}"
+            }
+          ]
+        },
+        "hollow_tower": {
+          "description": "Hollow square tower with 1-block thick walls",
+          "dependencies": ["solid_base"],
+          "steps": [
+            {
+              "action": "Build walls",
+              "tool": "worldedit_region",
+              "command": "//walls {{material}}"
+            }
+          ]
+        },
+        "ladder": {
+          "description": "Ladder to climb to observation platform",
+          "dependencies": ["hollow_tower"],
+          "steps": [
+            {
+              "action": "Place ladder on interior wall",
+              "tool": "rcon_command",
+              "command": "fill X Y Z X Y+{{height}} Z ladder[facing=north]"
+            }
+          ]
+        },
+        "observation_platform": {
+          "description": "Top floor observation deck",
+          "dependencies": ["hollow_tower"],
+          "steps": [
+            {
+              "action": "Place oak_plank floor at top",
+              "tool": "worldedit_region",
+              "command": "//set oak_planks"
+            }
+          ]
+        },
+        "crenellations": {
+          "description": "Battlements for defense",
+          "dependencies": ["observation_platform"],
+          "steps": [
+            {
+              "action": "Build crenellated walls (alternating pattern)",
+              "tool": "worldedit_region",
+              "note": "Around perimeter: 2 blocks up, 1 block gap, repeat"
+            }
+          ]
+        },
+        "torches": {
+          "description": "Lighting on exterior walls",
+          "dependencies": ["hollow_tower"],
+          "steps": [
+            {
+              "action": "Place torches every 5 blocks vertically",
+              "tool": "rcon_command"
+            }
+          ]
+        }
+      },
+      "build_sequence": [
+        {"component_id": "solid_base"},
+        {"component_id": "hollow_tower"},
+        {"component_id": "ladder"},
+        {"component_id": "observation_platform"},
+        {"component_id": "crenellations"},
+        {"component_id": "torches"}
+      ],
+      "dimensions": {
+        "footprint": "{{size}}×{{size}}",
+        "total_height": "{{height + 2}}",
+        "interior_space": "{{size - 2}}×{{size - 2}}×{{height}}"
+      },
+      "material_palette": "medieval_castle"
+    },
+    "wizard_tower": {
+      "template_id": "wizard_tower",
+      "metadata": {
+        "name": "Wizard Tower",
+        "description": "Mystical tower with purple accents, glowing lights, and cone roof",
+        "category": "fantasy",
+        "difficulty": "intermediate",
+        "style_tags": ["fantasy", "magic", "mystical", "tower"],
+        "estimated_time_seconds": 90,
+        "author": "VibeCraft",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "height": {
+          "type": "integer",
+          "min": 20,
+          "max": 40,
+          "default": 28,
+          "description": "Tower height"
+        },
+        "radius": {
+          "type": "integer",
+          "min": 5,
+          "max": 8,
+          "default": 6,
+          "description": "Tower radius"
+        }
+      },
+      "components": {
+        "foundation": {
+          "description": "Dark prismarine circular base",
+          "steps": [
+            {
+              "action": "Create dark base",
+              "tool": "worldedit_generation",
+              "command": "//cyl dark_prismarine {{radius + 1}} 2"
+            }
+          ]
+        },
+        "main_tower": {
+          "description": "Hollow dark prismarine tower",
+          "dependencies": ["foundation"],
+          "steps": [
+            {
+              "action": "Build outer cylinder",
+              "tool": "worldedit_generation",
+              "command": "//cyl dark_prismarine {{radius}} {{height}}"
+            },
+            {
+              "action": "Hollow interior",
+              "tool": "worldedit_generation",
+              "command": "//cyl air {{radius - 1}} {{height - 1}}"
+            }
+          ]
+        },
+        "purple_bands": {
+          "description": "Purple purpur bands as magical accents",
+          "dependencies": ["main_tower"],
+          "steps": [
+            {
+              "action": "Add purpur_block rings every 7 blocks",
+              "tool": "worldedit_generation",
+              "command": "//cyl purpur_block {{radius}} 1",
+              "note": "Place at Y+7, Y+14, Y+21"
+            }
+          ]
+        },
+        "glowing_windows": {
+          "description": "Sea lantern windows for magical glow",
+          "dependencies": ["main_tower"],
+          "steps": [
+            {
+              "action": "Place sea_lantern windows",
+              "tool": "rcon_command",
+              "note": "Scattered around tower walls, spiraling upward"
+            }
+          ]
+        },
+        "floors": {
+          "description": "Interior floors with purple carpet",
+          "dependencies": ["main_tower"],
+          "steps": [
+            {
+              "action": "Place dark_oak_plank floors",
+              "tool": "worldedit_generation",
+              "command": "//cyl dark_oak_planks {{radius - 1}} 1"
+            },
+            {
+              "action": "Add purple carpet on top",
+              "tool": "worldedit_generation",
+              "command": "//cyl purple_carpet {{radius - 1}} 1"
+            }
+          ]
+        },
+        "spiral_stairs": {
+          "description": "Purpur spiral staircase",
+          "dependencies": ["floors"],
+          "steps": [
+            {
+              "action": "Place purpur_stairs in spiral",
+              "tool": "rcon_command",
+              "note": "Spiral around inner wall"
+            }
+          ]
+        },
+        "cone_roof": {
+          "description": "Purpur cone roof",
+          "dependencies": ["main_tower"],
+          "steps": [
+            {
+              "action": "Build layered cone with purpur_stairs",
+              "tool": "rcon_command",
+              "note": "Each layer: reduce radius by 1, facing outward"
+            },
+            {
+              "action": "Cap with end_rod spire",
+              "tool": "rcon_command",
+              "note": "3-4 end_rods stacked vertically at peak"
+            }
+          ]
+        }
+      },
+      "build_sequence": [
+        {"component_id": "foundation"},
+        {"component_id": "main_tower"},
+        {"component_id": "purple_bands"},
+        {"component_id": "floors", "checkpoint": true},
+        {"component_id": "spiral_stairs"},
+        {"component_id": "glowing_windows"},
+        {"component_id": "cone_roof"}
+      ],
+      "dimensions": {
+        "footprint": "{{radius * 2 + 1}}×{{radius * 2 + 1}}",
+        "total_height": "{{height + radius + 4}}",
+        "interior_space": "{{(radius - 1) * 2 + 1}} diameter per floor"
+      },
+      "material_palette": "fantasy_magic"
+    },
+    "simple_barn": {
+      "template_id": "simple_barn",
+      "metadata": {
+        "name": "Simple Barn",
+        "description": "Rustic wooden barn with large doors and hayloft",
+        "category": "agricultural",
+        "difficulty": "beginner",
+        "style_tags": ["rustic", "farm", "wood", "agricultural"],
+        "estimated_time_seconds": 75,
+        "author": "VibeCraft",
+        "version": "1.0.0"
+      },
+      "parameters": {
+        "width": {
+          "type": "integer",
+          "min": 10,
+          "max": 20,
+          "default": 14,
+          "description": "Barn width"
+        },
+        "depth": {
+          "type": "integer",
+          "min": 12,
+          "max": 24,
+          "default": 18,
+          "description": "Barn depth"
+        },
+        "wall_height": {
+          "type": "integer",
+          "min": 6,
+          "max": 10,
+          "default": 8,
+          "description": "Wall height to roof"
+        }
+      },
+      "components": {
+        "foundation": {
+          "description": "Dirt/gravel foundation",
+          "steps": [
+            {
+              "action": "Place coarse_dirt floor",
+              "tool": "worldedit_region",
+              "command": "//set coarse_dirt"
+            }
+          ]
+        },
+        "walls": {
+          "description": "Spruce plank walls with oak log framing",
+          "dependencies": ["foundation"],
+          "steps": [
+            {
+              "action": "Build spruce_plank walls",
+              "tool": "worldedit_region",
+              "command": "//walls spruce_planks"
+            },
+            {
+              "action": "Add oak_log[axis=y] corner posts",
+              "tool": "rcon_command"
+            },
+            {
+              "action": "Add oak_log[axis=x/z] horizontal beams",
+              "tool": "rcon_command",
+              "note": "Mid-height beams for barn structure"
+            }
+          ]
+        },
+        "large_doors": {
+          "description": "Large barn door opening",
+          "dependencies": ["walls"],
+          "steps": [
+            {
+              "action": "Cut 4-block wide, 4-block tall opening on short wall",
+              "tool": "worldedit_region",
+              "command": "//set air"
+            },
+            {
+              "action": "Add oak_fence gates as large doors",
+              "tool": "rcon_command"
+            }
+          ]
+        },
+        "hayloft": {
+          "description": "Upper floor for hay storage",
+          "dependencies": ["walls"],
+          "steps": [
+            {
+              "action": "Place oak_planks floor at 2/3 height",
+              "tool": "worldedit_region",
+              "command": "//set oak_planks",
+              "note": "Partial floor, leaving opening above door"
+            }
+          ]
+        },
+        "gabled_roof": {
+          "description": "Steep gabled roof",
+          "dependencies": ["walls"],
+          "steps": [
+            {
+              "action": "Build spruce_stairs roof slopes",
+              "tool": "worldedit_region",
+              "note": "Gabled roof, steep pitch"
+            }
+          ]
+        },
+        "hay_bales": {
+          "description": "Hay bales in loft",
+          "dependencies": ["hayloft"],
+          "steps": [
+            {
+              "action": "Place scattered hay_block",
+              "tool": "rcon_command",
+              "note": "Random hay bales on loft floor"
+            }
+          ]
+        }
+      },
+      "build_sequence": [
+        {"component_id": "foundation"},
+        {"component_id": "walls"},
+        {"component_id": "large_doors"},
+        {"component_id": "hayloft"},
+        {"component_id": "gabled_roof"},
+        {"component_id": "hay_bales"}
+      ],
+      "dimensions": {
+        "footprint": "{{width}}×{{depth}}",
+        "total_height": "{{wall_height + Math.ceil(width / 2)}}",
+        "interior_space": "{{width - 2}}×{{depth - 2}}×{{wall_height}}"
+      },
+      "material_palette": "rustic_cottage"
+    }
+  }
+}
