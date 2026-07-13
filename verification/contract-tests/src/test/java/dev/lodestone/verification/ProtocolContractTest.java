@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,60 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProtocolContractTest {
     private final Path root = Path.of(System.getProperty("lodestone.rootDir"));
+
+    @Test
+    void releaseProductVersionIsConsistentAcrossBuildsProfilesAndScripts() throws Exception {
+        var expected = "1.0.0";
+        assertTrue(Files.readString(root.resolve("gradle.properties")).contains("lodestoneVersion=" + expected));
+        assertTrue(Files.readString(root.resolve("build.gradle.kts"))
+                .contains("getOrElse(\"" + expected + "\")"));
+
+        var versionPropertyFiles = new ArrayList<Path>();
+        for (var base : List.of(root.resolve("adapters"), root.resolve("hosts"))) {
+            try (var files = Files.find(base, 4, (path, attributes) -> attributes.isRegularFile()
+                    && path.getFileName().toString().equals("gradle.properties"))) {
+                files.filter(path -> {
+                    try {
+                        return Files.readString(path).contains("mod_version=");
+                    } catch (java.io.IOException failure) {
+                        throw new java.io.UncheckedIOException(failure);
+                    }
+                }).forEach(versionPropertyFiles::add);
+            }
+        }
+        assertEquals(25, versionPropertyFiles.size());
+        for (var properties : versionPropertyFiles) {
+            assertTrue(Files.readString(properties).contains("mod_version=" + expected), properties.toString());
+        }
+
+        var profileDirectory = root.resolve("verification/curseforge-profiles");
+        List<Path> profileManifests;
+        try (var files = Files.list(profileDirectory)) {
+            profileManifests = files.filter(Files::isDirectory)
+                    .map(path -> path.resolve("manifest.json"))
+                    .filter(Files::isRegularFile)
+                    .toList();
+        }
+        assertEquals(13, profileManifests.size());
+        for (var manifestPath : profileManifests) {
+            var manifest = JsonParser.parseReader(Files.newBufferedReader(
+                    manifestPath, StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals(expected, manifest.get("version").getAsString(), manifestPath.toString());
+        }
+
+        try (var scripts = Files.find(root.resolve("verification"), 3,
+                (path, attributes) -> attributes.isRegularFile() && path.toString().endsWith(".ps1"))) {
+            for (var script : scripts.toList()) {
+                assertFalse(Files.readString(script).contains("0.1.0-SNAPSHOT"), script.toString());
+            }
+        }
+
+        var releaseManifestScript = Files.readString(
+                root.resolve("verification/release-artifact-manifest.ps1"));
+        assertTrue(releaseManifestScript.contains("evidence/release-artifacts-v1.0.0.json"));
+        assertFalse(releaseManifestScript.contains("evidence/release-artifacts-2026-07-12.json"),
+                "v1 release tooling must never overwrite the immutable C0 manifest");
+    }
 
     @Test
     void everySchemaIsJsonAndLocalReferencesResolve() throws Exception {

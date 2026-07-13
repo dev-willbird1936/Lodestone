@@ -18,7 +18,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $paperJarName = 'paper-1.21.1-133.jar'
 $paperJarUrl = 'https://fill-data.papermc.io/v1/objects/39bd8c00b9e18de91dcabd3cc3dcfa5328685a53b7187a2f63280c22e2d287b9/paper-1.21.1-133.jar'
 $paperJarSha256 = '39bd8c00b9e18de91dcabd3cc3dcfa5328685a53b7187a2f63280c22e2d287b9'
-$hostJar = Join-Path $projectRoot 'hosts/paper/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+$hostJar = Join-Path $projectRoot 'hosts/paper/1.21.1/build/libs/lodestone-1.0.0.jar'
 $port = 37931
 $token = 'paper-matrix-token'
 
@@ -68,7 +68,7 @@ Assert (Test-Path -LiteralPath $Java) "Java executable not found: $Java"
 $paperJar = Join-Path $Root $paperJarName
 if (-not (Test-Path -LiteralPath $paperJar) -or (Get-Item -LiteralPath $paperJar).Length -ne 49394394) {
     Invoke-WebRequest -UseBasicParsing -Headers @{
-        'User-Agent' = 'Lodestone/0.1.0 (local compatibility test)'
+        'User-Agent' = 'Lodestone/1.0.0 (local compatibility test)'
     } -Uri $paperJarUrl -OutFile $paperJar -TimeoutSec 180
 }
 Assert ((Get-FileHash -LiteralPath $paperJar -Algorithm SHA256).Hash.ToLowerInvariant() -eq $paperJarSha256) `

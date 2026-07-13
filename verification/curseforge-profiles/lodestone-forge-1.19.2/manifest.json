@@ -2,7 +2,7 @@
   "manifestType": "minecraftModpack",
   "manifestVersion": 1,
   "name": "Lodestone Compatibility - Forge 1.19.2",
-  "version": "0.1.0-SNAPSHOT",
+  "version": "1.0.0",
   "author": "Lodestone contributors",
   "projectVersion": "local-build",
   "minecraft": {

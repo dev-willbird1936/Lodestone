@@ -56,6 +56,8 @@ class McpGatewayTest {
             var gateway = new McpGateway(runtime);
             var initialize = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1\"}}}"));
             assertEquals("2025-11-25", initialize.getAsJsonObject().getAsJsonObject("result").get("protocolVersion").getAsString());
+            assertEquals("1.0.0", initialize.getAsJsonObject().getAsJsonObject("result")
+                    .getAsJsonObject("serverInfo").get("version").getAsString());
 
             var tools = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}"));
             assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("lodestone_capability_invoke"));

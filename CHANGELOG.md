@@ -3,10 +3,10 @@
 All notable user-visible changes are recorded here. Lodestone follows semantic versioning for the
 product as a whole; Minecraft and loader compatibility is listed per asset in each release.
 
-## Unreleased — C1
+## 1.0.0 — certification in progress
 
-C1 is the current parity candidate and is not a release. Its source and artifacts differ from the
-frozen C0 baseline, so C0 evidence must not be used to certify C1 binaries.
+v1.0.0 is the current parity candidate and is not yet a release. Its source and artifacts differ
+from the frozen C0 baseline, so C0 evidence must not be used to certify v1.0.0 binaries.
 
 ### Added
 
@@ -26,8 +26,8 @@ frozen C0 baseline, so C0 evidence must not be used to certify C1 binaries.
 ### Release status
 
 - Source backup on `main` is allowed after secret and import review.
-- `v0.1.0-rc.1` remains blocked until all affected C1 rows pass fresh-world certification and the
-  C1 artifact manifest and final audit are complete.
+- `v1.0.0` remains blocked until all affected rows pass fresh-world certification and the v1.0.0
+  artifact manifest and final audit are complete.
 
 ## C0 compatibility baseline — 2026-07-12
 

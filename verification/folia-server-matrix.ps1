@@ -17,7 +17,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$hostJar = Join-Path $projectRoot 'hosts/folia/1.21.4/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+$hostJar = Join-Path $projectRoot 'hosts/folia/1.21.4/build/libs/lodestone-1.0.0.jar'
 $port = 37933
 $token = 'folia-matrix-token'
 $serverSha256 = 'dcf2333211c1468c8eddc482bc8549600818cc661a709124a79c752f8fa2ac3a'

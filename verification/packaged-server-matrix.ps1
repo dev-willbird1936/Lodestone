@@ -17,7 +17,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Fabric 1.20.1 / Loader 0.15.11'
         Directory = Join-Path $Root 'fabric-1.20.1'
-        HostJar = Join-Path $projectRoot 'hosts/fabric/1.20.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25560
         Port = 37921
         Token = 'matrix-fabric-1201'
@@ -29,7 +29,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Fabric 1.19.2 / Loader 0.14.25'
         Directory = Join-Path $Root 'fabric-1.19.2'
-        HostJar = Join-Path $projectRoot 'hosts/fabric/1.19.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/fabric/1.19.2/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25561
         Port = 37930
         Token = 'matrix-fabric-1192'
@@ -41,7 +41,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Fabric 1.18.2 / Loader 0.14.25'
         Directory = Join-Path $Root 'fabric-1.18.2'
-        HostJar = Join-Path $projectRoot 'hosts/fabric/1.18.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/fabric/1.18.2/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25570
         Port = 37933
         Token = 'matrix-fabric-1182'
@@ -53,7 +53,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Fabric 1.21.1 / Loader 0.16.10'
         Directory = Join-Path $Root 'fabric-1.21.1'
-        HostJar = Join-Path $projectRoot 'hosts/fabric/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25562
         Port = 37922
         Token = 'matrix-fabric-1211'
@@ -64,7 +64,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Fabric 26.2 / Loader 0.19.3 (Vulkan client setting; dedicated server)'
         Directory = Join-Path $Root 'fabric-26.2'
-        HostJar = Join-Path $projectRoot 'hosts/fabric/26.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/fabric/26.2/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25563
         Port = 37929
         Token = 'matrix-fabric-262'
@@ -77,7 +77,7 @@ $targets = @(
         Name = 'Quilt 1.20.1 / Loader 0.29.2 via Fabric compatibility'
         Directory = Join-Path $Root 'quilt-1.20.1'
         HostJar = Join-Path $Root 'quilt-1.20.1/lodestone-quilt.jar'
-        SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.20.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar'
         QuiltMinecraft = '1.20.1'
         QuiltFabricLoaderRange = '>=0.15.11'
         ServerPort = 25564
@@ -92,7 +92,7 @@ $targets = @(
         Name = 'Quilt 1.21.1 / Loader 0.29.2 via Fabric compatibility'
         Directory = Join-Path $Root 'quilt-1.21.1'
         HostJar = Join-Path $Root 'quilt-1.21.1/lodestone-quilt.jar'
-        SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar'
         QuiltMinecraft = '1.21.1'
         QuiltFabricLoaderRange = '>=0.16.10'
         ServerPort = 25572
@@ -105,7 +105,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'NeoForge 1.21.1 / 21.1.211'
         Directory = Join-Path $Root 'neoforge-1.21.1'
-        HostJar = Join-Path $projectRoot 'hosts/neoforge/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25565
         Port = 37923
         Token = 'matrix-neoforge-1211'
@@ -116,7 +116,7 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Forge 1.21.1 / 52.1.0'
         Directory = Join-Path $Root 'forge-1.21.1'
-        HostJar = Join-Path $projectRoot 'hosts/forge/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+        HostJar = Join-Path $projectRoot 'hosts/forge/1.21.1/build/libs/lodestone-1.0.0.jar'
         ServerPort = 25566
         Port = 37926
         Token = 'matrix-forge-1211'

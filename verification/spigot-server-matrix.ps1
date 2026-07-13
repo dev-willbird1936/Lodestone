@@ -16,7 +16,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$hostJar = Join-Path $projectRoot 'hosts/spigot/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar'
+$hostJar = Join-Path $projectRoot 'hosts/spigot/1.21.1/build/libs/lodestone-1.0.0.jar'
 $port = 37932
 $token = 'spigot-matrix-token'
 

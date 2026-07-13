@@ -258,7 +258,7 @@ public final class McpGateway {
             result.add("capabilities", object(Map.of(
                     "tools", object(Map.of("listChanged", false)),
                     "resources", object(Map.of("subscribe", false, "listChanged", false)))));
-            result.add("serverInfo", object(Map.of("name", "lodestone", "version", "0.1.0")));
+            result.add("serverInfo", object(Map.of("name", "lodestone", "version", "1.0.0")));
             result.addProperty("instructions", "Use lodestone_capability_invoke for typed access; inspect availability before mutation.");
             return result;
         }

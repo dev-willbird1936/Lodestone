@@ -13,28 +13,28 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($Manifest)) {
-    $Manifest = Join-Path $PSScriptRoot 'evidence/release-artifacts-2026-07-12.json'
+    $Manifest = Join-Path $PSScriptRoot 'evidence/release-artifacts-v1.0.0.json'
 }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $artifactPaths = @(
-    'hosts/fabric/1.18.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/fabric/1.19.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/fabric/1.20.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/fabric/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/fabric/26.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/neoforge/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
+    'hosts/fabric/1.18.2/build/libs/lodestone-1.0.0.jar',
+    'hosts/fabric/1.19.2/build/libs/lodestone-1.0.0.jar',
+    'hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar',
+    'hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar',
+    'hosts/fabric/26.2/build/libs/lodestone-1.0.0.jar',
+    'hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar',
     'hosts/forge/1.16.5/build/reobfJar/output.jar',
     'hosts/forge/1.18.2/build/reobfJar/output.jar',
     'hosts/forge/1.19.2/build/reobfJar/output.jar',
     'hosts/forge/1.20.1/build/reobfJar/output.jar',
-    'hosts/forge/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/forge/1.12.2/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/forge/1.7.10/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/forge/1.8.9/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/paper/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/spigot/1.21.1/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
-    'hosts/folia/1.21.4/build/libs/lodestone-0.1.0-SNAPSHOT.jar',
+    'hosts/forge/1.21.1/build/libs/lodestone-1.0.0.jar',
+    'hosts/forge/1.12.2/build/libs/lodestone-1.0.0.jar',
+    'hosts/forge/1.7.10/build/libs/lodestone-1.0.0.jar',
+    'hosts/forge/1.8.9/build/libs/lodestone-1.0.0.jar',
+    'hosts/paper/1.21.1/build/libs/lodestone-1.0.0.jar',
+    'hosts/spigot/1.21.1/build/libs/lodestone-1.0.0.jar',
+    'hosts/folia/1.21.4/build/libs/lodestone-1.0.0.jar',
     'gateway/rcon-launcher/build/distributions/rcon-launcher.zip',
     'gateway/legacy-bridge-launcher/build/distributions/legacy-bridge-launcher.zip'
 )

@@ -12,7 +12,7 @@ and loader or server.
 
 - C0 is an immutable compatibility baseline, not a tag reconstructed from newer source. Its frozen
   manifest and evidence remain under `verification/evidence/`.
-- C1 is unreleased parity work. No C1 tag, prerelease, or binary release may be published until all
+- v1.0.0 is unreleased parity work. No v1.0.0 tag or binary release may be published until all
   gates below pass.
 
 ## Tags and promotion

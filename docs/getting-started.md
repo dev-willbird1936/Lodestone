@@ -1,7 +1,7 @@
 # Getting started
 
-Lodestone is currently unreleased. Use tagged release assets when they exist; untagged builds are
-development snapshots and are not certified by the frozen C0 evidence.
+Lodestone v1.0.0 is currently in certification. Use the tagged release assets after publication;
+untagged builds are development snapshots and are not certified by the frozen C0 evidence.
 
 ## 1. Choose one integration
 

@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.lodestone"
-version = providers.gradleProperty("lodestoneVersion").getOrElse("0.1.0-SNAPSHOT")
+version = providers.gradleProperty("lodestoneVersion").getOrElse("1.0.0")
 
 val junitVersion = "5.11.4"
 

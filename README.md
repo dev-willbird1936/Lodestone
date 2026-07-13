@@ -1,9 +1,10 @@
 # Lodestone
 
 > [!WARNING]
-> **UNRELEASED — C1 is not certified.** The frozen C0 evidence proves its exact compatibility
-> baseline, but current source contains later parity work. Do not treat untagged builds as a
-> release. See [RELEASING.md](RELEASING.md) for the certification and asset policy.
+> **v1.0.0 CERTIFICATION IN PROGRESS.** The frozen C0 evidence proves its exact compatibility
+> baseline, but current source and v1.0.0 artifacts contain later parity work. Do not treat
+> untagged builds as a release. See [RELEASING.md](RELEASING.md) for the certification and asset
+> policy.
 
 Lodestone is a version-aware Minecraft MCP and automation platform. Its stable product is a
 capability protocol; client mods, server plugins, and fallback integrations are independent

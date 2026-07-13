@@ -60,7 +60,7 @@ Assert (Test-Path -LiteralPath $Java8) "Java 8 executable not found: $Java8"
 Assert (Test-Path -LiteralPath $LauncherJava) "Launcher Java executable not found: $LauncherJava"
 $hostJar = Join-Path $projectRoot ('hosts/forge/' + $Minecraft + '/build/reobfJar/output.jar')
 if (-not (Test-Path -LiteralPath $hostJar)) {
-    $hostJar = Join-Path $projectRoot ('hosts/forge/' + $Minecraft + '/build/libs/lodestone-' + '0.1.0-SNAPSHOT.jar')
+    $hostJar = Join-Path $projectRoot ('hosts/forge/' + $Minecraft + '/build/libs/lodestone-' + '1.0.0.jar')
 }
 Assert (Test-Path -LiteralPath $hostJar) "Missing native Forge $Minecraft host artifact: $hostJar"
 
