@@ -5,6 +5,7 @@ verification/evidence/*.json
 **/.gradle/
 **/run/
 **/runs/
+**/logs/
 libraries/
 *.jar.log
 verification/curseforge-profiles/*.zip
