@@ -13,7 +13,9 @@ param(
     [string] $BenchmarkName = 'neoforge-1.21.1-keepfocus-flow',
     [string] $ReportPrefix = 'neoforge-keepfocus-flow',
     [string] $ChatMarker = '[Lodestone] NeoForge KeepFocus flow benchmark marker',
-    [string[]] $MenuTargets = @('mods', 'options', 'language', 'accessibility', 'singleplayer')
+    [string[]] $MenuTargets = @('mods', 'options', 'language', 'accessibility', 'singleplayer'),
+    [switch] $DirectCreateWorld,
+    [string[]] $ExpectedWorldUnavailableCapabilities = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -275,8 +277,10 @@ switch ($Stage) {
         # Fresh-world path: singleplayer -> creation screen -> text insertion -> actual Create New World.
         Invoke-Tool 'ui_navigate' @{ target = 'singleplayer' } 'open singleplayer' | Out-Null
         Start-Sleep -Milliseconds 400
-        Invoke-Tool 'ui_navigate' @{ target = 'create_new_world' } 'open new-world screen' | Out-Null
-        Start-Sleep -Milliseconds 400
+        if (-not $DirectCreateWorld) {
+            Invoke-Tool 'ui_navigate' @{ target = 'create_new_world' } 'open new-world screen' | Out-Null
+            Start-Sleep -Milliseconds 400
+        }
         Get-UiState | Out-Null
         Invoke-Capability 'minecraft.ui.text.insert' '1.0' @{ text = 'Lodestone KeepFocus Flow' } $false 'insert fresh-world name text' | Out-Null
         Invoke-Tool 'ui_navigate' @{ target = 'create_world' } 'create fresh world' | Out-Null
@@ -330,7 +334,8 @@ switch ($Stage) {
         Invoke-Capability 'minecraft.inventory.slot.select' '1.0' @{ slot = [int] $playerBefore.selectedSlot } $false 'reselect current slot' | Out-Null
         Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = $ChatMarker } $false 'chat mutation/readback marker' | Out-Null
         Start-Sleep -Milliseconds 300
-        Invoke-Capability 'minecraft.chat.read' '1.0' @{ limit = 8 } $false 'chat readback' | Out-Null
+        $chatReadExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.chat.read') { @('CAPABILITY_UNAVAILABLE') } else { @() }
+        Invoke-Capability 'minecraft.chat.read' '1.0' @{ limit = 8 } $false 'chat readback' $chatReadExpectedCodes | Out-Null
         Invoke-Capability 'minecraft.client.screenshot.capture' '1.0' @{ maxWidth = 320; maxHeight = 180 } $false 'in-world capture' | Out-Null
         Invoke-Capability 'minecraft.input.release-all' '1.0' @{} $false 'world input cleanup' | Out-Null
         Get-UiState | Out-Null
