@@ -912,7 +912,7 @@ public final class FabricClientController implements ClientModInitializer {
             invocation.cancellation().commitMutation();
             var handled = screen.keyPressed(number(input, "key"), numberOrDefault(input, "scanCode", 0),
                     numberOrDefault(input, "modifiers", 0));
-            return Map.of("handled", handled);
+            return Map.of("handled", handled, "openedPause", false);
         }
 
         private static Map<String, Object> uiText(InvocationContext invocation) {

@@ -59,3 +59,19 @@ match that evidence.
 RCON deliberately exposes only `minecraft.command.rcon.execute`; it is not a native player,
 inventory, UI, event, or structured-world adapter. CurseForge ZIPs are local, hash-validated
 profiles. They are not claims of a manual CurseForge GUI import or public CurseForge distribution.
+
+## Periodic client-flow benchmark snapshot — 2026-07-14
+
+These rows record post-v1 source evidence for the rebuilt local artifact
+`hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar` with KeepFocus installed alongside it.
+They do not rewrite the immutable v1.0.0 release certificate; each report binds its exact
+artifact hashes and source state.
+
+| Status | Flow | Evidence |
+| --- | --- | --- |
+| ✅ | NeoForge 1.21.1 main menu → fresh world → authenticated MCP | 59 successful records; Credits absence is an asserted expected adapter outcome; dedicated event subscribe/poll/unsubscribe lifecycle; expected unavailable/dry-run/route-guard states only |
+| ✅ | NeoForge 1.21.1 real world control | 27/27 successful records; bounded gold-block write, readback, restore, readback; chat, screenshot, entity/player/world reads, key/mouse cleanup |
+| ✅ | NeoForge 1.21.1 KeepFocus focus-loss readback | Tick advanced while Minecraft lost focus; remained in-world and did not pause |
+| ✅ | NeoForge 1.21.1 MCP clean shutdown | MCP Escape opened PauseScreen, UI click saved/quitted to title, MCP quit game; Java count 0; no crash markers |
+| ✅ | NeoForge 1.21.1 MCP typed coverage sweep | 32 tools, 49 capabilities, 315 typed/schema cases; schema-generated inputs are classified and unsupported states remained explicit |
+| 🔄 | Other client loaders/versions | Requires the same ordered fresh-install flow and exact-version artifact evidence per row |

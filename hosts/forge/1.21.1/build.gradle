@@ -19,14 +19,25 @@ repositories {
 
 sourceSets {
     main {
-        java.srcDir("${rootDir}/adapters/forge/1.20.1/src/main/java")
+        java.srcDir("${rootDir}/adapters/forge/1.21.1/src/main/java")
     }
+    // Empty on purpose: it prevents ForgeGradle from falling back to main
+    // when generating the artifact-only client run's source-mod mapping.
+    artifactClient
 }
 
 minecraft {
     mappings channel: 'official', version: project.minecraft_version
     copyIdeResources = true
     runs {
+        client {
+            taskName 'runArtifactClient'
+            client true
+            workingDirectory project.file('run-artifact-client')
+            property 'lodestone.port', System.getProperty('lodestone.port', '37826')
+            property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+            property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+        }
         server {
             workingDirectory project.file('run')
             args '--nogui'
@@ -40,6 +51,45 @@ minecraft {
             }
         }
     }
+}
+
+def artifactClientJar = layout.buildDirectory.file("libs/${project.mod_id}-${project.mod_version}.jar")
+def artifactClientBundledRoots = [
+    rootProject.file('common').toPath().toAbsolutePath().normalize(),
+    rootProject.file('gateway').toPath().toAbsolutePath().normalize()
+]
+tasks.register('stageArtifactClient', Copy) {
+    from artifactClientJar
+    into layout.projectDirectory.dir('run-artifact-client/mods')
+    doFirst {
+        if (!artifactClientJar.get().asFile.isFile()) {
+            throw new GradleException("Final Lodestone artifact is required before runArtifactClient: ${artifactClientJar.get().asFile}")
+        }
+    }
+}
+tasks.matching { it.name == 'runArtifactClient' }.configureEach {
+    dependsOn tasks.named('stageArtifactClient')
+}
+
+// ForgeGradle applies its development defaults after this project is evaluated.
+// Configure after all projects so this runner stays artifact-only while the
+// normal source-based server run remains untouched.
+gradle.projectsEvaluated {
+    minecraft.runs.getByName('client').setSources([sourceSets.artifactClient])
+}
+
+gradle.taskGraph.whenReady {
+    def artifactRun = tasks.getByName('runArtifactClient')
+    // The final jar embeds these project modules. Keep Forge/Minecraft and
+    // external libraries, but do not put a second copy of Lodestone modules
+    // onto the Java module path for this artifact-only certification runner.
+    def originalRuntimeArtifacts = artifactRun.runtimeClasspathArtifacts.files
+    artifactRun.runtimeClasspathArtifacts.setFrom(
+        originalRuntimeArtifacts.findAll { candidate ->
+            def path = candidate.toPath().toAbsolutePath().normalize()
+            !artifactClientBundledRoots.any { bundledRoot -> path.startsWith(bundledRoot) }
+        }
+    )
 }
 
 configurations {

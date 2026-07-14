@@ -7,6 +7,7 @@ group = mod_group_id
 version = mod_version
 
 def adapterProject = project(':adapters:neoforge:mc1_21_1')
+def keepFocusArtifact = rootProject.file('../KeepFocus/build/libs/keep_focus-1.0.0+1.21.1.jar')
 
 base {
     archivesName = mod_id
@@ -44,12 +45,33 @@ runs {
         systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
         systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
     }
+    keepFocusClient {
+        run 'client'
+        workingDirectory project.file('runs/keepfocus-client')
+        systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37828')
+        systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+        systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+    }
     server {
         argument '--nogui'
         systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37821')
         systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
         systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
     }
+}
+
+tasks.register('stageKeepFocusClient', Copy) {
+    from keepFocusArtifact
+    into layout.projectDirectory.dir('runs/keepfocus-client/mods')
+    doFirst {
+        if (!keepFocusArtifact.isFile()) {
+            throw new GradleException("KeepFocus artifact is required: ${keepFocusArtifact}")
+        }
+    }
+}
+tasks.matching { it.name == 'runKeepFocusClient' }.configureEach {
+    dependsOn tasks.named('stageKeepFocusClient')
 }
 
 dependencies {

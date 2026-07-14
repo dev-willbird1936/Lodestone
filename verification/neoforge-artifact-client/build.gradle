@@ -1,0 +1,48 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.gradle.userdev' version '7.1.38'
+}
+
+group = 'dev.lodestone.verification'
+version = '1.0.0'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven { url = 'https://maven.neoforged.net/releases' }
+    mavenCentral()
+}
+
+def lodestoneArtifact = file('../../hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar')
+def keepFocusArtifact = file('../../../KeepFocus/build/libs/keep_focus-1.0.0+1.21.1.jar')
+
+dependencies {
+    implementation 'net.neoforged:neoforge:21.1.211'
+}
+
+runs {
+    artifactClient {
+        run 'client'
+        // This runner installs final JARs from run/mods. Do not inject this
+        // verifier project's source-set output as an additional mod source.
+        configureAutomatically = false
+        workingDirectory file('run')
+        systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37828')
+        systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+        systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+    }
+}
+
+tasks.register('stageArtifacts', Copy) {
+    from lodestoneArtifact
+    from keepFocusArtifact
+    into layout.projectDirectory.dir('run/mods')
+    doFirst {
+        if (!lodestoneArtifact.isFile()) { throw new GradleException("Lodestone artifact is required: $lodestoneArtifact") }
+        if (!keepFocusArtifact.isFile()) { throw new GradleException("KeepFocus artifact is required: $keepFocusArtifact") }
+    }
+}
+
+tasks.matching { it.name == 'runArtifactClient' }.configureEach {
+    dependsOn tasks.named('stageArtifacts')
+}

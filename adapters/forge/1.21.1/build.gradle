@@ -15,15 +15,6 @@ repositories {
     mavenCentral()
 }
 
-sourceSets {
-    main {
-        // The official 1.20.1/1.21.1 Forge APIs used by this bounded server
-        // slice are source-compatible. Each host compiles this shared adapter
-        // against its own Forge userdev artifact.
-        java.srcDir("${rootDir}/adapters/forge/1.20.1/src/main/java")
-    }
-}
-
 minecraft {
     mappings channel: 'official', version: project.minecraft_version
 }

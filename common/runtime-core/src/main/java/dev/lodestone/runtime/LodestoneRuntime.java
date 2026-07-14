@@ -257,8 +257,9 @@ public final class LodestoneRuntime implements AutoCloseable {
         }
         if (descriptor.availability() == Availability.UNAVAILABLE
                 || descriptor.availability() == Availability.DEGRADED) {
+            var reason = descriptor.reason();
             return completedError(request, result, trace, "CAPABILITY_UNAVAILABLE",
-                    descriptor.reason().message(), false);
+                    reason == null ? "capability is not available on the negotiated adapter" : reason.message(), false);
         }
         if (entry.handler() == null) {
             return completedError(request, result, trace, "CAPABILITY_UNAVAILABLE",

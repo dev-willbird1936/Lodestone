@@ -1,0 +1,10 @@
+gradle.taskGraph.whenReady {
+    def project = gradle.rootProject.project(':hosts:forge:mc1_21_1')
+    def task = project.tasks.getByName('runArtifactClient')
+    println "LODESTONE_TASK_CLASS=${task.class.name}"
+    task.minecraftArtifacts.files.each { file -> println "LODESTONE_MINECRAFT_ARTIFACT=${file}" }
+    task.runtimeClasspathArtifacts.files.each { file -> println "LODESTONE_RUNTIME_ARTIFACT=${file}" }
+    task.runConfig.get().allSources.each { source ->
+        println "LODESTONE_RUN_SOURCE=${source}"
+    }
+}

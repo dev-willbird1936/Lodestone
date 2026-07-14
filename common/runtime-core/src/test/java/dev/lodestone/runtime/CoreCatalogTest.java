@@ -158,6 +158,11 @@ final class CoreCatalogTest {
         assertFalse(SchemaValidator.validate(click.inputSchema(), Map.of("screenToken", "screen-2",
                 "snapshotRevision", revision, "nodeId", "n0", "label", "Back to Game")).isEmpty());
 
+        var key = capabilities.get("minecraft.ui.key");
+        assertEquals("1.0", key.version());
+        assertTrue(SchemaValidator.validate(key.outputSchema(), Map.of("handled", true)).isEmpty());
+        assertTrue(SchemaValidator.validate(key.outputSchema(), Map.of("handled", true, "openedPause", true)).isEmpty());
+
         var move = capabilities.get("minecraft.player.move");
         assertEquals("2.0", move.version());
         assertTrue(SchemaValidator.validate(move.outputSchema(), Map.of("forward", 1, "strafe", 0,

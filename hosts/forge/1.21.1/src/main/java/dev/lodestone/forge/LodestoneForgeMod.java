@@ -6,9 +6,11 @@ import dev.lodestone.gateway.McpGateway;
 import dev.lodestone.runtime.AuthorizationPolicy;
 import dev.lodestone.runtime.LodestoneRuntime;
 import dev.lodestone.runtime.TokenFile;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
@@ -33,8 +35,10 @@ public final class LodestoneForgeMod {
         runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv(
                 System.getProperty("lodestone.permissions", System.getenv("LODESTONE_PERMISSIONS"))));
         adapter = new ForgeAdapter();
+        adapter.setRefreshHook(() -> runtime.refreshAdapter(adapter));
         runtime.registerAdapter(adapter);
         MinecraftForge.EVENT_BUS.register(this);
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ForgeClientController::register);
 
         var port = Integer.parseInt(System.getProperty("lodestone.port", "37826"));
         var token = token();

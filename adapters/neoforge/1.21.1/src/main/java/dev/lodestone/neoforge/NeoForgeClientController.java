@@ -20,6 +20,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -233,8 +234,10 @@ public final class NeoForgeClientController {
                         "minecraft.ui.state.read",
                         "minecraft.chat.read" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
-                case "minecraft.ui.click", "minecraft.ui.key", "minecraft.ui.text.insert",
+                case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
+                case "minecraft.ui.key" -> client.screen != null
+                        || (client.level != null && client.player != null);
                 default -> client.level != null && client.player != null;
             };
         }
@@ -957,12 +960,19 @@ public final class NeoForgeClientController {
         }
 
         private Map<String, Object> uiKey(dev.lodestone.adapter.InvocationContext invocation) {
-            var screen = requireScreen();
             var input = input(invocation);
+            var key = number(input, "key");
+            var client = Minecraft.getInstance();
+            if (client.screen == null && key == 256 && client.level != null && client.player != null) {
+                invocation.cancellation().commitMutation();
+                client.setScreen(new PauseScreen(true));
+                return Map.of("handled", true, "openedPause", true);
+            }
+            var screen = requireScreen();
             invocation.cancellation().commitMutation();
-            var handled = screen.keyPressed(number(input, "key"), numberOrDefault(input, "scanCode", 0),
+            var handled = screen.keyPressed(key, numberOrDefault(input, "scanCode", 0),
                     numberOrDefault(input, "modifiers", 0));
-            return Map.of("handled", handled);
+            return Map.of("handled", handled, "openedPause", false);
         }
 
         private Map<String, Object> uiText(dev.lodestone.adapter.InvocationContext invocation) {

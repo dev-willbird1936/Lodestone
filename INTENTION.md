@@ -176,6 +176,18 @@ every Minecraft environment.
   SHA-256 before publication. The final staging run used a clean detached immutable-tag worktree
   and only the already-certified artifact bytes, avoiding another redundant recompilation.
 
+## Benchmark evidence added 2026-07-14
+
+- The NeoForge 1.21.1 + KeepFocus client benchmark now runs in user-visible order from main menu
+  to fresh world, exhaustive typed MCP coverage, focus-loss readback, and MCP clean shutdown. The
+  rebuilt artifact passed 59 main-menu records, 27/27 world records, focus-loss tick readback, a
+  six-step Escape/UI-quit flow, and a 315-case 32-tool/49-capability typed coverage sweep. The
+  flow now fails on unexpected outcomes, asserts gold-block write/readback/restore invariants,
+  and records exact Lodestone/KeepFocus hashes plus source state.
+- MCP `minecraft.ui.key` supports guarded Escape-to-Pause from an active world without an existing
+  screen; shutdown evidence proves Save & Quit, title return, normal client stop, saved chunks,
+  zero Java client processes, and no fatal/crash markers.
+
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1 client slices and the bounded
@@ -194,3 +206,7 @@ every Minecraft environment.
 - Remaining product scope includes richer capability input/output schemas, Bedrock and later
   Minecraft lines, full connected-player container/NBT control, and broad third-party mod
   interoperability.
+- The typed coverage sweep still records honest negative coverage for unsupported WorldEdit/
+  player-command paths and runtime validation guards; those are harness/catalog coverage findings,
+  not claims of support. The client benchmark is evidence for the NeoForge 1.21.1 artifact row
+  only; other client loaders and versions remain separate rows.
