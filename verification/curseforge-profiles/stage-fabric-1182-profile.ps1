@@ -30,9 +30,17 @@ function Resolve-FabricApiJars([string]$version) {
         $jars.Add($jar.FullName)
         if ($null -ne $pom) {
             $xml = [xml](Get-Content -Raw -LiteralPath $pom.FullName)
-            foreach ($child in @($xml.project.dependencies.dependency)) {
-                if ($child.groupId -eq 'net.fabricmc.fabric-api' -and $child.scope -ne 'test') {
-                    $queue.Enqueue([pscustomobject]@{ Artifact = [string]$child.artifactId; Version = [string]$child.version })
+            # POMs may either declare no dependencies or use an XML namespace.
+            # local-name() handles both without strict-mode property lookups.
+            foreach ($child in @($xml.SelectNodes("/*[local-name()='project']/*[local-name()='dependencies']/*[local-name()='dependency']"))) {
+                $groupId = $child.SelectSingleNode("*[local-name()='groupId']")
+                $artifactId = $child.SelectSingleNode("*[local-name()='artifactId']")
+                $versionNode = $child.SelectSingleNode("*[local-name()='version']")
+                $scope = $child.SelectSingleNode("*[local-name()='scope']")
+                $scopeValue = if ($null -eq $scope) { '' } else { [string]$scope.InnerText }
+                if ($null -ne $groupId -and $null -ne $artifactId -and $null -ne $versionNode `
+                        -and $groupId.InnerText -eq 'net.fabricmc.fabric-api' -and $scopeValue -ne 'test') {
+                    $queue.Enqueue([pscustomobject]@{ Artifact = [string]$artifactId.InnerText; Version = [string]$versionNode.InnerText })
                 }
             }
         }

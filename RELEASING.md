@@ -16,6 +16,8 @@ and loader or server.
   `verification/evidence/release-conformance-v1.0.0.json`. Its final audit evidence includes exact
   Quilt-profile byte acceptance and Bukkit-family invalid-token checks. The immutable tag workflow
   still performs the clean tagged rebuild, assembly, remote upload verification, and publication.
+  Its historical profile rebuild runs under Windows PowerShell, the exact v1.0.0 stager runtime;
+  assembly still rejects every rebuilt profile ZIP whose bytes differ from certification.
 
 ## Tags and promotion
 

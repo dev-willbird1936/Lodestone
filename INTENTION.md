@@ -147,6 +147,10 @@ every Minecraft environment.
 - The tag-gated GitHub workflow now runs the full source/unit/gateway/adapter/contract gate, creates
   an inaccessible draft containing all 36 staged release files, downloads and SHA-256-verifies the
   complete remote inventory, and publishes only after that verification succeeds.
+- Fabric 1.18.2 profile staging now accepts both namespace-qualified and dependency-less cached
+  Maven POMs under strict PowerShell execution. A fresh 49-entry profile rebuild matches the
+  certified final ZIP SHA-256 exactly; the immutable v1.0.0 workflow runs its historical stager in
+  the compatible Windows PowerShell runtime before the same final-byte assembly gate.
 
 ## INTENTION NOT MATCHED
 

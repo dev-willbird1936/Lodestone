@@ -102,6 +102,7 @@ class ReleaseAssemblyContractTest {
     @Test
     void releaseWorkflowGatesFullVerificationAndPublishesOnlyAfterDraftReadback() throws Exception {
         var workflow = Files.readString(root.resolve(".github/workflows/release.yml"), StandardCharsets.UTF_8);
+        var portableWorkflow = workflow.replace("\r\n", "\n");
         assertTrue(workflow.contains("ref: ${{ inputs.tag || github.ref }}"),
                 "manual release retries must check out the requested immutable tag");
         assertTrue(workflow.contains("Verify checked-out immutable release tag"));
@@ -113,6 +114,11 @@ class ReleaseAssemblyContractTest {
                 "tag publishing must run the full verification gate");
         assertTrue(workflow.contains("JAVA_HOME: ${{ steps.java21.outputs.path }}"),
                 "Gradle 8 verification must not inherit the Java 25 setup action");
+        assertTrue(portableWorkflow.contains("Rebuild all release artifacts twice where required\n"
+                        + "        # v1.0.0's immutable historical profile stagers target Windows PowerShell.\n"
+                        + "        # The final staged ZIPs are still checked byte-for-byte against certification.\n"
+                        + "        shell: powershell"),
+                "immutable v1.0.0 profile staging must use its compatible Windows PowerShell runtime");
         assertTrue(workflow.contains("--draft --title 'Lodestone v1.0.0' --generate-notes"),
                 "uploads must begin as an inaccessible draft");
         assertTrue(workflow.contains("gh release download $tag"),

@@ -117,7 +117,9 @@ jobs:
           }
 
       - name: Rebuild all release artifacts twice where required
-        shell: pwsh
+        # v1.0.0's immutable historical profile stagers target Windows PowerShell.
+        # The final staged ZIPs are still checked byte-for-byte against certification.
+        shell: powershell
         run: >-
           .\verification\build-v1-release.ps1
           -Java8 "${{ steps.java8.outputs.path }}\bin\java.exe"
