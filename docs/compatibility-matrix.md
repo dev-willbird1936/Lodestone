@@ -47,7 +47,7 @@ match that evidence.
 
 | Status | Target | Reason |
 | --- | --- | --- |
-| 🔄 | NeoForge 1.21.1 client menu control (post-v1 source) | Authenticated typed navigation reached a fresh world through the two modern `Create New World` screens, and player look has exact readback. Bounded 120-second UI defaults are packaged. Evidence supports a later coherent patch artifact, not an alteration of v1.0.0. |
+| ✅ | NeoForge 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow with KeepFocus: 106/106 main-menu assertions, 27/27 world assertions, focus-loss readback, and 6/6 clean-shutdown assertions. This evidence does not alter v1.0.0. |
 | ✅ | Fabric 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 97/97 main-menu assertions, 27/27 world assertions, and 6/6 clean-shutdown assertions. The fresh no-save route uses the direct `CreateWorldScreen` path; chat-read remains explicitly unavailable. This evidence does not alter v1.0.0. |
 | ✅ | Fabric 1.20.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 97/97 main-menu assertions, 27/27 world assertions, and 6/6 clean-shutdown assertions. The exact direct `singleplayer` → `CreateWorldScreen` route and unavailable chat-read state are asserted. This evidence does not alter v1.0.0. |
 | ✅ | Forge 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 100/100 main-menu assertions, 15/15 minimal-world assertions including reversible block mutation/readback, and 6/6 clean-shutdown assertions. The first-run Forge loading-warning screen and exact unavailable registry/screenshot/input states are explicit evidence. This evidence does not alter v1.0.0. |

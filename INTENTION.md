@@ -219,5 +219,6 @@ every Minecraft environment.
   interoperability.
 - The typed coverage sweep still records honest negative coverage for unsupported WorldEdit/
   player-command paths and runtime validation guards; those are harness/catalog coverage findings,
-  not claims of support. The client benchmark is evidence for the NeoForge 1.21.1 artifact row
-  only; other client loaders and versions remain separate rows.
+  not claims of support. The client benchmark evidence now covers separate exact rows for NeoForge
+  1.21.1, Fabric 1.20.1, Fabric 1.21.1, and Forge 1.21.1; other client loaders and versions remain
+  separate rows.
