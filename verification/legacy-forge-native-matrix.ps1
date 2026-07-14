@@ -59,14 +59,33 @@ function Invoke-Capability([string]$uri, [string]$token, [int]$id, [string]$capa
 }
 function Assert-DirectBridgeDenied([string]$uri, [string]$capability, [hashtable]$payload) {
     $status = 0; $body = $null
+    $request = [Net.HttpWebRequest]::Create($uri)
+    $request.Method = 'POST'
+    $request.ContentType = 'application/json'
+    $request.Headers['X-Lodestone-Token'] = $BridgeToken
+    $payloadBytes = [Text.Encoding]::UTF8.GetBytes((@{ capability = $capability; input = $payload } | ConvertTo-Json -Depth 20))
+    $request.ContentLength = $payloadBytes.Length
+    $requestStream = $request.GetRequestStream()
     try {
-        Invoke-WebRequest -UseBasicParsing -Uri $uri -Method Post -Headers @{ 'X-Lodestone-Token' = $BridgeToken } `
-            -ContentType 'application/json' -Body (@{ capability = $capability; input = $payload } | ConvertTo-Json -Depth 20) | Out-Null
-    } catch {
-        $status = $_.Exception.Response.StatusCode.value__
-        $stream = $_.Exception.Response.GetResponseStream()
-        if ($null -ne $stream) {
-            try { $body = [IO.StreamReader]::new($stream).ReadToEnd() } finally { $stream.Dispose() }
+        $requestStream.Write($payloadBytes, 0, $payloadBytes.Length)
+    } finally {
+        $requestStream.Dispose()
+    }
+    try {
+        $response = $request.GetResponse()
+        try { $status = [int]$response.StatusCode } finally { $response.Dispose() }
+    } catch [Net.WebException] {
+        if ($null -ne $_.Exception.Response) {
+            $response = $_.Exception.Response
+            try {
+                $status = [int]$response.StatusCode
+                $stream = $response.GetResponseStream()
+                if ($null -ne $stream) {
+                    try { $body = [IO.StreamReader]::new($stream).ReadToEnd() } finally { $stream.Dispose() }
+                }
+            } finally {
+                $response.Dispose()
+            }
         }
     }
     Assert ($status -eq 403) "Direct native bridge did not default-deny $capability (HTTP $status)."
