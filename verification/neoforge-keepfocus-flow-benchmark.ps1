@@ -15,7 +15,9 @@ param(
     [string] $ChatMarker = '[Lodestone] NeoForge KeepFocus flow benchmark marker',
     [string[]] $MenuTargets = @('mods', 'options', 'language', 'accessibility', 'singleplayer'),
     [switch] $DirectCreateWorld,
-    [string[]] $ExpectedWorldUnavailableCapabilities = @()
+    [string[]] $ExpectedWorldUnavailableCapabilities = @(),
+    [string[]] $ExpectedMenuUnavailableCapabilities = @(),
+    [switch] $MinimalWorld
 )
 
 $ErrorActionPreference = 'Stop'
@@ -193,6 +195,12 @@ function Invoke-UiClick {
     return Invoke-Capability 'minecraft.ui.click' '2.0' $input $false $Expectation
 }
 
+function Expected-CapabilityErrors {
+    param([string] $CapabilityId, [string[]] $ExpectedUnavailable)
+    if ($ExpectedUnavailable -contains $CapabilityId) { return @('CAPABILITY_UNAVAILABLE') }
+    return @()
+}
+
 function Get-TitleWidget {
     param($State, [string] $Label)
     $widget = @($State.widgets | Where-Object { $_.label -eq $Label -and $_.actions -contains 'click' }) | Select-Object -First 1
@@ -267,12 +275,12 @@ switch ($Stage) {
         }
 
         # Both key and mouse input shapes are tested at title, followed by mandatory release-all cleanup.
-        Invoke-Capability 'minecraft.input.key.set' '1.0' @{ key = 'key.forward'; down = $true } $false 'key down' | Out-Null
-        Invoke-Capability 'minecraft.input.key.set' '1.0' @{ key = 'key.forward'; down = $false } $false 'key up' | Out-Null
-        Invoke-Capability 'minecraft.input.mouse.set' '1.0' @{ button = 0; down = $true } $false 'mouse button selector' | Out-Null
-        Invoke-Capability 'minecraft.input.mouse.set' '1.0' @{ button = 0; down = $false } $false 'mouse release selector' | Out-Null
-        Invoke-Capability 'minecraft.input.mouse.set' '1.0' @{ key = 'key.attack'; down = $false } $false 'mouse key selector' | Out-Null
-        Invoke-Capability 'minecraft.input.release-all' '1.0' @{} $false 'mandatory input cleanup' | Out-Null
+        Invoke-Capability 'minecraft.input.key.set' '1.0' @{ key = 'key.forward'; down = $true } $false 'key down' (Expected-CapabilityErrors 'minecraft.input.key.set' $ExpectedMenuUnavailableCapabilities) | Out-Null
+        Invoke-Capability 'minecraft.input.key.set' '1.0' @{ key = 'key.forward'; down = $false } $false 'key up' (Expected-CapabilityErrors 'minecraft.input.key.set' $ExpectedMenuUnavailableCapabilities) | Out-Null
+        Invoke-Capability 'minecraft.input.mouse.set' '1.0' @{ button = 0; down = $true } $false 'mouse button selector' (Expected-CapabilityErrors 'minecraft.input.mouse.set' $ExpectedMenuUnavailableCapabilities) | Out-Null
+        Invoke-Capability 'minecraft.input.mouse.set' '1.0' @{ button = 0; down = $false } $false 'mouse release selector' (Expected-CapabilityErrors 'minecraft.input.mouse.set' $ExpectedMenuUnavailableCapabilities) | Out-Null
+        Invoke-Capability 'minecraft.input.mouse.set' '1.0' @{ key = 'key.attack'; down = $false } $false 'mouse key selector' (Expected-CapabilityErrors 'minecraft.input.mouse.set' $ExpectedMenuUnavailableCapabilities) | Out-Null
+        Invoke-Capability 'minecraft.input.release-all' '1.0' @{} $false 'mandatory input cleanup' (Expected-CapabilityErrors 'minecraft.input.release-all' $ExpectedMenuUnavailableCapabilities) | Out-Null
 
         # Fresh-world path: singleplayer -> creation screen -> text insertion -> actual Create New World.
         Invoke-Tool 'ui_navigate' @{ target = 'singleplayer' } 'open singleplayer' | Out-Null
@@ -282,7 +290,7 @@ switch ($Stage) {
             Start-Sleep -Milliseconds 400
         }
         Get-UiState | Out-Null
-        Invoke-Capability 'minecraft.ui.text.insert' '1.0' @{ text = 'Lodestone KeepFocus Flow' } $false 'insert fresh-world name text' | Out-Null
+        Invoke-Capability 'minecraft.ui.text.insert' '1.0' @{ text = 'Lodestone KeepFocus Flow' } $false 'insert fresh-world name text' (Expected-CapabilityErrors 'minecraft.ui.text.insert' $ExpectedMenuUnavailableCapabilities) | Out-Null
         Invoke-Tool 'ui_navigate' @{ target = 'create_world' } 'create fresh world' | Out-Null
         Wait-For 'in_world' 60000 | Out-Null
         Invoke-Tool 'lodestone_events_poll' @{ subscriptionId = $subscriptionId; maxEvents = 32 } 'UI event readback' | Out-Null
@@ -290,6 +298,36 @@ switch ($Stage) {
     }
     'world' {
         Wait-For 'in_world' 5000 | Out-Null
+        if ($MinimalWorld) {
+            $playerBefore = (Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'player-state baseline').result
+            Invoke-Capability 'minecraft.entity.list' '1.0' @{ limit = 8; includePlayers = $true } $false 'entity list' | Out-Null
+            Invoke-Capability 'minecraft.inventory.read' '1.0' @{} $false 'inventory read' | Out-Null
+            $x = [math]::Floor([double] $playerBefore.position.x)
+            $y = [math]::Floor([double] $playerBefore.position.y)
+            $z = [math]::Floor([double] $playerBefore.position.z)
+            $mutationY = $y + 4
+            $mutationBaseline = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $x; y = $mutationY; z = $z; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'mutation target baseline read'
+            if ($mutationBaseline.status -ne 'ok' -or $mutationBaseline.result.blocks[0].block -ne 'minecraft:air') { throw "Refusing mutation: target ($x,$mutationY,$z) baseline is not known air." }
+            $mutation = @{ dimension = 'minecraft:overworld'; changes = @(@{ x = $x; y = $mutationY; z = $z; block = 'minecraft:gold_block' }); dryRun = $true }
+            $dryRunWrite = Invoke-Capability 'minecraft.world.blocks.write' '1.0' $mutation $true 'validate reversible mutation'
+            if (-not $dryRunWrite.result.validated -or -not $dryRunWrite.result.dryRun) { throw 'Dry-run block write invariant failed.' }
+            $mutation.dryRun = $false
+            $write = Invoke-Capability 'minecraft.world.blocks.write' '1.0' $mutation $false 'write marker block'
+            if (-not $write.result.validated -or $write.result.dryRun -or [int] $write.result.changedCount -ne 1) { throw 'Real block write invariant failed.' }
+            $marker = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $x; y = $mutationY; z = $z; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'marker readback'
+            if ($marker.result.blocks[0].block -ne 'minecraft:gold_block') { throw 'Gold-block readback invariant failed.' }
+            $mutation.changes[0].block = 'minecraft:air'
+            $restore = Invoke-Capability 'minecraft.world.blocks.write' '1.0' $mutation $false 'restore marker location'
+            if (-not $restore.result.validated -or [int] $restore.result.changedCount -ne 1) { throw 'Block restoration invariant failed.' }
+            $restored = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $x; y = $mutationY; z = $z; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'restoration readback'
+            if ($restored.result.blocks[0].block -ne 'minecraft:air') { throw 'Air restoration readback invariant failed.' }
+            Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw + 1; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
+            Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'rotation readback' | Out-Null
+            Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
+            Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = $ChatMarker } $false 'chat mutation marker' | Out-Null
+            Get-UiState | Out-Null
+            break
+        }
         $playerBefore = (Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'player-state baseline').result
         Invoke-Capability 'minecraft.player.context.read' '1.0' @{ reach = 4 } $false 'player context' | Out-Null
         Invoke-Capability 'minecraft.server.info.read' '1.0' @{} $false 'integrated-server info' | Out-Null
