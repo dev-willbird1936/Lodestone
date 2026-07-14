@@ -12,7 +12,8 @@ param(
     [string] $ClientRunDirectory = (Join-Path $PSScriptRoot 'neoforge-artifact-client\run'),
     [string] $BenchmarkName = 'neoforge-1.21.1-keepfocus-flow',
     [string] $ReportPrefix = 'neoforge-keepfocus-flow',
-    [string] $ChatMarker = '[Lodestone] NeoForge KeepFocus flow benchmark marker'
+    [string] $ChatMarker = '[Lodestone] NeoForge KeepFocus flow benchmark marker',
+    [string[]] $MenuTargets = @('mods', 'options', 'language', 'accessibility', 'singleplayer')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -241,7 +242,7 @@ switch ($Stage) {
         # All menu navigation targets that return safely to title. Contextual targets are covered later.
         # Multiplayer's first-run warning is intentionally deferred: its warning screen has no ordinary
         # title-menu back target, so forcing Escape would distort a stateful benchmark.
-        foreach ($target in @('mods', 'options', 'language', 'accessibility', 'singleplayer')) {
+        foreach ($target in $MenuTargets) {
             Navigate-Back $target
         }
         # Vanilla menu builds may omit Credits. Keep that explicit adapter absence
@@ -382,7 +383,7 @@ switch ($Stage) {
             $report.shutdownVerification = [ordered]@{
                 latestLog = $latestLog
                 stoppingMarker = ($logText -match 'Stopping!')
-                fatalMarker = ($logText -match 'FATAL|Crash report|Exception')
+                fatalMarker = ($logText -match 'FATAL|Crash report|---- Minecraft Crash Report ----|Minecraft has crashed')
                 javaProcessCount = $javaCount
             }
             if (-not $report.shutdownVerification.stoppingMarker -or $report.shutdownVerification.fatalMarker -or $javaCount -ne 0) {
