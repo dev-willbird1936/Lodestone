@@ -1,0 +1,1611 @@
+﻿{
+    "formatVersion":  1,
+    "benchmark":  "neoforge-1.21.1-keepfocus-flow",
+    "stage":  "world",
+    "startedAtUtc":  "2026-07-14T18:32:44.8769789Z",
+    "endpoint":  "http://127.0.0.1:37828/mcp",
+    "records":  [
+                    {
+                        "operation":  "tool:ui_wait",
+                        "input":  {
+                                      "until":  "in_world",
+                                      "pollIntervalMs":  100,
+                                      "timeoutMs":  5000
+                                  },
+                        "expectation":  "wait for in_world",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "state":  {
+                                                     "capturedAtTick":  1115.0,
+                                                     "coverage":  "complete",
+                                                     "guiScale":  2.0,
+                                                     "height":  240.0,
+                                                     "inWorld":  true,
+                                                     "open":  false,
+                                                     "screen":  "",
+                                                     "screenClass":  "",
+                                                     "screenToken":  "neo121-o",
+                                                     "snapshotRevision":  "32e6c856fa24dddde86aee23555ea4116f07fb4b0feac38376f5de46a92394a8",
+                                                     "title":  "",
+                                                     "truncated":  false,
+                                                     "truncationCauses":  [
+
+                                                                          ],
+                                                     "widgets":  [
+
+                                                                 ],
+                                                     "width":  427.0
+                                                 },
+                                       "timedOut":  false,
+                                       "pollCount":  1.0,
+                                       "elapsedMs":  11.0,
+                                       "waitedFor":  "in_world"
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.player.state.read@1.0",
+                        "input":  {
+                                      "input":  {
+
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.player.state.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "player-state baseline",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "position":  {
+                                                        "x":  95.5,
+                                                        "y":  63.0,
+                                                        "z":  134.5
+                                                    },
+                                       "selectedSlot":  0.0,
+                                       "name":  "Dev",
+                                       "health":  20.0,
+                                       "uuid":  "380df991-f603-344c-a090-369bad2a924a",
+                                       "food":  20.0,
+                                       "rotation":  {
+                                                        "pitch":  0.0,
+                                                        "yaw":  0.0
+                                                    }
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.player.context.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "reach":  4
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.player.context.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "player context",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "position":  {
+                                                        "x":  95.5,
+                                                        "y":  63.0,
+                                                        "z":  134.5
+                                                    },
+                                       "eyePosition":  {
+                                                           "x":  95.5,
+                                                           "y":  64.62000000476837,
+                                                           "z":  134.5
+                                                       },
+                                       "lookVector":  {
+                                                          "x":  0.0,
+                                                          "y":  0.0,
+                                                          "z":  1.0
+                                                      },
+                                       "gameMode":  "survival",
+                                       "dimension":  "minecraft:overworld",
+                                       "flying":  false,
+                                       "heldItem":  {
+                                                        "count":  0.0,
+                                                        "id":  "minecraft:air"
+                                                    },
+                                       "onGround":  true,
+                                       "facing":  "south",
+                                       "target":  {
+                                                      "distance":  4.0,
+                                                      "kind":  "miss",
+                                                      "position":  {
+                                                                       "x":  95.5,
+                                                                       "y":  64.62000000476837,
+                                                                       "z":  138.5
+                                                                   },
+                                                      "reach":  4.0
+                                                  },
+                                       "blockPosition":  {
+                                                             "x":  95.0,
+                                                             "y":  63.0,
+                                                             "z":  134.0
+                                                         },
+                                       "rotation":  {
+                                                        "pitch":  0.0,
+                                                        "yaw":  0.0
+                                                    }
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.server.info.read@1.0",
+                        "input":  {
+                                      "input":  {
+
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.server.info.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "integrated-server info",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dayTime":  288.0,
+                                       "difficulty":  "normal",
+                                       "dimension":  "minecraft:overworld",
+                                       "playerCount":  1.0,
+                                       "connected":  true,
+                                       "players":  [
+                                                       {
+                                                           "local":  true,
+                                                           "name":  "Dev",
+                                                           "uuid":  "380df991-f603-344c-a090-369bad2a924a"
+                                                       }
+                                                   ],
+                                       "gameVersion":  "1.21.1",
+                                       "gameTime":  288.0,
+                                       "truncated":  false,
+                                       "environment":  "integrated-server",
+                                       "loader":  "neoforge",
+                                       "integratedServer":  true
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.registry.item.search@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "query":  "diamond",
+                                                    "namespace":  "minecraft",
+                                                    "limit":  3
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.registry.item.search",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "registry read",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "limit":  3.0,
+                                       "items":  [
+                                                     {
+                                                         "blockItem":  false,
+                                                         "displayName":  "Diamond",
+                                                         "id":  "minecraft:diamond",
+                                                         "maxStackSize":  64.0,
+                                                         "translationKey":  "item.minecraft.diamond"
+                                                     },
+                                                     {
+                                                         "blockItem":  false,
+                                                         "displayName":  "Diamond Axe",
+                                                         "id":  "minecraft:diamond_axe",
+                                                         "maxStackSize":  1.0,
+                                                         "translationKey":  "item.minecraft.diamond_axe"
+                                                     },
+                                                     {
+                                                         "blockItem":  true,
+                                                         "displayName":  "Block of Diamond",
+                                                         "id":  "minecraft:diamond_block",
+                                                         "maxStackSize":  64.0,
+                                                         "translationKey":  "block.minecraft.diamond_block"
+                                                     }
+                                                 ],
+                                       "query":  "diamond",
+                                       "truncated":  true,
+                                       "count":  3.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.inventory.read@1.0",
+                        "input":  {
+                                      "input":  {
+
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.inventory.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "inventory read",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "selectedSlot":  0.0,
+                                       "slots":  [
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  0.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  1.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  2.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  3.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  4.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  5.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  6.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  7.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  8.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  9.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  10.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  11.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  12.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  13.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  14.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  15.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  16.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  17.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  18.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  19.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  20.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  21.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  22.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  23.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  24.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  25.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  26.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  27.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  28.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  29.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  30.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  31.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  32.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  33.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  34.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  35.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  36.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  37.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  38.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  39.0
+                                                     },
+                                                     {
+                                                         "count":  0.0,
+                                                         "empty":  true,
+                                                         "item":  "minecraft:air",
+                                                         "slot":  40.0
+                                                     }
+                                                 ],
+                                       "player":  {
+                                                      "name":  "Dev",
+                                                      "uuid":  "380df991-f603-344c-a090-369bad2a924a"
+                                                  }
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.entity.list@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "includePlayers":  true,
+                                                    "limit":  8
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.entity.list",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "entity list",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "limit":  8.0,
+                                       "dimension":  "minecraft:overworld",
+                                       "truncated":  true,
+                                       "entities":  [
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Minecart with Chest",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  147.5,
+                                                                             "y":  6.0625,
+                                                                             "z":  140.5
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  0.0
+                                                                         },
+                                                            "type":  "minecraft:chest_minecart",
+                                                            "uuid":  "05bfc30e-27b4-4140-b344-c6042ae810dd"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Dev",
+                                                            "onGround":  true,
+                                                            "position":  {
+                                                                             "x":  95.5,
+                                                                             "y":  63.0,
+                                                                             "z":  134.5
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  0.0
+                                                                         },
+                                                            "type":  "minecraft:player",
+                                                            "uuid":  "380df991-f603-344c-a090-369bad2a924a"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Glow Squid",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  94.84885067678988,
+                                                                             "y":  2.64103015512228,
+                                                                             "z":  169.64444482512772
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  -0.9053936004638672
+                                                                         },
+                                                            "type":  "minecraft:glow_squid",
+                                                            "uuid":  "bc736804-16f1-4de3-86d9-8a5839d7e075"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Glow Squid",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  90.94567231554538,
+                                                                             "y":  1.989503170363605,
+                                                                             "z":  175.55504459980875
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  0.25786465406417847
+                                                                         },
+                                                            "type":  "minecraft:glow_squid",
+                                                            "uuid":  "6f5ff4dc-1eec-4e9a-88ef-246b60ded075"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Glow Squid",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  92.3879147907719,
+                                                                             "y":  2.4674848313443363,
+                                                                             "z":  176.94921077648178
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  0.3747786581516266
+                                                                         },
+                                                            "type":  "minecraft:glow_squid",
+                                                            "uuid":  "594c0136-d11c-4c03-b4da-388fdc48b4da"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Glow Squid",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  93.27871407009661,
+                                                                             "y":  22.962890050839633,
+                                                                             "z":  152.19259530841373
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  1.0862544775009155
+                                                                         },
+                                                            "type":  "minecraft:glow_squid",
+                                                            "uuid":  "208c15ff-bb98-4409-bb1a-2886a2fe1a9a"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Glow Squid",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  93.41152197215706,
+                                                                             "y":  21.86585671757348,
+                                                                             "z":  149.37973925704136
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  -1.5850274562835693
+                                                                         },
+                                                            "type":  "minecraft:glow_squid",
+                                                            "uuid":  "43ba2325-3d6b-45d8-9c67-f711c6101757"
+                                                        },
+                                                        {
+                                                            "alive":  true,
+                                                            "name":  "Glow Squid",
+                                                            "onGround":  false,
+                                                            "position":  {
+                                                                             "x":  82.77733341883868,
+                                                                             "y":  19.59575088880956,
+                                                                             "z":  144.13272319640964
+                                                                         },
+                                                            "rotation":  {
+                                                                             "pitch":  0.0,
+                                                                             "yaw":  0.42977261543273926
+                                                                         },
+                                                            "type":  "minecraft:glow_squid",
+                                                            "uuid":  "fd29e36d-e114-4e9d-9dd1-5d0d171dbc3a"
+                                                        }
+                                                    ]
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.entity.nearby.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "radius":  8,
+                                                    "includePlayers":  true,
+                                                    "limit":  8
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.entity.nearby.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "nearby entities",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "limit":  8.0,
+                                       "radius":  8.0,
+                                       "truncated":  false,
+                                       "dimension":  "minecraft:overworld",
+                                       "entities":  [
+
+                                                    ]
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.heightmap.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "sizeX":  2,
+                                                    "sizeZ":  2,
+                                                    "includeSurfaceBlocks":  true,
+                                                    "z":  134,
+                                                    "x":  95
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.heightmap.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "heightmap read",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "origin":  {
+                                                      "x":  95.0,
+                                                      "z":  134.0
+                                                  },
+                                       "loadedColumns":  4.0,
+                                       "columnCount":  4.0,
+                                       "columns":  [
+                                                       {
+                                                           "empty":  false,
+                                                           "height":  62.0,
+                                                           "loaded":  true,
+                                                           "surfaceBlock":  "minecraft:stone",
+                                                           "x":  95.0,
+                                                           "z":  134.0
+                                                       },
+                                                       {
+                                                           "empty":  false,
+                                                           "height":  62.0,
+                                                           "loaded":  true,
+                                                           "surfaceBlock":  "minecraft:stone",
+                                                           "x":  96.0,
+                                                           "z":  134.0
+                                                       },
+                                                       {
+                                                           "empty":  false,
+                                                           "height":  62.0,
+                                                           "loaded":  true,
+                                                           "surfaceBlock":  "minecraft:stone",
+                                                           "x":  95.0,
+                                                           "z":  135.0
+                                                       },
+                                                       {
+                                                           "empty":  false,
+                                                           "height":  62.0,
+                                                           "loaded":  true,
+                                                           "surfaceBlock":  "minecraft:stone",
+                                                           "x":  96.0,
+                                                           "z":  135.0
+                                                       }
+                                                   ],
+                                       "stats":  {
+                                                     "hasHeightData":  true,
+                                                     "heightRange":  0.0,
+                                                     "maxHeight":  62.0,
+                                                     "minHeight":  62.0
+                                                 },
+                                       "unloadedColumns":  0.0,
+                                       "size":  {
+                                                    "x":  2.0,
+                                                    "z":  2.0
+                                                }
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.light.analyze@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "y":  63,
+                                                    "sizeY":  2,
+                                                    "x":  95,
+                                                    "darkSpotLimit":  4,
+                                                    "sizeX":  2,
+                                                    "sizeZ":  2,
+                                                    "lightSourceLimit":  4,
+                                                    "resolution":  1,
+                                                    "z":  134
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.light.analyze",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "light analysis",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "origin":  {
+                                                      "x":  95.0,
+                                                      "y":  63.0,
+                                                      "z":  134.0
+                                                  },
+                                       "candidateSamples":  8.0,
+                                       "averageCombinedLight":  15.0,
+                                       "size":  {
+                                                    "x":  2.0,
+                                                    "y":  2.0,
+                                                    "z":  2.0
+                                                },
+                                       "lightSourceCount":  0.0,
+                                       "darkSpots":  [
+
+                                                     ],
+                                       "darkSpotsTruncated":  false,
+                                       "lightSources":  [
+
+                                                        ],
+                                       "unloadedSamples":  0.0,
+                                       "darkSpotCount":  0.0,
+                                       "dimension":  "minecraft:overworld",
+                                       "resolution":  1.0,
+                                       "histogram":  [
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         0.0,
+                                                         8.0
+                                                     ],
+                                       "solidSamples":  0.0,
+                                       "mobSpawnRisk":  "none",
+                                       "analyzedSamples":  8.0,
+                                       "distribution":  {
+                                                            "dark":  {
+                                                                         "count":  0.0,
+                                                                         "percentage":  0.0
+                                                                     },
+                                                            "dim":  {
+                                                                        "count":  0.0,
+                                                                        "percentage":  0.0
+                                                                    },
+                                                            "wellLit":  {
+                                                                            "count":  8.0,
+                                                                            "percentage":  100.0
+                                                                        }
+                                                        },
+                                       "suggestions":  [
+
+                                                       ],
+                                       "lightSourcesTruncated":  false
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "sizeZ":  1,
+                                                    "y":  66,
+                                                    "dimension":  "minecraft:overworld",
+                                                    "z":  134,
+                                                    "x":  95,
+                                                    "sizeX":  1,
+                                                    "sizeY":  1
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "block baseline read",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "origin":  {
+                                                      "x":  95.0,
+                                                      "y":  66.0,
+                                                      "z":  134.0
+                                                  },
+                                       "size":  {
+                                                    "x":  1.0,
+                                                    "y":  1.0,
+                                                    "z":  1.0
+                                                },
+                                       "blocks":  [
+                                                      {
+                                                          "air":  true,
+                                                          "block":  "minecraft:air",
+                                                          "loaded":  true,
+                                                          "position":  {
+                                                                           "x":  95.0,
+                                                                           "y":  66.0,
+                                                                           "z":  134.0
+                                                                       }
+                                                      }
+                                                  ],
+                                       "count":  1.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "sizeZ":  1,
+                                                    "y":  67,
+                                                    "dimension":  "minecraft:overworld",
+                                                    "z":  134,
+                                                    "x":  95,
+                                                    "sizeX":  1,
+                                                    "sizeY":  1
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "mutation target baseline read",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "origin":  {
+                                                      "x":  95.0,
+                                                      "y":  67.0,
+                                                      "z":  134.0
+                                                  },
+                                       "size":  {
+                                                    "x":  1.0,
+                                                    "y":  1.0,
+                                                    "z":  1.0
+                                                },
+                                       "blocks":  [
+                                                      {
+                                                          "air":  true,
+                                                          "block":  "minecraft:air",
+                                                          "loaded":  true,
+                                                          "position":  {
+                                                                           "x":  95.0,
+                                                                           "y":  67.0,
+                                                                           "z":  134.0
+                                                                       }
+                                                      }
+                                                  ],
+                                       "count":  1.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.write@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "changes":  [
+                                                                    {
+                                                                        "y":  67,
+                                                                        "block":  "minecraft:air",
+                                                                        "z":  134,
+                                                                        "x":  95
+                                                                    }
+                                                                ],
+                                                    "dimension":  "minecraft:overworld",
+                                                    "dryRun":  false
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.write",
+                                      "dryRun":  true
+                                  },
+                        "expectation":  "validate reversible mutation",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "changes":  [
+                                                       {
+                                                           "applied":  false,
+                                                           "changed":  true,
+                                                           "position":  {
+                                                                            "x":  95.0,
+                                                                            "y":  67.0,
+                                                                            "z":  134.0
+                                                                        },
+                                                           "previousBlock":  "minecraft:air",
+                                                           "requestedBlock":  "minecraft:gold_block"
+                                                       }
+                                                   ],
+                                       "dryRun":  true,
+                                       "requestedCount":  1.0,
+                                       "validated":  true,
+                                       "dimension":  "minecraft:overworld",
+                                       "changedCount":  0.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.write@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "changes":  [
+                                                                    {
+                                                                        "y":  67,
+                                                                        "block":  "minecraft:air",
+                                                                        "z":  134,
+                                                                        "x":  95
+                                                                    }
+                                                                ],
+                                                    "dimension":  "minecraft:overworld",
+                                                    "dryRun":  false
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.write",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "write marker block",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "changes":  [
+                                                       {
+                                                           "applied":  true,
+                                                           "changed":  true,
+                                                           "position":  {
+                                                                            "x":  95.0,
+                                                                            "y":  67.0,
+                                                                            "z":  134.0
+                                                                        },
+                                                           "previousBlock":  "minecraft:air",
+                                                           "requestedBlock":  "minecraft:gold_block"
+                                                       }
+                                                   ],
+                                       "dryRun":  false,
+                                       "requestedCount":  1.0,
+                                       "validated":  true,
+                                       "dimension":  "minecraft:overworld",
+                                       "changedCount":  1.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "sizeZ":  1,
+                                                    "y":  67,
+                                                    "dimension":  "minecraft:overworld",
+                                                    "z":  134,
+                                                    "x":  95,
+                                                    "sizeX":  1,
+                                                    "sizeY":  1
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "marker readback",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "origin":  {
+                                                      "x":  95.0,
+                                                      "y":  67.0,
+                                                      "z":  134.0
+                                                  },
+                                       "size":  {
+                                                    "x":  1.0,
+                                                    "y":  1.0,
+                                                    "z":  1.0
+                                                },
+                                       "blocks":  [
+                                                      {
+                                                          "air":  false,
+                                                          "block":  "minecraft:gold_block",
+                                                          "loaded":  true,
+                                                          "position":  {
+                                                                           "x":  95.0,
+                                                                           "y":  67.0,
+                                                                           "z":  134.0
+                                                                       }
+                                                      }
+                                                  ],
+                                       "count":  1.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.write@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "changes":  [
+                                                                    {
+                                                                        "y":  67,
+                                                                        "block":  "minecraft:air",
+                                                                        "z":  134,
+                                                                        "x":  95
+                                                                    }
+                                                                ],
+                                                    "dimension":  "minecraft:overworld",
+                                                    "dryRun":  false
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.write",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "restore marker location",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "changes":  [
+                                                       {
+                                                           "applied":  true,
+                                                           "changed":  true,
+                                                           "position":  {
+                                                                            "x":  95.0,
+                                                                            "y":  67.0,
+                                                                            "z":  134.0
+                                                                        },
+                                                           "previousBlock":  "minecraft:gold_block",
+                                                           "requestedBlock":  "minecraft:air"
+                                                       }
+                                                   ],
+                                       "dryRun":  false,
+                                       "requestedCount":  1.0,
+                                       "validated":  true,
+                                       "dimension":  "minecraft:overworld",
+                                       "changedCount":  1.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.world.blocks.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "sizeZ":  1,
+                                                    "y":  67,
+                                                    "dimension":  "minecraft:overworld",
+                                                    "z":  134,
+                                                    "x":  95,
+                                                    "sizeX":  1,
+                                                    "sizeY":  1
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.world.blocks.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "restoration readback",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "origin":  {
+                                                      "x":  95.0,
+                                                      "y":  67.0,
+                                                      "z":  134.0
+                                                  },
+                                       "size":  {
+                                                    "x":  1.0,
+                                                    "y":  1.0,
+                                                    "z":  1.0
+                                                },
+                                       "blocks":  [
+                                                      {
+                                                          "air":  true,
+                                                          "block":  "minecraft:air",
+                                                          "loaded":  true,
+                                                          "position":  {
+                                                                           "x":  95.0,
+                                                                           "y":  67.0,
+                                                                           "z":  134.0
+                                                                       }
+                                                      }
+                                                  ],
+                                       "count":  1.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.player.look@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "pitch":  0,
+                                                    "yaw":  1
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.player.look",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "rotate one degree",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "yaw":  1.0,
+                                       "pitch":  0.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.player.state.read@1.0",
+                        "input":  {
+                                      "input":  {
+
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.player.state.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "rotation readback",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "dimension":  "minecraft:overworld",
+                                       "position":  {
+                                                        "x":  95.5,
+                                                        "y":  63.0,
+                                                        "z":  134.5
+                                                    },
+                                       "selectedSlot":  0.0,
+                                       "name":  "Dev",
+                                       "health":  20.0,
+                                       "uuid":  "380df991-f603-344c-a090-369bad2a924a",
+                                       "food":  20.0,
+                                       "rotation":  {
+                                                        "pitch":  0.0,
+                                                        "yaw":  1.0
+                                                    }
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.player.look@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "pitch":  0,
+                                                    "yaw":  0
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.player.look",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "restore rotation",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "yaw":  0.0,
+                                       "pitch":  0.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.player.move@2.0",
+                        "input":  {
+                                      "input":  {
+                                                    "jump":  false,
+                                                    "sneak":  false,
+                                                    "sprint":  false,
+                                                    "forward":  0,
+                                                    "strafe":  0,
+                                                    "durationMs":  1
+                                                },
+                                      "capabilityVersion":  "2.0",
+                                      "capability":  "minecraft.player.move",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "zero-motion control path",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "leaseGeneration":  3.0,
+                                       "forward":  0.0,
+                                       "durationMs":  1.0,
+                                       "sneak":  false,
+                                       "jump":  false,
+                                       "sprint":  false,
+                                       "strafe":  0.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.inventory.slot.select@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "slot":  0
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.inventory.slot.select",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "reselect current slot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "selectedSlot":  0.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.chat.send@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "message":  "[Lodestone] NeoForge KeepFocus flow benchmark marker"
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.chat.send",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "chat mutation/readback marker",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "recipientCount":  1.0,
+                                       "sent":  true,
+                                       "message":  "[Lodestone] NeoForge KeepFocus flow benchmark marker"
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.chat.read@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "limit":  8
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.chat.read",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "chat readback",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "count":  1.0,
+                                       "messages":  [
+                                                        {
+                                                            "message":  "[Lodestone] NeoForge KeepFocus flow benchmark marker",
+                                                            "sender":  "00000000-0000-0000-0000-000000000000",
+                                                            "system":  true
+                                                        }
+                                                    ]
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.client.screenshot.capture@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "maxWidth":  320,
+                                                    "maxHeight":  180
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.client.screenshot.capture",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "in-world capture",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "playerRotation":  {
+                                                              "pitch":  0.0,
+                                                              "yaw":  0.0
+                                                          },
+                                       "height":  179.0,
+                                       "originalWidth":  854.0,
+                                       "playerPosition":  {
+                                                              "x":  95.5,
+                                                              "y":  63.0,
+                                                              "z":  134.5
+                                                          },
+                                       "width":  320.0,
+                                       "artifact":  {
+                                                        "expiresAtEpochMs":  1784054028210,
+                                                        "uri":  "lodestone://artifacts/sha256/be4c03230e2967c77e8b97213bae21c0211830e986b31b8d8d693f59ec25f673",
+                                                        "sha256":  "be4c03230e2967c77e8b97213bae21c0211830e986b31b8d8d693f59ec25f673",
+                                                        "mediaType":  "image/png",
+                                                        "sizeBytes":  74631
+                                                    },
+                                       "originalHeight":  480.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.input.release-all@1.0",
+                        "input":  {
+                                      "input":  {
+
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.input.release-all",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "world input cleanup",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "released":  [
+
+                                                    ],
+                                       "leaseGeneration":  4.0,
+                                       "count":  0.0
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "truncated":  false,
+                                       "open":  false,
+                                       "screenClass":  "",
+                                       "snapshotRevision":  "32e6c856fa24dddde86aee23555ea4116f07fb4b0feac38376f5de46a92394a8",
+                                       "height":  240.0,
+                                       "guiScale":  2.0,
+                                       "inWorld":  true,
+                                       "screen":  "",
+                                       "screenToken":  "neo121-o",
+                                       "widgets":  [
+
+                                                   ],
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "capturedAtTick":  1160.0,
+                                       "width":  427.0,
+                                       "coverage":  "complete",
+                                       "title":  ""
+                                   },
+                        "error":  null
+                    }
+                ],
+    "provenance":  {
+                       "sourceCommit":  "677a013bd903a90226537cb28466abaa5162594e",
+                       "sourceDirtyPaths":  [
+
+                                            ],
+                       "lodestoneArtifact":  {
+                                                 "path":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\Lodestone\\hosts\\neoforge\\1.21.1\\build\\libs\\lodestone-1.0.0.jar",
+                                                 "bytes":  431610,
+                                                 "sha256":  "d1a46677cfb9ff2cc0a738db417a922189a1197c70f878497a62aa8fed8625ce"
+                                             },
+                       "keepFocusArtifact":  {
+                                                 "path":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\KeepFocus\\build\\libs\\keep_focus-1.0.0+1.21.1.jar",
+                                                 "bytes":  3502,
+                                                 "sha256":  "7a1268d22cf7be41fff9a83f7a96a85eddd767f9871820ca966117b374ecd7d7"
+                                             }
+                   },
+    "sessionId":  "de04975e-f9c7-433a-afad-d7e6cf9d666d",
+    "completedAtUtc":  "2026-07-14T18:32:48.2449655Z"
+}

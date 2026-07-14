@@ -1,0 +1,900 @@
+﻿{
+    "formatVersion":  1,
+    "benchmark":  "neoforge-1.21.1-keepfocus-flow",
+    "stage":  "shutdown",
+    "startedAtUtc":  "2026-07-14T18:33:37.4592982Z",
+    "endpoint":  "http://127.0.0.1:37828/mcp",
+    "records":  [
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "truncated":  false,
+                                       "open":  false,
+                                       "screenClass":  "",
+                                       "snapshotRevision":  "32e6c856fa24dddde86aee23555ea4116f07fb4b0feac38376f5de46a92394a8",
+                                       "height":  240.0,
+                                       "guiScale":  2.0,
+                                       "inWorld":  true,
+                                       "screen":  "",
+                                       "screenToken":  "neo121-o",
+                                       "widgets":  [
+
+                                                   ],
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "capturedAtTick":  2165.0,
+                                       "width":  427.0,
+                                       "coverage":  "complete",
+                                       "title":  ""
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.ui.key@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "scanCode":  0,
+                                                    "key":  256,
+                                                    "modifiers":  0
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.ui.key",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "escape current UI screen",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "handled":  true,
+                                       "openedPause":  true
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "truncated":  false,
+                                       "open":  true,
+                                       "screenClass":  "net.minecraft.client.gui.screens.PauseScreen",
+                                       "snapshotRevision":  "eabb306ece67d7e9cf0efb7132c3715c99151faa9651210d51d495b5c451f4c6",
+                                       "height":  240.0,
+                                       "guiScale":  2.0,
+                                       "inWorld":  true,
+                                       "screen":  "PauseScreen",
+                                       "screenToken":  "neo121-p",
+                                       "widgets":  [
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  204.0,
+                                                                          "x":  111.0,
+                                                                          "y":  62.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Back to Game",
+                                                           "narration":  "Back to Game",
+                                                           "nodeId":  "neo121-p:0",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        0.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  111.0,
+                                                                          "y":  86.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Advancements",
+                                                           "narration":  "Advancements",
+                                                           "nodeId":  "neo121-p:1",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        1.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  217.0,
+                                                                          "y":  86.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Statistics",
+                                                           "narration":  "Statistics",
+                                                           "nodeId":  "neo121-p:2",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        2.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  111.0,
+                                                                          "y":  110.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Give Feedback",
+                                                           "narration":  "Give Feedback",
+                                                           "nodeId":  "neo121-p:3",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        3.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  217.0,
+                                                                          "y":  110.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Report Bugs",
+                                                           "narration":  "Report Bugs",
+                                                           "nodeId":  "neo121-p:4",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        4.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  111.0,
+                                                                          "y":  134.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Options...",
+                                                           "narration":  "Options...",
+                                                           "nodeId":  "neo121-p:5",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        5.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  217.0,
+                                                                          "y":  134.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Open to LAN",
+                                                           "narration":  "Open to LAN",
+                                                           "nodeId":  "neo121-p:6",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        6.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  204.0,
+                                                                          "x":  111.0,
+                                                                          "y":  158.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Mods",
+                                                           "narration":  "Mods",
+                                                           "nodeId":  "neo121-p:7",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        7.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  204.0,
+                                                                          "x":  111.0,
+                                                                          "y":  182.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Save and Quit to Title",
+                                                           "narration":  "Save and Quit to Title",
+                                                           "nodeId":  "neo121-p:8",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        8.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+
+                                                                       ],
+                                                           "active":  false,
+                                                           "bounds":  {
+                                                                          "height":  9.0,
+                                                                          "width":  427.0,
+                                                                          "x":  0.0,
+                                                                          "y":  40.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Game Menu",
+                                                           "narration":  "Game Menu",
+                                                           "nodeId":  "neo121-p:9",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        9.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.StringWidget",
+                                                           "visible":  true
+                                                       }
+                                                   ],
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "capturedAtTick":  2185.0,
+                                       "width":  427.0,
+                                       "coverage":  "complete",
+                                       "title":  "Game Menu"
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.ui.click@2.0",
+                        "input":  {
+                                      "input":  {
+                                                    "screenToken":  "neo121-p",
+                                                    "snapshotRevision":  "eabb306ece67d7e9cf0efb7132c3715c99151faa9651210d51d495b5c451f4c6",
+                                                    "nodeId":  "neo121-p:8"
+                                                },
+                                      "capabilityVersion":  "2.0",
+                                      "capability":  "minecraft.ui.click",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "save and quit to title through MCP UI click",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "handled":  true,
+                                       "nodeId":  "neo121-p:8",
+                                       "x":  213.0,
+                                       "screenToken":  "neo121-p",
+                                       "y":  192.0,
+                                       "snapshotRevision":  "eabb306ece67d7e9cf0efb7132c3715c99151faa9651210d51d495b5c451f4c6"
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "truncated":  false,
+                                       "open":  true,
+                                       "screenClass":  "net.minecraft.client.gui.screens.TitleScreen",
+                                       "snapshotRevision":  "90f5742344c9d02effe6a8488bf07301bfb612da49d572a7449553704f53bc5d",
+                                       "height":  240.0,
+                                       "guiScale":  2.0,
+                                       "inWorld":  false,
+                                       "screen":  "TitleScreen",
+                                       "screenToken":  "neo121-q",
+                                       "widgets":  [
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  92.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Singleplayer",
+                                                           "narration":  "Singleplayer",
+                                                           "nodeId":  "neo121-q:0",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        0.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  116.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Multiplayer",
+                                                           "narration":  "Multiplayer",
+                                                           "nodeId":  "neo121-q:1",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        1.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  140.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Minecraft Realms",
+                                                           "narration":  "Minecraft Realms",
+                                                           "nodeId":  "neo121-q:2",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        2.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  164.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Mods",
+                                                           "narration":  "Mods",
+                                                           "nodeId":  "neo121-q:3",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        3.0
+                                                                    ],
+                                                           "type":  "net.neoforged.neoforge.client.gui.widget.ModsButton",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  89.0,
+                                                                          "y":  198.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Language...",
+                                                           "narration":  "Language...",
+                                                           "nodeId":  "neo121-q:4",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        4.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  113.0,
+                                                                          "y":  198.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Options...",
+                                                           "narration":  "Options...",
+                                                           "nodeId":  "neo121-q:5",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        5.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  215.0,
+                                                                          "y":  198.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Quit Game",
+                                                           "narration":  "Quit Game",
+                                                           "nodeId":  "neo121-q:6",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        6.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  317.0,
+                                                                          "y":  198.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Accessibility Settings...",
+                                                           "narration":  "Accessibility Settings...",
+                                                           "nodeId":  "neo121-q:7",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        7.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  10.0,
+                                                                          "width":  196.0,
+                                                                          "x":  229.0,
+                                                                          "y":  230.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Copyright Mojang AB. Do not distribute!",
+                                                           "narration":  "Copyright Mojang AB. Do not distribute!",
+                                                           "nodeId":  "neo121-q:8",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        8.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.PlainTextButton",
+                                                           "visible":  true
+                                                       }
+                                                   ],
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "capturedAtTick":  2218.0,
+                                       "width":  427.0,
+                                       "coverage":  "complete",
+                                       "title":  "Title Screen"
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_navigate",
+                        "input":  {
+                                      "target":  "quit_game"
+                                  },
+                        "expectation":  "normal game shutdown through MCP",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "click":  {
+                                                     "handled":  true,
+                                                     "nodeId":  "neo121-q:6",
+                                                     "screenToken":  "neo121-q",
+                                                     "snapshotRevision":  "90f5742344c9d02effe6a8488bf07301bfb612da49d572a7449553704f53bc5d",
+                                                     "x":  264.0,
+                                                     "y":  208.0
+                                                 },
+                                       "handled":  true,
+                                       "label":  "Quit Game",
+                                       "before":  {
+                                                      "capturedAtTick":  2219.0,
+                                                      "coverage":  "complete",
+                                                      "guiScale":  2.0,
+                                                      "height":  240.0,
+                                                      "inWorld":  false,
+                                                      "open":  true,
+                                                      "screen":  "TitleScreen",
+                                                      "screenClass":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                      "screenToken":  "neo121-q",
+                                                      "snapshotRevision":  "90f5742344c9d02effe6a8488bf07301bfb612da49d572a7449553704f53bc5d",
+                                                      "title":  "Title Screen",
+                                                      "truncated":  false,
+                                                      "truncationCauses":  [
+
+                                                                           ],
+                                                      "widgets":  [
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  92.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Singleplayer",
+                                                                          "narration":  "Singleplayer",
+                                                                          "nodeId":  "neo121-q:0",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       0.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  116.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Multiplayer",
+                                                                          "narration":  "Multiplayer",
+                                                                          "nodeId":  "neo121-q:1",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       1.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  140.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Minecraft Realms",
+                                                                          "narration":  "Minecraft Realms",
+                                                                          "nodeId":  "neo121-q:2",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       2.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  164.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Mods",
+                                                                          "narration":  "Mods",
+                                                                          "nodeId":  "neo121-q:3",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       3.0
+                                                                                   ],
+                                                                          "type":  "net.neoforged.neoforge.client.gui.widget.ModsButton",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  20.0,
+                                                                                         "x":  89.0,
+                                                                                         "y":  198.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Language...",
+                                                                          "narration":  "Language...",
+                                                                          "nodeId":  "neo121-q:4",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       4.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  98.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  198.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Options...",
+                                                                          "narration":  "Options...",
+                                                                          "nodeId":  "neo121-q:5",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       5.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  98.0,
+                                                                                         "x":  215.0,
+                                                                                         "y":  198.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Quit Game",
+                                                                          "narration":  "Quit Game",
+                                                                          "nodeId":  "neo121-q:6",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       6.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  20.0,
+                                                                                         "x":  317.0,
+                                                                                         "y":  198.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Accessibility Settings...",
+                                                                          "narration":  "Accessibility Settings...",
+                                                                          "nodeId":  "neo121-q:7",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       7.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  10.0,
+                                                                                         "width":  196.0,
+                                                                                         "x":  229.0,
+                                                                                         "y":  230.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Copyright Mojang AB. Do not distribute!",
+                                                                          "narration":  "Copyright Mojang AB. Do not distribute!",
+                                                                          "nodeId":  "neo121-q:8",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       8.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.PlainTextButton",
+                                                                          "visible":  true
+                                                                      }
+                                                                  ],
+                                                      "width":  427.0
+                                                  },
+                                       "match":  "exact",
+                                       "target":  "quit_game"
+                                   },
+                        "error":  null
+                    }
+                ],
+    "provenance":  {
+                       "sourceCommit":  "677a013bd903a90226537cb28466abaa5162594e",
+                       "sourceDirtyPaths":  [
+
+                                            ],
+                       "lodestoneArtifact":  {
+                                                 "path":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\Lodestone\\hosts\\neoforge\\1.21.1\\build\\libs\\lodestone-1.0.0.jar",
+                                                 "bytes":  431610,
+                                                 "sha256":  "d1a46677cfb9ff2cc0a738db417a922189a1197c70f878497a62aa8fed8625ce"
+                                             },
+                       "keepFocusArtifact":  {
+                                                 "path":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\KeepFocus\\build\\libs\\keep_focus-1.0.0+1.21.1.jar",
+                                                 "bytes":  3502,
+                                                 "sha256":  "7a1268d22cf7be41fff9a83f7a96a85eddd767f9871820ca966117b374ecd7d7"
+                                             }
+                   },
+    "sessionId":  "4526a2c2-8fc6-4b37-b6ad-4736604a95ee",
+    "shutdownVerification":  {
+                                 "latestLog":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\Lodestone\\verification\\neoforge-artifact-client\\run\\logs\\latest.log",
+                                 "stoppingMarker":  true,
+                                 "fatalMarker":  false,
+                                 "javaProcessCount":  0
+                             },
+    "completedAtUtc":  "2026-07-14T18:33:44.9578456Z"
+}
