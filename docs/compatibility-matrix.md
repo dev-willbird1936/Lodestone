@@ -47,8 +47,9 @@ match that evidence.
 
 | Status | Target | Reason |
 | --- | --- | --- |
+| 🔄 | NeoForge 1.21.1 client menu control (post-v1 source) | Authenticated typed navigation reached a fresh world through the two modern `Create New World` screens, and player look has exact readback. Bounded 120-second UI defaults are packaged. Evidence supports a later coherent patch artifact, not an alteration of v1.0.0. |
 | 🔄 | Fabric 1.20.1 client menu control (post-v1 source) | Authenticated typed navigation reached a fresh world, and player look has exact readback. Bounded 120-second UI transition defaults prevent the observed 16.5-second world load from becoming an indeterminate mutation. Evidence supports the next Fabric patch artifact, not an alteration of v1.0.0. |
-| 🔄 | Full cross-version client control and menu automation | Bounded client bridges exist on selected Fabric lines, but broad manual client acceptance is not certified. |
+| 🔄 | Full cross-version client control and menu automation | Bounded client bridges exist on selected Fabric and NeoForge lines, but broad manual client acceptance is not certified. |
 | 🔄 | Container/NBT, inventory/entity mutation, and broad event parity | Typed catalog entries remain unavailable or restricted until each adapter has a safe implementation and evidence. |
 | 🔄 | More Minecraft versions and loaders | Each needs a separate adapter, final artifact, and its own row. |
 | ❌ | Folia 1.21.1 | No official server build was available for the certified path. |

@@ -13,6 +13,8 @@ product as a whole; Minecraft and loader compatibility is listed per asset in ea
   newer projects continue to configure with Java 21.
 - UI click, UI key, and semantic menu navigation now use a bounded 120-second default deadline,
   preventing normal integrated-world startup from being reported as an indeterminate mutation.
+- NeoForge 1.21.1 now has a post-v1 authenticated main-menu route through fresh-world creation,
+  with guarded typed UI state and player-look readback.
 
 ## 1.0.0 - release candidate
 

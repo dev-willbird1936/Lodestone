@@ -62,6 +62,11 @@ every Minecraft environment.
   client shutdown. The three bounded UI-transition defaults are 120 seconds, preventing a normal
   16.5-second world load from becoming an indeterminate mutation; this is evidence for a later
   Fabric patch artifact, not a changed v1.0.0 claim.
+- NeoForge 1.21.1 now has a manual post-v1 main-menu/control slice: authenticated guarded UI
+  navigation reached a fresh world through its two modern `Create New World` screens, and player
+  look read back exactly. It uses the same bounded 120-second UI defaults and clean shutdown;
+  English vanilla menu labels, broad automation, and v1.0.0 release bytes remain outside this
+  narrow claim.
 - The negotiated catalog now includes normalized open-container reads; Fabric 1.18.2/1.19.2/
   1.20.1/1.21.1 and NeoForge 1.21.1 expose stable slot projections and revisions, while Fabric
   click operations enforce revision, slot, and button bounds.
