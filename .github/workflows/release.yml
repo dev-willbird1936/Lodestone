@@ -78,11 +78,28 @@ jobs:
           "gradle7=$(Get-Gradle '7.6.4' 'bed1da33cca0f557ab13691c77f38bb67388119e4794d113e051039b80af9bb1')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "gradle9=$(Get-Gradle '9.5.1' 'bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+      - name: Verify Windows PowerShell hash runtime for contract tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $legacyModules = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\Modules'
+          $machineModules = [Environment]::GetEnvironmentVariable('PSModulePath', 'Machine')
+          $env:PSModulePath = "$legacyModules;$machineModules"
+          & powershell.exe -NoLogo -NoProfile -NonInteractive -Command '$PSVersionTable.PSVersion; Get-Command Get-FileHash -ErrorAction Stop | Select-Object -ExpandProperty Source'
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell Get-FileHash preflight failed with exit $LASTEXITCODE." }
+
       - name: Full source, unit, gateway, adapter, and contract verification
         shell: pwsh
         env:
           JAVA_HOME: ${{ steps.java21.outputs.path }}
-        run: .\gradlew.bat projects check --no-parallel
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The immutable tag's Java contract runner launches powershell.exe.
+          # pwsh's default PSModulePath omits Windows PowerShell utility modules.
+          $legacyModules = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\Modules'
+          $machineModules = [Environment]::GetEnvironmentVariable('PSModulePath', 'Machine')
+          $env:PSModulePath = "$legacyModules;$machineModules"
+          .\gradlew.bat projects check --no-parallel
 
       # The immutable tag cannot be rewritten to add diagnostics.  On a retry,
       # preserve the failing contract's captured subprocess output in the run log

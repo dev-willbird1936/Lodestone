@@ -105,6 +105,10 @@ class ReleaseAssemblyContractTest {
         assertTrue(workflow.contains("ref: ${{ inputs.tag || github.ref }}"),
                 "manual release retries must check out the requested immutable tag");
         assertTrue(workflow.contains("Verify checked-out immutable release tag"));
+        assertTrue(workflow.contains("Verify Windows PowerShell hash runtime for contract tests"),
+                "the Windows PowerShell subprocess used by immutable-tag contracts must be preflighted");
+        assertTrue(workflow.contains("$env:PSModulePath = \"$legacyModules;$machineModules\""),
+                "the full gate must restore Windows PowerShell utility-module discovery");
         assertTrue(workflow.contains(".\\gradlew.bat projects check --no-parallel"),
                 "tag publishing must run the full verification gate");
         assertTrue(workflow.contains("JAVA_HOME: ${{ steps.java21.outputs.path }}"),
