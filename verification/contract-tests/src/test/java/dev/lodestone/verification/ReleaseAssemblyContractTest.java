@@ -110,6 +110,10 @@ class ReleaseAssemblyContractTest {
                 "the Windows PowerShell subprocess used by immutable-tag contracts must be preflighted");
         assertTrue(workflow.contains("$env:PSModulePath = \"$legacyModules;$machineModules\""),
                 "the full gate must restore Windows PowerShell utility-module discovery");
+        assertTrue(workflow.contains("Get-ChildItem -LiteralPath $env:GITHUB_WORKSPACE -Recurse -Filter 'TEST-*.xml'"),
+                "a failed release gate must retain diagnostics from the module that actually failed");
+        assertTrue(workflow.contains("preserving the original failed gate"),
+                "release diagnostics must not mask the original failing gate when no reports are retained");
         assertTrue(workflow.contains(".\\gradlew.bat projects check --no-parallel"),
                 "tag publishing must run the full verification gate");
         assertTrue(workflow.contains("JAVA_HOME: ${{ steps.java21.outputs.path }}"),

@@ -109,9 +109,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $results = 'verification/contract-tests/build/test-results/test'
-          $reports = @(Get-ChildItem -LiteralPath $results -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)
-          if ($reports.Count -eq 0) { throw "No JUnit XML reports found under $results." }
+          $reports = @(Get-ChildItem -LiteralPath $env:GITHUB_WORKSPACE -Recurse -Filter 'TEST-*.xml' -File |
+              Where-Object { $_.FullName -match '[\\/]build[\\/]test-results[\\/]test[\\/]' })
+          if ($reports.Count -eq 0) {
+            Write-Output 'No JUnit XML reports were retained; preserving the original failed gate.'
+            exit 0
+          }
           foreach ($report in $reports) {
             Get-Content -LiteralPath $report.FullName -Raw
           }

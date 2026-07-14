@@ -154,6 +154,9 @@ every Minecraft environment.
   immutable-tag recovery, the workflow overlays only this audited portability parser, then
   streams and raw-blob-verifies the exact tag file before clean-tree assembly; final profile ZIP
   bytes must still equal C0.
+- The release gate's asynchronous furniture workflow assertions now tolerate a bounded five-second
+  cold-runner scheduling window rather than spuriously failing at one second; any failed module's
+  retained JUnit XML is printed without masking the original gate failure.
 
 ## INTENTION NOT MATCHED
 

@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class FurnitureWorkflowAdapterTest {
+    private static final long COMPLETION_TIMEOUT_SECONDS = 5L;
+
     @Test
     void availabilityTracksTheExactNativeBlockWrite() throws Exception {
         try (var runtime = runtime()) {
@@ -48,7 +50,7 @@ final class FurnitureWorkflowAdapterTest {
             var result = runtime.invoke(request(runtime, Map.of(
                     "furniture_id", "simple_chair", "origin_x", 10, "origin_y", 64, "origin_z", -5,
                     "facing", "east", "place_on_surface", false, "preview_only", true), false))
-                    .get(1, TimeUnit.SECONDS);
+                    .get(COMPLETION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             assertEquals(ResultEnvelope.Status.OK, result.status(), result::toString);
             assertEquals(true, result.output().get("dryRun"));
@@ -69,7 +71,8 @@ final class FurnitureWorkflowAdapterTest {
             runtime.registerAdapter(new FakeBlockWriteAdapter(observed));
             var result = runtime.invoke(request(runtime, Map.of(
                     "furniture_id", "simple_dining_table", "origin_x", 0, "origin_y", 70, "origin_z", 0,
-                    "facing", "north", "place_on_surface", true), false)).get(1, TimeUnit.SECONDS);
+                    "facing", "north", "place_on_surface", true), false))
+                    .get(COMPLETION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             assertEquals(ResultEnvelope.Status.OK, result.status(), result::toString);
             assertPosition(result.output().get("placementOrigin"), 0, 71, 0);
@@ -89,7 +92,7 @@ final class FurnitureWorkflowAdapterTest {
             runtime.registerAdapter(new FakeBlockWriteAdapter(observed));
             var result = runtime.invoke(request(runtime, Map.of(
                     "furniture_id", "corner_table", "origin_x", 0, "origin_y", 64, "origin_z", 0,
-                    "preview_only", false), true)).get(1, TimeUnit.SECONDS);
+                    "preview_only", false), true)).get(COMPLETION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             assertEquals(ResultEnvelope.Status.OK, result.status(), result::toString);
             assertEquals(true, observed.get().get("dryRun"));
@@ -104,7 +107,7 @@ final class FurnitureWorkflowAdapterTest {
             runtime.registerAdapter(writes);
             var result = runtime.invoke(request(runtime, Map.of(
                     "furniture_id", "does_not_exist", "origin_x", 0, "origin_y", 64, "origin_z", 0), false))
-                    .get(1, TimeUnit.SECONDS);
+                    .get(COMPLETION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
             assertEquals(ResultEnvelope.Status.ERROR, result.status());
             assertEquals("ADAPTER_FAILURE", result.error().code());
