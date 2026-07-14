@@ -94,6 +94,17 @@ jobs:
           JAVA_HOME: ${{ steps.java21.outputs.path }}
         run: |
           $ErrorActionPreference = 'Stop'
+          # setup-java's last installation is Java 25 for the isolated Fabric 26.2
+          # build. Gradle 8.14 cannot run this historical contract on that runtime;
+          # select the explicit Java 21 installation inside the step rather than
+          # relying on the job-level JAVA_HOME mutation order.
+          $env:JAVA_HOME = $env:JAVA_HOME_21_X64
+          if ([string]::IsNullOrWhiteSpace($env:JAVA_HOME) -or
+                  -not (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin/java.exe'))) {
+            throw "Java 21 toolchain is unavailable: $env:JAVA_HOME"
+          }
+          $env:Path = "$(Join-Path $env:JAVA_HOME 'bin');$env:Path"
+          & java.exe -version
           # The immutable tag's Java contract runner launches powershell.exe.
           # pwsh's default PSModulePath omits Windows PowerShell utility modules.
           $legacyModules = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\Modules'
@@ -193,24 +204,37 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $tag = '${{ inputs.tag || github.ref_name }}'
           if ($tag -ne 'v1.0.0') { throw "This release pipeline only publishes v1.0.0, not $tag." }
-          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
-          if ($LASTEXITCODE -eq 0) { throw "GitHub release $tag already exists; refusing to replace it." }
+          $existingJson = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,assets 2>$null
+          $existing = $LASTEXITCODE -eq 0
+          $existingRelease = if ($existing) { $existingJson | ConvertFrom-Json } else { $null }
           $stage = Join-Path $env:RUNNER_TEMP 'lodestone-v1.0.0-release'
           $assets = @(Get-ChildItem -LiteralPath $stage -File | Sort-Object Name)
           if ($assets.Count -ne 36) { throw "Expected 36 staged release files, found $($assets.Count)." }
           $assetPaths = @($assets | ForEach-Object { $_.FullName })
 
-          # A failed upload intentionally leaves an inaccessible draft for inspection;
-          # no public release exists until the downloaded byte-for-byte verification passes.
-          gh release create $tag $assetPaths --repo $env:GITHUB_REPOSITORY --verify-tag `
-            --draft --title 'Lodestone v1.0.0' --generate-notes
+          if ($existing) {
+            if (-not $existingRelease.isDraft -and @($existingRelease.assets).Count -ne $assets.Count) {
+              throw "Published release $tag asset count differs from staging inventory."
+            }
+            $remoteNames = @($existingRelease.assets | ForEach-Object name | Sort-Object)
+            $stageNames = @($assets | ForEach-Object Name | Sort-Object)
+            if (($remoteNames -join "`n") -cne ($stageNames -join "`n")) {
+              throw "Existing release $tag asset filenames differ from staging inventory."
+            }
+            Write-Output "Existing release $tag found; verifying its immutable uploaded bytes without replacing it."
+          } else {
+            # A failed upload intentionally leaves an inaccessible draft for inspection;
+            # no public release exists until the downloaded byte-for-byte verification passes.
+            gh release create $tag $assetPaths --repo $env:GITHUB_REPOSITORY --verify-tag `
+              --draft --title 'Lodestone v1.0.0' --generate-notes
 
-          $draft = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,assets | ConvertFrom-Json
-          if (-not $draft.isDraft) { throw "Release $tag was not retained as a draft for verification." }
-          if (@($draft.assets).Count -ne $assets.Count) { throw "Draft asset count differs from staging inventory." }
-          $draftNames = @($draft.assets | ForEach-Object name | Sort-Object)
-          $stageNames = @($assets | ForEach-Object Name | Sort-Object)
-          if (($draftNames -join "`n") -cne ($stageNames -join "`n")) { throw 'Draft asset filenames differ from staging inventory.' }
+            $draft = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,assets | ConvertFrom-Json
+            if (-not $draft.isDraft) { throw "Release $tag was not retained as a draft for verification." }
+            if (@($draft.assets).Count -ne $assets.Count) { throw "Draft asset count differs from staging inventory." }
+            $draftNames = @($draft.assets | ForEach-Object name | Sort-Object)
+            $stageNames = @($assets | ForEach-Object Name | Sort-Object)
+            if (($draftNames -join "`n") -cne ($stageNames -join "`n")) { throw 'Draft asset filenames differ from staging inventory.' }
+          }
 
           $download = Join-Path $env:RUNNER_TEMP 'lodestone-v1.0.0-upload-verify'
           New-Item -ItemType Directory -Path $download | Out-Null
@@ -227,7 +251,9 @@ jobs:
             if ($remoteHash -cne $localHash) { throw "Downloaded SHA-256 differs for $($asset.Name)." }
           }
 
-          gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false
+          if (-not $existing) {
+            gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false
+          }
           $published = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,assets | ConvertFrom-Json
           if ($published.isDraft -or @($published.assets).Count -ne $assets.Count) {
             throw "Release $tag did not publish its verified complete inventory."

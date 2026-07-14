@@ -162,20 +162,28 @@ function Resolve-SourcePath([string]$RelativePath) {
 
 function Get-BuildInputSnapshot {
     $roots = @('common', 'adapters', 'gateway', 'hosts', 'protocol', 'verification/curseforge-profiles')
-    $files = @()
-    foreach ($relativeRoot in $roots) {
-        $fullRoot = Join-Path $ProjectRoot $relativeRoot
-        if (-not (Test-Path -LiteralPath $fullRoot -PathType Container)) { continue }
-        $files += @(Get-ChildItem -LiteralPath $fullRoot -Recurse -File | Where-Object {
-                $_.FullName -notmatch '[\\/](build|runs|run|\.gradle)[\\/]' -and
-                $_.Extension.ToLowerInvariant() -in @('.java', '.json', '.toml', '.properties', '.gradle', '.kts', '.ps1')
-            })
-    }
+    # Hash the tracked source graph, not every matching file in the working tree. Profile staging
+    # intentionally creates ignored CurseForge overrides and ZIP inputs beneath the profile roots;
+    # including those generated files made the certified snapshot depend on whether staging had
+    # already run. The clean-tree gate above still rejects any tracked edit or untracked source file.
+    $tracked = @((Invoke-Git @('ls-files', '--cached')) -split "`n" |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $relativeFiles = @($tracked | Where-Object {
+            $relative = $_.Replace('\', '/')
+            $underRoot = @($roots | Where-Object {
+                    $relative.StartsWith($_ + '/', [StringComparison]::Ordinal)
+                }).Count -gt 0
+            $underRoot -and [IO.Path]::GetExtension($relative).ToLowerInvariant() -in @(
+                    '.java', '.json', '.toml', '.properties', '.gradle', '.kts', '.ps1')
+        })
     foreach ($relativeFile in @('build.gradle.kts', 'settings.gradle.kts', 'gradle.properties',
             'gradle/wrapper/gradle-wrapper.properties')) {
-        $fullFile = Join-Path $ProjectRoot $relativeFile
-        if (Test-Path -LiteralPath $fullFile -PathType Leaf) { $files += Get-Item -LiteralPath $fullFile }
+        if ($tracked -contains $relativeFile) { $relativeFiles += $relativeFile }
     }
+    $files = @($relativeFiles | Sort-Object -Unique | ForEach-Object {
+            $fullFile = Join-Path $ProjectRoot $_
+            if (Test-Path -LiteralPath $fullFile -PathType Leaf) { Get-Item -LiteralPath $fullFile }
+        })
     $rows = @($files | Sort-Object FullName -Unique | ForEach-Object {
             $relative = $_.FullName.Substring($ProjectRoot.Length + 1).Replace('\', '/')
             "$relative`t$(Get-Sha256 $_.FullName)"
