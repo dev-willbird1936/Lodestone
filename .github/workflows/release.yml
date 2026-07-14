@@ -146,6 +146,17 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Release artifact rebuild failed with exit $LASTEXITCODE." }
           } finally {
             git restore --source=HEAD --worktree -- $relativeStager
+            if ($LASTEXITCODE -ne 0) { throw "Could not restore immutable tag stager $relativeStager." }
+            # A text diff accepts CRLF/LF normalization, but the certified source
+            # snapshot hashes raw bytes. Force the index blob back into the worktree
+            # and prove the raw blob identity before invoking assembly.
+            git checkout-index -f -- $relativeStager
+            if ($LASTEXITCODE -ne 0) { throw "Could not re-materialize immutable tag stager $relativeStager." }
+          }
+          $expectedStagerBlob = (git rev-parse "HEAD:$relativeStager").Trim()
+          $actualStagerBlob = (git hash-object -- $relativeStager).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualStagerBlob -cne $expectedStagerBlob) {
+            throw "Recovered stager raw bytes do not match immutable tag $relativeStager."
           }
           git diff --exit-code -- $relativeStager
 

@@ -123,6 +123,10 @@ class ReleaseAssemblyContractTest {
                 "the immutable-tag recovery must explicitly limit its portability overlay to the affected stager");
         assertTrue(workflow.contains("git restore --source=HEAD --worktree -- $relativeStager"),
                 "the immutable tag source must be restored before release assembly");
+        assertTrue(workflow.contains("git checkout-index -f -- $relativeStager"),
+                "the immutable tag stager must be force-rematerialized before raw source snapshot validation");
+        assertTrue(workflow.contains("git hash-object -- $relativeStager"),
+                "the immutable tag stager's restored raw bytes must be compared to its Git blob");
         assertTrue(workflow.contains("--draft --title 'Lodestone v1.0.0' --generate-notes"),
                 "uploads must begin as an inaccessible draft");
         assertTrue(workflow.contains("gh release download $tag"),
