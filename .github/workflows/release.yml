@@ -84,6 +84,21 @@ jobs:
           JAVA_HOME: ${{ steps.java21.outputs.path }}
         run: .\gradlew.bat projects check --no-parallel
 
+      # The immutable tag cannot be rewritten to add diagnostics.  On a retry,
+      # preserve the failing contract's captured subprocess output in the run log
+      # so a release blocker can be corrected without weakening its gate.
+      - name: Print failed release-contract details
+        if: failure()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $results = 'verification/contract-tests/build/test-results/test'
+          $reports = @(Get-ChildItem -LiteralPath $results -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)
+          if ($reports.Count -eq 0) { throw "No JUnit XML reports found under $results." }
+          foreach ($report in $reports) {
+            Get-Content -LiteralPath $report.FullName -Raw
+          }
+
       - name: Rebuild all release artifacts twice where required
         shell: pwsh
         run: >-
