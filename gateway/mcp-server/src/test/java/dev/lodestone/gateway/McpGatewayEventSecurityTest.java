@@ -73,7 +73,7 @@ final class McpGatewayEventSecurityTest {
             var polled = call(gateway, "caller-a", "lodestone_events_poll",
                     Map.of("subscriptionId", subscriptionId, "maxEvents", 10));
             assertFalse(polled.get("isError").getAsBoolean());
-            assertTrue(polled.getAsJsonObject("structuredContent").getAsJsonArray("events").isEmpty());
+            assertEquals(0, polled.getAsJsonObject("structuredContent").getAsJsonArray("events").size());
 
             var removed = call(gateway, "caller-a", "lodestone_events_unsubscribe",
                     Map.of("subscriptionId", subscriptionId));

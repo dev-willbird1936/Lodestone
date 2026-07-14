@@ -344,10 +344,10 @@ public final class McpGateway {
                 "pattern_id", Map.of("type", "string", "minLength", 1, "maxLength", 256)));
         tools.add(tool("building_pattern_lookup",
                 "Browse building metadata honestly; the donor's executable structured placement file is absent.",
-                patternSchema.deepCopy(), List.of("action")));
+                copyJson(patternSchema).getAsJsonObject(), List.of("action")));
         tools.add(tool("terrain_pattern_lookup",
                 "Browse terrain metadata honestly; entries are guidance rather than executable blueprints.",
-                patternSchema.deepCopy(), List.of("action")));
+                copyJson(patternSchema).getAsJsonObject(), List.of("action")));
         tools.add(tool("building_template", "List and inspect five parametric guidance templates without claiming execution.",
                 schema(Map.of(
                         "action", Map.of("type", "string", "enum", List.of("list", "search", "get", "customize")),
@@ -535,12 +535,12 @@ public final class McpGateway {
             var branch = new JsonObject();
             branch.addProperty("type", "object");
             var branchProperties = new JsonObject();
-            branchProperties.add("player", rootProperties.get("player").deepCopy());
-            branchProperties.add("capture", rootProperties.get("capture").deepCopy());
+            branchProperties.add("player", copyJson(rootProperties.get("player")));
+            branchProperties.add("capture", copyJson(rootProperties.get("capture")));
             branchProperties.add("action", JsonSupport.MAPPER.toJsonTree(Map.of("const", action)));
-            fields.forEach(field -> branchProperties.add(field, rootProperties.get(field).deepCopy()));
+            fields.forEach(field -> branchProperties.add(field, copyJson(rootProperties.get(field))));
             optionalFields.getOrDefault(action, List.of()).forEach(
-                    field -> branchProperties.add(field, rootProperties.get(field).deepCopy()));
+                    field -> branchProperties.add(field, copyJson(rootProperties.get(field))));
             branch.add("properties", branchProperties);
             var required = new JsonArray();
             required.add("action");
@@ -550,6 +550,21 @@ public final class McpGateway {
             oneOf.add(branch);
         });
         schema.add("oneOf", oneOf);
+    }
+
+    /** Copies JSON without Gson APIs introduced after the 2.8.0 bundled by Forge 1.16.5. */
+    private static JsonElement copyJson(JsonElement value) {
+        if (value == null || value.isJsonNull() || value.isJsonPrimitive()) {
+            return value == null ? JsonNull.INSTANCE : value;
+        }
+        if (value.isJsonArray()) {
+            var copy = new JsonArray();
+            value.getAsJsonArray().forEach(item -> copy.add(copyJson(item)));
+            return copy;
+        }
+        var copy = new JsonObject();
+        value.getAsJsonObject().entrySet().forEach(entry -> copy.add(entry.getKey(), copyJson(entry.getValue())));
+        return copy;
     }
 
     private JsonElement toolCall(JsonObject params) {
@@ -700,7 +715,8 @@ public final class McpGateway {
     private static void requireWorldEditFields(JsonObject args, String... actionFields) {
         var allowed = new HashSet<>(Set.of("player", "capture"));
         for (var field : actionFields) allowed.add(field);
-        for (var field : args.keySet()) {
+        for (var entry : args.entrySet()) {
+            var field = entry.getKey();
             if (!allowed.contains(field)) {
                 throw new GatewayException(-32602, "field is not allowed for this WorldEdit action: " + field);
             }
@@ -822,7 +838,8 @@ public final class McpGateway {
     }
 
     private static void requireAllowedFields(JsonObject object, Set<String> allowed, String objectName) {
-        for (var field : object.keySet()) {
+        for (var entry : object.entrySet()) {
+            var field = entry.getKey();
             if (!allowed.contains(field)) {
                 throw new GatewayException(-32602, "unknown " + objectName + " field: " + field);
             }
@@ -1046,7 +1063,7 @@ public final class McpGateway {
                 // The structured result remains authoritative if the ephemeral blob expires.
             }
         }
-        if (content.isEmpty()) {
+        if (content.size() == 0) {
             var text = new JsonObject();
             text.addProperty("type", "text");
             try {

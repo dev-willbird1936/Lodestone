@@ -143,7 +143,7 @@ try {
     $entities = Invoke-Capability $endpoint $gatewayToken 9 'minecraft.entity.list' @{ limit = 8; includePlayers = $false }
     Assert ($entities.result.structuredContent.status -eq 'ok') 'Legacy native entity query failed.'
     $chat = Invoke-Capability $endpoint $GatewayToken 10 'minecraft.chat.send' @{ message = "Lodestone Forge $Minecraft native matrix" }
-    Assert ($chat.result.structuredContent.status -eq 'ok') 'Legacy native chat failed.'
+    Assert ($chat.result.structuredContent.status -eq 'ok') ("Legacy native chat failed: " + ($chat | ConvertTo-Json -Depth 20 -Compress))
     Start-Sleep -Seconds 7
     $stop = Invoke-Capability $endpoint $gatewayToken 11 'minecraft.command.execute' @{ command = 'stop' }
     Assert ($stop.result.structuredContent.status -eq 'ok') 'Legacy native stop command failed.'

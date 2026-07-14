@@ -283,7 +283,8 @@ final class FurnitureWorkflowAdapter implements LodestoneAdapter {
         try (var input = FurnitureWorkflowAdapter.class.getResourceAsStream(
                 "/vibecraft/minecraft_furniture_layouts.json")) {
             if (input == null) throw new IllegalStateException("bundled furniture layouts are missing");
-            var parsed = JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            // Forge 1.16.5 ships Gson 2.8.0, before the static parser helpers existed.
+            var parsed = new JsonParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8));
             if (!parsed.isJsonArray()) throw new IllegalStateException("bundled furniture layouts must be an array");
             var result = new LinkedHashMap<String, JsonObject>();
             for (var element : parsed.getAsJsonArray()) {

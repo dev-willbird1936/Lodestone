@@ -202,7 +202,8 @@ public final class SchemaValidator {
             return;
         }
         var object = schema.getAsJsonObject();
-        for (var field : object.keySet()) {
+        for (var entry : object.entrySet()) {
+            var field = entry.getKey();
             if (!SUPPORTED_KEYWORDS.contains(field)) {
                 errors.add(path + " contains unsupported schema constraint '" + field + "'");
             }
@@ -222,7 +223,7 @@ public final class SchemaValidator {
         if (object.has("items")) validateSchema(object.get("items"), path + ".items", errors);
         for (var alternatives : List.of("anyOf", "oneOf")) {
             if (!object.has(alternatives)) continue;
-            if (!object.get(alternatives).isJsonArray() || object.getAsJsonArray(alternatives).isEmpty()) {
+            if (!object.get(alternatives).isJsonArray() || object.getAsJsonArray(alternatives).size() == 0) {
                 errors.add(path + "." + alternatives + " must be a non-empty array");
                 continue;
             }

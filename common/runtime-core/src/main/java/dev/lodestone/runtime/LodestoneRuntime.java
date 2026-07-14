@@ -1264,7 +1264,8 @@ public final class LodestoneRuntime implements AutoCloseable {
 
     private static JsonElement canonicalizeJson(JsonElement value) {
         if (value == null || value.isJsonNull() || value.isJsonPrimitive()) {
-            return value == null ? com.google.gson.JsonNull.INSTANCE : value.deepCopy();
+            // Json primitives are immutable; Gson 2.8.0 has no generic JSON-copy API.
+            return value == null ? com.google.gson.JsonNull.INSTANCE : value;
         }
         if (value.isJsonArray()) {
             var canonical = new JsonArray();
@@ -1272,8 +1273,8 @@ public final class LodestoneRuntime implements AutoCloseable {
             return canonical;
         }
         var canonical = new JsonObject();
-        value.getAsJsonObject().keySet().stream().sorted()
-                .forEach(key -> canonical.add(key, canonicalizeJson(value.getAsJsonObject().get(key))));
+        value.getAsJsonObject().entrySet().stream().sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> canonical.add(entry.getKey(), canonicalizeJson(entry.getValue())));
         return canonical;
     }
 

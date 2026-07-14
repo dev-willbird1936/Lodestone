@@ -20,6 +20,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -132,34 +133,51 @@ public final class LegacyBridgeAdapter implements LodestoneAdapter {
                     ? System.currentTimeMillis() + 10_000L : invocation.request().deadlineEpochMs();
             long remaining = Math.max(1L, deadline - System.currentTimeMillis());
             invocation.cancellation().throwIfCancelled();
-            String body = JsonSupport.MAPPER.toJson(Map.of(
-                    "capability", invocation.request().capability(), "input", invocation.request().input(),
-                    "deadlineEpochMs", deadline));
-            HttpRequest request = HttpRequest.newBuilder(endpoint.resolve("/invoke"))
-                    .timeout(Duration.ofMillis(Math.min(remaining, 30_000L)))
-                    .header("X-Lodestone-Token", token)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body)).build();
-            if (MUTATING.contains(invocation.request().capability())) {
-                // The remote Java 8 endpoint owns rollback/deadline checks. Commit immediately before
-                // dispatch so local preparation failures remain safely retryable.
-                invocation.cancellation().commitMutation();
-            }
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (!MUTATING.contains(invocation.request().capability())) {
+            String capability = invocation.request().capability();
+            Map<String, Object> input = invocation.request().input();
+            boolean mutating = MUTATING.contains(capability);
+
+            // The legacy bridge can deterministically validate a block batch without applying it.
+            // Keep a rejected precondition retryable; only commit once a real mutation is about to
+            // cross the process boundary. Any later transport or remote failure stays quarantined.
+            if ("minecraft.world.blocks.write".equals(capability) && !Boolean.TRUE.equals(input.get("dryRun"))) {
+                Map<String, Object> preflightInput = new LinkedHashMap<String, Object>(input);
+                preflightInput.put("dryRun", true);
+                invokeBridge(capability, preflightInput, deadline, remaining);
                 invocation.cancellation().throwIfCancelled();
             }
-            @SuppressWarnings("unchecked") Map<String, Object> envelope = JsonSupport.MAPPER.fromJson(response.body(), Map.class);
-            if (response.statusCode() != 200 || !Boolean.TRUE.equals(envelope.get("ok"))) {
-                Object error = envelope.get("error");
-                throw new IllegalStateException(error == null ? "legacy bridge operation failed" : String.valueOf(error));
+            if (mutating && !Boolean.TRUE.equals(input.get("dryRun"))) {
+                invocation.cancellation().commitMutation();
             }
-            @SuppressWarnings("unchecked") Map<String, Object> result = (Map<String, Object>) envelope.get("result");
-            if (result == null) throw new IllegalStateException("legacy bridge returned no result");
+            Map<String, Object> result = invokeBridge(capability, input, deadline, remaining);
+            if (!mutating) {
+                invocation.cancellation().throwIfCancelled();
+            }
             return CompletableFuture.completedFuture(result);
         } catch (Exception failure) {
             return CompletableFuture.failedFuture(failure);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> invokeBridge(String capability, Map<String, Object> input,
+                                              long deadline, long remaining) throws Exception {
+        String body = JsonSupport.MAPPER.toJson(Map.of(
+                "capability", capability, "input", input, "deadlineEpochMs", deadline));
+        HttpRequest request = HttpRequest.newBuilder(endpoint.resolve("/invoke"))
+                .timeout(Duration.ofMillis(Math.min(remaining, 30_000L)))
+                .header("X-Lodestone-Token", token)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        Map<String, Object> envelope = JsonSupport.MAPPER.fromJson(response.body(), Map.class);
+        if (response.statusCode() != 200 || !Boolean.TRUE.equals(envelope.get("ok"))) {
+            Object error = envelope.get("error");
+            throw new IllegalStateException(error == null ? "legacy bridge operation failed" : String.valueOf(error));
+        }
+        Map<String, Object> result = (Map<String, Object>) envelope.get("result");
+        if (result == null) throw new IllegalStateException("legacy bridge returned no result");
+        return result;
     }
 
     private AvailabilityReason reason(String code, String message) {

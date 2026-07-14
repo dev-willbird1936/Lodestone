@@ -29,12 +29,14 @@ final class StaticCatalogTools {
     private final JsonObject templates;
 
     StaticCatalogTools(LodestoneRuntime runtime) {
-        furniture = JsonParser.parseString(runtime.readResource(FURNITURE_URI)).getAsJsonArray();
-        buildingPatterns = JsonParser.parseString(runtime.readResource(BUILDING_URI)).getAsJsonObject()
+        // Use the Gson 2.8.0 instance API retained by legacy Forge runtimes.
+        var parser = new JsonParser();
+        furniture = parser.parse(runtime.readResource(FURNITURE_URI)).getAsJsonArray();
+        buildingPatterns = parser.parse(runtime.readResource(BUILDING_URI)).getAsJsonObject()
                 .getAsJsonObject("patterns");
-        terrainPatterns = JsonParser.parseString(runtime.readResource(TERRAIN_URI)).getAsJsonObject()
+        terrainPatterns = parser.parse(runtime.readResource(TERRAIN_URI)).getAsJsonObject()
                 .getAsJsonObject("patterns");
-        templates = JsonParser.parseString(runtime.readResource(TEMPLATE_URI)).getAsJsonObject()
+        templates = parser.parse(runtime.readResource(TEMPLATE_URI)).getAsJsonObject()
                 .getAsJsonObject("templates");
     }
 
