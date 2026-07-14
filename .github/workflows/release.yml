@@ -141,7 +141,10 @@ jobs:
           # portability-only stager for this rebuild, then restore the exact tag
           # before clean-tree assembly. The final profile ZIP must still match C0.
           $relativeStager = 'verification/curseforge-profiles/stage-fabric-1182-profile.ps1'
-          $controlCommit = '${{ github.sha }}'
+          $controlCommit = (git rev-parse 'origin/main').Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($controlCommit)) {
+            throw 'Cannot resolve audited release-tool control commit from origin/main.'
+          }
           git fetch --no-tags origin $controlCommit
           $stager = @(git show "$controlCommit`:$relativeStager")
           if ($LASTEXITCODE -ne 0 -or $stager.Count -eq 0) { throw "Cannot read audited portability stager from $controlCommit." }
@@ -192,9 +195,30 @@ jobs:
 
       - name: Verify and stage the exact tagged release
         shell: pwsh
-        run: >-
-          .\verification\assemble-v1-release.ps1 -Mode Assemble
-          -StagingDirectory "$env:RUNNER_TEMP\lodestone-v1.0.0-release"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $relativeAssembler = 'verification/assemble-v1-release.ps1'
+          $controlCommit = (git rev-parse 'origin/main').Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($controlCommit)) {
+            throw 'Cannot resolve audited release-tool control commit from origin/main.'
+          }
+          git fetch --no-tags origin $controlCommit
+          $assembler = @(git show "$controlCommit`:$relativeAssembler")
+          if ($LASTEXITCODE -ne 0 -or $assembler.Count -eq 0) {
+            throw "Cannot read audited release assembler from $controlCommit."
+          }
+          $assemblerPath = Join-Path $env:GITHUB_WORKSPACE $relativeAssembler
+          [IO.File]::WriteAllText($assemblerPath, (($assembler -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+          try {
+            & .\verification\assemble-v1-release.ps1 -Mode Assemble `
+              -StagingDirectory "$env:RUNNER_TEMP\lodestone-v1.0.0-release" `
+              -AllowReleaseToolOverlay
+            if ($LASTEXITCODE -ne 0) { throw "Release assembly failed with exit $LASTEXITCODE." }
+          } finally {
+            git restore --source=HEAD --worktree -- $relativeAssembler
+            if ($LASTEXITCODE -ne 0) { throw "Could not restore immutable tag assembler $relativeAssembler." }
+          }
+          git diff --exit-code -- $relativeAssembler
 
       - name: Draft, verify, and publish GitHub release
         shell: pwsh

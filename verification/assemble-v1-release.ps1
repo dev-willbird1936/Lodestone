@@ -35,7 +35,13 @@ param(
     # from Git and reject any tracked or untracked working-tree change.
     [switch]$AllowDirtyTreeForTests,
     [string]$SourceCommit,
-    [string]$SourceTree
+    [string]$SourceTree,
+
+    # The v1.0.0 tag predates the tracked-input snapshot fix. The release workflow
+    # may overlay this exact verifier from an audited control commit; the release
+    # source identity still comes from the immutable tag and no release input may
+    # be dirty.
+    [switch]$AllowReleaseToolOverlay
 )
 
 $ErrorActionPreference = 'Stop'
@@ -111,7 +117,12 @@ function Get-SourceIdentity {
     }
     $dirty = Invoke-Git @('status', '--porcelain=v1', '--untracked-files=all')
     if (-not [string]::IsNullOrWhiteSpace($dirty)) {
-        throw "Final release freeze requires a clean Git tree. Dirty entries: $($dirty -replace "`n", '; ')"
+        $dirtyEntries = @($dirty -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if (-not $AllowReleaseToolOverlay -or @($dirtyEntries | Where-Object {
+                    $_.Length -lt 4 -or $_.Substring(3) -cne 'verification/assemble-v1-release.ps1'
+                }).Count -ne 0) {
+            throw "Final release freeze requires a clean Git tree. Dirty entries: $($dirty -replace "`n", '; ')"
+        }
     }
     $commit = (Invoke-Git @('rev-parse', 'HEAD')).ToLowerInvariant()
     $tree = (Invoke-Git @('rev-parse', 'HEAD^{tree}')).ToLowerInvariant()
