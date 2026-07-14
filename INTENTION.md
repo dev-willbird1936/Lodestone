@@ -67,6 +67,10 @@ every Minecraft environment.
   look read back exactly. It uses the same bounded 120-second UI defaults and clean shutdown;
   English vanilla menu labels, broad automation, and v1.0.0 release bytes remain outside this
   narrow claim.
+- Fabric 1.21.1 now has the same manual post-v1 main-menu/control slice, including a
+  revision-guarded unique target from a partial world-list projection. It reached a fresh world,
+  read player look back exactly, and shut down cleanly; its English vanilla route, partial-screen
+  boundary, broad automation, and v1.0.0 release bytes remain outside this narrow claim.
 - The negotiated catalog now includes normalized open-container reads; Fabric 1.18.2/1.19.2/
   1.20.1/1.21.1 and NeoForge 1.21.1 expose stable slot projections and revisions, while Fabric
   click operations enforce revision, slot, and button bounds.

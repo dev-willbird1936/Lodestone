@@ -15,6 +15,8 @@ product as a whole; Minecraft and loader compatibility is listed per asset in ea
   preventing normal integrated-world startup from being reported as an indeterminate mutation.
 - NeoForge 1.21.1 now has a post-v1 authenticated main-menu route through fresh-world creation,
   with guarded typed UI state and player-look readback.
+- Fabric 1.21.1 now has the same post-v1 authenticated main-menu/fresh-world route, including
+  its explicit partial-screen boundary and player-look readback.
 
 ## 1.0.0 - release candidate
 
