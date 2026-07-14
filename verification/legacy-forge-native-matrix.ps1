@@ -144,9 +144,12 @@ try {
     $deadline = (Get-Date).AddMinutes(4); $log = ''
     while ((Get-Date) -lt $deadline) {
         Start-Sleep -Seconds 2; $log = Read-Log $serverDirectory
-        if ($log -match 'Done \(') { break }
+        # A legacy server can report Minecraft's `Done` before the endpoint's
+        # asynchronous listener log is flushed. Do not issue the direct audit
+        # until both the fresh world and the native bridge are actually ready.
+        if ($log -match 'Done \(' -and $log -match 'Legacy .*MCP bridge listening') { break }
         $tail = if ([string]::IsNullOrEmpty($log)) { '<no latest.log output yet>' } elseif ($log.Length -gt 3000) { $log.Substring($log.Length - 3000) } else { $log }
-        Assert ($null -ne (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) "Forge $Minecraft exited before Done. Tail: $tail"
+        Assert ($null -ne (Get-Process -Id $server.Id -ErrorAction SilentlyContinue)) "Forge $Minecraft exited before the native bridge became ready. Tail: $tail"
     }
     Assert ($log -match 'Done \(') "Forge $Minecraft did not reach Done."
     Assert ((Test-Path -LiteralPath (Join-Path $serverDirectory 'world/level.dat')) -or
