@@ -28,6 +28,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '8'
+      - id: java17
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - id: java21
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
@@ -56,6 +61,7 @@ jobs:
           }
           "gradle2=$(Get-Gradle '2.7' 'cde43b90945b5304c43ee36e58aab4cc6fb3a3d5f9bd9449bb1709a68371cb06')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "gradle4=$(Get-Gradle '4.10.3' '8626cbf206b4e201ade7b87779090690447054bc93f052954c78480fa6ed186e')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "gradle7=$(Get-Gradle '7.6.4' 'bed1da33cca0f557ab13691c77f38bb67388119e4794d113e051039b80af9bb1')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "gradle9=$(Get-Gradle '9.5.1' 'bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Contract tests
@@ -67,10 +73,12 @@ jobs:
         run: >-
           .\verification\build-v1-release.ps1
           -Java8 "${{ steps.java8.outputs.path }}\bin\java.exe"
+          -Java17 "${{ steps.java17.outputs.path }}\bin\java.exe"
           -Java21 "${{ steps.java21.outputs.path }}\bin\java.exe"
           -Java25 "${{ steps.java25.outputs.path }}\bin\java.exe"
           -Gradle2 "${{ steps.gradle.outputs.gradle2 }}"
           -Gradle4 "${{ steps.gradle.outputs.gradle4 }}"
+          -Gradle7 "${{ steps.gradle.outputs.gradle7 }}"
           -Gradle9 "${{ steps.gradle.outputs.gradle9 }}"
 
       - name: Verify and stage the exact tagged release

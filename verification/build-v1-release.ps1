@@ -8,10 +8,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$Java8,
+    [Parameter(Mandatory = $true)][string]$Java17,
     [Parameter(Mandatory = $true)][string]$Java21,
     [Parameter(Mandatory = $true)][string]$Java25,
     [Parameter(Mandatory = $true)][string]$Gradle2,
     [Parameter(Mandatory = $true)][string]$Gradle4,
+    [Parameter(Mandatory = $true)][string]$Gradle7,
     [Parameter(Mandatory = $true)][string]$Gradle9,
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
@@ -65,21 +67,27 @@ function Stage-Profiles {
 }
 
 $Java8 = Resolve-Executable $Java8 'Java 8'
+$Java17 = Resolve-Executable $Java17 'Java 17'
 $Java21 = Resolve-Executable $Java21 'Java 21'
 $Java25 = Resolve-Executable $Java25 'Java 25'
 $Gradle2 = Resolve-Executable $Gradle2 'Gradle 2.7'
 $Gradle4 = Resolve-Executable $Gradle4 'Gradle 4.10.3'
+$Gradle7 = Resolve-Executable $Gradle7 'Gradle 7.6.4'
 $Gradle9 = Resolve-Executable $Gradle9 'Gradle 9.5.1'
 $Gradle8 = Resolve-Executable (Join-Path $ProjectRoot 'gradlew.bat') 'Pinned Gradle wrapper'
 
 Invoke-Gradle 'Forge 1.8.9 host (Java 8 / Gradle 2.7)' $Java8 $Gradle2 @('-p', "$ProjectRoot/hosts/forge/1.8.9", 'build', '--no-daemon')
 Invoke-Gradle 'Forge 1.12.2 host (Java 8 / Gradle 4.10.3)' $Java8 $Gradle4 @('-p', "$ProjectRoot/hosts/forge/1.12.2", 'build', '--no-daemon')
 Invoke-Gradle 'Forge 1.7.10 host (Java 8 / Gradle 4.10.3)' $Java8 $Gradle4 @('-p', "$ProjectRoot/hosts/forge/1.7.10", 'build', '--no-daemon')
+Invoke-Gradle 'Forge 1.16.5 host (Java 17 / Gradle 7.6.4)' $Java17 $Gradle7 @(
+    '-p', $ProjectRoot, ':hosts:forge:mc1_16_5:build', '-PincludeForge165=true', '-PincludeModern=false',
+    '-PincludeForge=false', '-PincludeForge121=false', '-PincludeForge192=false', '-PincludeForge182=false', '--no-daemon'
+)
 
 $modernTasks = @(
     ':hosts:fabric:mc1_18_2:build', ':hosts:fabric:mc1_19_2:build', ':hosts:fabric:mc1_20_1:build', ':hosts:fabric:mc1_21_1:build',
     ':hosts:neoforge:mc1_21_1:build',
-    ':hosts:forge:mc1_16_5:build', ':hosts:forge:mc1_18_2:build', ':hosts:forge:mc1_19_2:build', ':hosts:forge:mc1_20_1:build', ':hosts:forge:mc1_21_1:build',
+    ':hosts:forge:mc1_18_2:build', ':hosts:forge:mc1_19_2:build', ':hosts:forge:mc1_20_1:build', ':hosts:forge:mc1_21_1:build',
     ':hosts:paper:mc1_21_1:build', ':hosts:spigot:mc1_21_1:build', ':hosts:folia:mc1_21_4:build',
     ':gateway:legacy-bridge-launcher:distZip', ':gateway:rcon-launcher:distZip', '--no-daemon'
 )
