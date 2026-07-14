@@ -191,6 +191,10 @@ every Minecraft environment.
   27/27 world records, reversible mutation/readback, an explicit unavailable chat-read state,
   MCP Escape-to-Pause, and clean shutdown with zero Java processes. The final artifact hash is
   `2e6c6b29aa95b33ada97e3f68064708ca54d9cf4f881d332738a87548cb7dd45`.
+- Fabric 1.21.1 now has the exact-version profile too: 97 asserted main-menu records, 27/27 world
+  records, reversible mutation/readback, direct fresh-world route handling, MCP Escape-to-Pause,
+  and clean shutdown with zero Java processes. The final artifact hash is
+  `1ad86d7d6b63f2f039eed75942873b9fe6df9dba7fd0dc52ed11c496282a5899`.
 
 ## INTENTION NOT MATCHED
 

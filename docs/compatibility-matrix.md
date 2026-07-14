@@ -48,8 +48,8 @@ match that evidence.
 | Status | Target | Reason |
 | --- | --- | --- |
 | 🔄 | NeoForge 1.21.1 client menu control (post-v1 source) | Authenticated typed navigation reached a fresh world through the two modern `Create New World` screens, and player look has exact readback. Bounded 120-second UI defaults are packaged. Evidence supports a later coherent patch artifact, not an alteration of v1.0.0. |
-| 🔄 | Fabric 1.21.1 client menu control (post-v1 source) | Authenticated typed navigation reached a fresh world through the two modern `Create New World` screens, and player look has exact readback. The partial world-list projection exposed one unique guarded target. Bounded 120-second UI defaults are packaged; evidence does not alter v1.0.0. |
-| 🔄 | Fabric 1.20.1 client menu control (post-v1 source) | Authenticated typed navigation reached a fresh world, and player look has exact readback. Bounded 120-second UI transition defaults prevent the observed 16.5-second world load from becoming an indeterminate mutation. Evidence supports the next Fabric patch artifact, not an alteration of v1.0.0. |
+| ✅ | Fabric 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 97/97 main-menu assertions, 27/27 world assertions, and 6/6 clean-shutdown assertions. The fresh no-save route uses the direct `CreateWorldScreen` path; chat-read remains explicitly unavailable. This evidence does not alter v1.0.0. |
+| ✅ | Fabric 1.20.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 97/97 main-menu assertions, 27/27 world assertions, and 6/6 clean-shutdown assertions. The exact direct `singleplayer` → `CreateWorldScreen` route and unavailable chat-read state are asserted. This evidence does not alter v1.0.0. |
 | 🔄 | Full cross-version client control and menu automation | Bounded client bridges exist on selected Fabric and NeoForge lines, but broad manual client acceptance is not certified. |
 | 🔄 | Container/NBT, inventory/entity mutation, and broad event parity | Typed catalog entries remain unavailable or restricted until each adapter has a safe implementation and evidence. |
 | 🔄 | More Minecraft versions and loaders | Each needs a separate adapter, final artifact, and its own row. |
@@ -76,4 +76,7 @@ the immutable v1.0.0 release certificate; each report binds its exact artifact h
 | ✅ | Fabric 1.20.1 main menu → fresh world → authenticated MCP | 97 asserted records; typed discovery, UI selectors, key/mouse cleanup, direct `CreateWorldScreen` navigation, text insertion, and fresh-world creation |
 | ✅ | Fabric 1.20.1 real world control | 27/27 successful records; bounded gold-block write/readback/restore, player/entity/world reads, chat send, screenshot, and explicit unavailable chat-read state |
 | ✅ | Fabric 1.20.1 MCP clean shutdown | 6 asserted records; MCP Escape opened PauseScreen from the active world, Save & Quit returned to title, MCP quit game; Java count 0 and no crash markers |
+| ✅ | Fabric 1.21.1 main menu → fresh world → authenticated MCP | 97 asserted records; typed discovery, UI selectors, key/mouse cleanup, direct fresh `CreateWorldScreen` navigation, text insertion, and fresh-world creation |
+| ✅ | Fabric 1.21.1 real world control | 27/27 successful records; bounded gold-block write/readback/restore, player/entity/world reads, chat send, screenshot, and explicit unavailable chat-read state |
+| ✅ | Fabric 1.21.1 MCP clean shutdown | 6 asserted records; MCP Escape opened PauseScreen from the active world, Save & Quit returned to title, MCP quit game; Java count 0 and no crash markers |
 | 🔄 | Other client loaders/versions | Requires the same ordered fresh-install flow and exact-version artifact evidence per row |
