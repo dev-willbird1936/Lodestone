@@ -150,7 +150,9 @@ every Minecraft environment.
 - Fabric 1.18.2 profile staging now accepts both namespace-qualified and dependency-less cached
   Maven POMs under strict PowerShell execution. A fresh 49-entry profile rebuild matches the
   certified final ZIP SHA-256 exactly; the immutable v1.0.0 workflow runs its historical stager in
-  the compatible Windows PowerShell runtime before the same final-byte assembly gate.
+  the compatible Windows PowerShell runtime before the same final-byte assembly gate. During an
+  immutable-tag recovery, the workflow overlays only this audited portability parser, restores the
+  exact tag before clean-tree assembly, and still requires the final profile ZIP bytes to equal C0.
 
 ## INTENTION NOT MATCHED
 

@@ -17,7 +17,9 @@ and loader or server.
   Quilt-profile byte acceptance and Bukkit-family invalid-token checks. The immutable tag workflow
   still performs the clean tagged rebuild, assembly, remote upload verification, and publication.
   Its historical profile rebuild runs under Windows PowerShell, the exact v1.0.0 stager runtime;
-  assembly still rejects every rebuilt profile ZIP whose bytes differ from certification.
+  the recovery workflow overlays its audited PS7-safe Fabric 1.18.2 POM parser only while rebuilding,
+  restores the exact tag before assembly, and rejects every rebuilt profile ZIP whose bytes differ
+  from certification.
 
 ## Tags and promotion
 

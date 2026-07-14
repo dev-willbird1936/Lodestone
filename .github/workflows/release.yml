@@ -120,16 +120,34 @@ jobs:
         # v1.0.0's immutable historical profile stagers target Windows PowerShell.
         # The final staged ZIPs are still checked byte-for-byte against certification.
         shell: powershell
-        run: >-
-          .\verification\build-v1-release.ps1
-          -Java8 "${{ steps.java8.outputs.path }}\bin\java.exe"
-          -Java17 "${{ steps.java17.outputs.path }}\bin\java.exe"
-          -Java21 "${{ steps.java21.outputs.path }}\bin\java.exe"
-          -Java25 "${{ steps.java25.outputs.path }}\bin\java.exe"
-          -Gradle2 "${{ steps.gradle.outputs.gradle2 }}"
-          -Gradle4 "${{ steps.gradle.outputs.gradle4 }}"
-          -Gradle7 "${{ steps.gradle.outputs.gradle7 }}"
-          -Gradle9 "${{ steps.gradle.outputs.gradle9 }}"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # v1.0.0's source tag is immutable. Its Fabric 1.18.2 profile stager
+          # predates PS7-safe POM parsing, so use the audited workflow revision's
+          # portability-only stager for this rebuild, then restore the exact tag
+          # before clean-tree assembly. The final profile ZIP must still match C0.
+          $relativeStager = 'verification/curseforge-profiles/stage-fabric-1182-profile.ps1'
+          $controlCommit = '${{ github.sha }}'
+          git fetch --no-tags origin $controlCommit
+          $stager = @(git show "$controlCommit`:$relativeStager")
+          if ($LASTEXITCODE -ne 0 -or $stager.Count -eq 0) { throw "Cannot read audited portability stager from $controlCommit." }
+          $stagerPath = Join-Path $env:GITHUB_WORKSPACE $relativeStager
+          [IO.File]::WriteAllText($stagerPath, (($stager -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+          try {
+            & .\verification\build-v1-release.ps1 `
+              -Java8 "${{ steps.java8.outputs.path }}\bin\java.exe" `
+              -Java17 "${{ steps.java17.outputs.path }}\bin\java.exe" `
+              -Java21 "${{ steps.java21.outputs.path }}\bin\java.exe" `
+              -Java25 "${{ steps.java25.outputs.path }}\bin\java.exe" `
+              -Gradle2 "${{ steps.gradle.outputs.gradle2 }}" `
+              -Gradle4 "${{ steps.gradle.outputs.gradle4 }}" `
+              -Gradle7 "${{ steps.gradle.outputs.gradle7 }}" `
+              -Gradle9 "${{ steps.gradle.outputs.gradle9 }}"
+            if ($LASTEXITCODE -ne 0) { throw "Release artifact rebuild failed with exit $LASTEXITCODE." }
+          } finally {
+            git restore --source=HEAD --worktree -- $relativeStager
+          }
+          git diff --exit-code -- $relativeStager
 
       - name: Verify and stage the exact tagged release
         shell: pwsh

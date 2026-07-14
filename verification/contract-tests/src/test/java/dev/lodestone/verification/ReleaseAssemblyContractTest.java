@@ -119,6 +119,10 @@ class ReleaseAssemblyContractTest {
                         + "        # The final staged ZIPs are still checked byte-for-byte against certification.\n"
                         + "        shell: powershell"),
                 "immutable v1.0.0 profile staging must use its compatible Windows PowerShell runtime");
+        assertTrue(workflow.contains("$relativeStager = 'verification/curseforge-profiles/stage-fabric-1182-profile.ps1'"),
+                "the immutable-tag recovery must explicitly limit its portability overlay to the affected stager");
+        assertTrue(workflow.contains("git restore --source=HEAD --worktree -- $relativeStager"),
+                "the immutable tag source must be restored before release assembly");
         assertTrue(workflow.contains("--draft --title 'Lodestone v1.0.0' --generate-notes"),
                 "uploads must begin as an inaccessible draft");
         assertTrue(workflow.contains("gh release download $tag"),
