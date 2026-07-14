@@ -1,0 +1,27 @@
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-fabric-1.18.2-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-fabric-1.19.2-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-fabric-1.20.1-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-fabric-1.21.1-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-fabric-26.2-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-forge-1.16.5-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-forge-1.18.2-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-forge-1.19.2-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-forge-1.20.1-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-forge-1.21.1-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-neoforge-1.21.1-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-quilt-1.20.1-local.zip
+Created C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone\verification\curseforge-profiles\lodestone-quilt-1.21.1-local.zip
+PASS deterministic CurseForge profile lodestone-fabric-1.18.2-local.zip 30f63479d4a8651fe4a09922d4767d8ffc82a23110d676f0e4cbb74bbd79d3dc
+PASS deterministic CurseForge profile lodestone-fabric-1.19.2-local.zip 21868a57398a2cfe7392b0698fe8bb163abeb528d0bdc97173e854e3ed0572e4
+PASS deterministic CurseForge profile lodestone-fabric-1.20.1-local.zip b4c357ab9220049211a43d5a9bc78c5a7cf09fdee3d1b0277bc04a31ced14d27
+PASS deterministic CurseForge profile lodestone-fabric-1.21.1-local.zip 5fc7fce39471ba8b51a6cf61472830b4126674e2479427993f1bf731eb66e90d
+PASS deterministic CurseForge profile lodestone-fabric-26.2-local.zip 7e2b9e317d73564271fd017956f4a0c05e78e9aa89002651082327bd2cb461ba
+PASS deterministic CurseForge profile lodestone-forge-1.16.5-local.zip 5fe6c3beca4d711977bb65ea297c66808c486297e9d254d934fb171dbf4bdd38
+PASS deterministic CurseForge profile lodestone-forge-1.18.2-local.zip 7d2d2aa3a4e4550d7b339a0f39a226b017a1716db5ee4a21a20f3874a8916e77
+PASS deterministic CurseForge profile lodestone-forge-1.19.2-local.zip 7a8275f9191afbf8a1bd915c6c5a21163ded4e1c9683f026b975c0519a749dce
+PASS deterministic CurseForge profile lodestone-forge-1.20.1-local.zip 259cde2332b2fd040e7ec3c5def68ed6f18e87e0292dc11fe01fa19ee1b97345
+PASS deterministic CurseForge profile lodestone-forge-1.21.1-local.zip 14ccfa0e3d6deefc96705105b536e395857901af6adb9ae6dcd5d356ebd90b19
+PASS deterministic CurseForge profile lodestone-neoforge-1.21.1-local.zip bf03b7011b3d6b71b86d9d38ff1db9d97560694a8594720b92f508ff6a4bea61
+PASS deterministic CurseForge profile lodestone-quilt-1.20.1-local.zip 03b8f555950afadaa8b8b92eb87892070962576e3a4ce5a850c9db96766bc7f8
+PASS deterministic CurseForge profile lodestone-quilt-1.21.1-local.zip 4ea65bb2013c2672cf7d262ce28d3503041d054ed36906afa09ba1698757a525
+PASS all 13 CurseForge profiles re-staged deterministically.

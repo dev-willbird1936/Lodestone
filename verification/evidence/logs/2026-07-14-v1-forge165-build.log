@@ -1,0 +1,47 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. See https://docs.gradle.org/7.6.4/userguide/gradle_daemon.html#sec:disabling_the_daemon.
+Daemon will be stopped at the end of the build 
+> Task :common:protocol-model:compileJava UP-TO-DATE
+> Task :common:adapter-api:compileJava UP-TO-DATE
+> Task :common:adapter-api:processResources NO-SOURCE
+> Task :common:adapter-api:classes UP-TO-DATE
+> Task :common:adapter-api:jar UP-TO-DATE
+> Task :common:protocol-model:processResources NO-SOURCE
+> Task :common:protocol-model:classes UP-TO-DATE
+> Task :common:protocol-model:jar UP-TO-DATE
+> Task :common:runtime-core:compileJava UP-TO-DATE
+> Task :common:runtime-core:processResources UP-TO-DATE
+> Task :common:runtime-core:classes UP-TO-DATE
+> Task :common:runtime-core:jar UP-TO-DATE
+> Task :gateway:mcp-server:compileJava UP-TO-DATE
+> Task :gateway:mcp-server:processResources NO-SOURCE
+> Task :gateway:mcp-server:classes UP-TO-DATE
+> Task :gateway:mcp-server:jar UP-TO-DATE
+> Task :adapters:forge:mc1_16_5:compileJava UP-TO-DATE
+> Task :adapters:forge:mc1_16_5:processResources NO-SOURCE
+> Task :adapters:forge:mc1_16_5:classes UP-TO-DATE
+> Task :adapters:forge:mc1_16_5:jar UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:compileJava UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:processResources UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:classes UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:jar
+> Task :hosts:forge:mc1_16_5:downloadMcpConfig
+> Task :hosts:forge:mc1_16_5:extractSrg UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:createMcpToSrg UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:reobfJar
+> Task :hosts:forge:mc1_16_5:jarJar SKIPPED
+> Task :hosts:forge:mc1_16_5:reobfJarJar SKIPPED
+> Task :hosts:forge:mc1_16_5:sourcesJar UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:assemble
+> Task :hosts:forge:mc1_16_5:compileTestJava NO-SOURCE
+> Task :hosts:forge:mc1_16_5:processTestResources NO-SOURCE
+> Task :hosts:forge:mc1_16_5:testClasses UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:test NO-SOURCE
+> Task :hosts:forge:mc1_16_5:check UP-TO-DATE
+> Task :hosts:forge:mc1_16_5:build
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 8.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts.
+
+BUILD SUCCESSFUL in 25s
+19 actionable tasks: 3 executed, 16 up-to-date

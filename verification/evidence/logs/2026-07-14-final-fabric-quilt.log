@@ -1,0 +1,14 @@
+PASS Fabric 1.20.1 / Loader 0.15.11
+PASS Fabric 1.19.2 / Loader 0.14.25
+PASS Fabric 1.18.2 / Loader 0.14.25
+PASS Fabric 1.21.1 / Loader 0.16.10
+PASS Fabric 26.2 / Loader 0.19.3 (Vulkan client setting; dedicated server)
+Created Quilt compatibility host C:\Users\warcr\AppData\Local\Temp\lodestone-matrix\quilt-1.20.1\lodestone-quilt.jar
+PASS Quilt 1.20.1 / Loader 0.29.2 via Fabric compatibility
+Created Quilt compatibility host C:\Users\warcr\AppData\Local\Temp\lodestone-matrix\quilt-1.21.1\lodestone-quilt.jar
+PASS Quilt 1.21.1 / Loader 0.29.2 via Fabric compatibility
+PASS NeoForge 1.21.1 / 21.1.211
+PASS Forge 1.21.1 / 52.1.0
+PASS Forge 1.20.1 / 47.4.10
+PASS Forge 1.19.2 / 43.5.2
+PASS Forge 1.18.2 / 40.3.12

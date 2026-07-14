@@ -1,0 +1,78 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.5.1/userguide/gradle_daemon.html#sec:disabling_the_daemon.
+Daemon will be stopped at the end of the build 
+
+> Configure project :adapters:fabric:mc1_18_2
+Fabric Loom: 1.10.5
+
+> Configure project :adapters:fabric:mc1_19_2
+Fabric Loom: 1.10.5
+
+> Configure project :adapters:fabric:mc1_20_1
+Fabric Loom: 1.10.5
+
+> Configure project :adapters:fabric:mc1_21_1
+Fabric Loom: 1.10.5
+
+> Configure project :adapters:fabric:mc1_26_2
+Fabric Loom: 1.17.1
+
+> Configure project :hosts:fabric:mc1_18_2
+Fabric Loom: 1.10.5
+
+> Configure project :hosts:fabric:mc1_19_2
+Fabric Loom: 1.10.5
+
+> Configure project :hosts:fabric:mc1_20_1
+Fabric Loom: 1.10.5
+
+> Configure project :hosts:fabric:mc1_21_1
+Fabric Loom: 1.10.5
+
+> Configure project :hosts:fabric:mc1_26_2
+Fabric Loom: 1.17.1
+
+> Task :common:protocol-model:compileJava
+> Task :common:adapter-api:compileJava
+> Task :common:adapter-api:processResources NO-SOURCE
+> Task :common:adapter-api:classes
+> Task :common:adapter-api:jar
+> Task :common:protocol-model:processResources NO-SOURCE
+> Task :common:protocol-model:classes
+> Task :common:protocol-model:jar
+> Task :common:runtime-core:compileJava
+> Task :common:runtime-core:processResources
+> Task :common:runtime-core:classes
+> Task :common:runtime-core:jar
+> Task :gateway:mcp-server:compileJava
+> Task :gateway:mcp-server:processResources NO-SOURCE
+> Task :gateway:mcp-server:classes
+> Task :gateway:mcp-server:jar
+> Task :adapters:fabric:mc1_26_2:compileJava
+> Task :adapters:fabric:mc1_26_2:processResources
+> Task :adapters:fabric:mc1_26_2:classes
+> Task :adapters:fabric:mc1_26_2:processIncludeJars
+> Task :adapters:fabric:mc1_26_2:jar
+> Task :hosts:fabric:mc1_26_2:compileJava
+> Task :hosts:fabric:mc1_26_2:processResources
+> Task :hosts:fabric:mc1_26_2:classes
+> Task :hosts:fabric:mc1_26_2:compileClientJava
+> Task :hosts:fabric:mc1_26_2:processClientResources NO-SOURCE
+> Task :hosts:fabric:mc1_26_2:processIncludeJars
+> Task :hosts:fabric:mc1_26_2:jar
+> Task :hosts:fabric:mc1_26_2:sourcesJar
+> Task :hosts:fabric:mc1_26_2:assemble
+> Task :hosts:fabric:mc1_26_2:clientClasses
+> Task :hosts:fabric:mc1_26_2:compileTestJava
+> Task :hosts:fabric:mc1_26_2:processTestResources NO-SOURCE
+> Task :hosts:fabric:mc1_26_2:testClasses
+> Task :hosts:fabric:mc1_26_2:test
+> Task :hosts:fabric:mc1_26_2:validateAccessWidener NO-SOURCE
+> Task :hosts:fabric:mc1_26_2:check
+> Task :hosts:fabric:mc1_26_2:build
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts.
+
+BUILD SUCCESSFUL in 2m 45s
+21 actionable tasks: 21 executed
