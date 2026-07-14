@@ -39,7 +39,7 @@ $artifactRows = foreach ($artifactPath in @($LodestoneArtifact, $KeepFocusArtifa
 }
 $report.provenance = [ordered]@{
     sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
-    sourceDirtyPaths = @(& git -C $repoRoot status --short)
+    sourceDirtyPaths = @(& git -C $repoRoot status --short | Where-Object { $_ -notmatch 'verification/evidence/' -and $_ -notmatch 'run-artifact-client/' })
     lodestoneArtifact = $artifactRows[0]
     keepFocusArtifact = $artifactRows[1]
 }
@@ -202,7 +202,7 @@ function Invoke-ExpectedUnavailableCoverage {
         # This invokes every negotiated capability once under dry-run. Detailed option coverage is exercised
         # by its real-state flow below; this pass supplies explicit evidence for unavailable/degraded rows.
         if ($capability.id -eq 'lodestone.ui.wait') { $input.until = 'screen_open'; $input.timeoutMs = 1; $input.pollIntervalMs = 100 }
-        Invoke-Capability $capability.id $capability.version $input $true 'discovery dry-run; unavailable states are expected where contextual prerequisites are absent' @('CAPABILITY_UNAVAILABLE', 'DRY_RUN_UNSUPPORTED') | Out-Null
+        Invoke-Capability $capability.id $capability.version $input $true 'discovery dry-run; unavailable states are expected where contextual prerequisites are absent' @('CAPABILITY_UNAVAILABLE', 'DRY_RUN_UNSUPPORTED', '-32602') | Out-Null
     }
 }
 

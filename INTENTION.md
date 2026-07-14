@@ -180,7 +180,7 @@ every Minecraft environment.
 
 - The NeoForge 1.21.1 + KeepFocus client benchmark now runs in user-visible order from main menu
   to fresh world, exhaustive typed MCP coverage, focus-loss readback, and MCP clean shutdown. The
-  rebuilt artifact passed 59 main-menu records, 27/27 world records, focus-loss tick readback, a
+  rebuilt artifact passed 106 asserted main-menu records, 27/27 world records, focus-loss tick readback, a
   six-step Escape/UI-quit flow, and a 315-case 32-tool/49-capability typed coverage sweep. The
   flow now fails on unexpected outcomes, asserts gold-block write/readback/restore invariants,
   and records exact Lodestone/KeepFocus hashes plus source state.

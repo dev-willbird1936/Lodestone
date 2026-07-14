@@ -69,7 +69,7 @@ artifact hashes and source state.
 
 | Status | Flow | Evidence |
 | --- | --- | --- |
-| ✅ | NeoForge 1.21.1 main menu → fresh world → authenticated MCP | 59 successful records; Credits absence is an asserted expected adapter outcome; dedicated event subscribe/poll/unsubscribe lifecycle; expected unavailable/dry-run/route-guard states only |
+| ✅ | NeoForge 1.21.1 main menu → fresh world → authenticated MCP | 106 asserted records (56 OK plus expected unavailable/dry-run/route-guard states); Credits absence is asserted; dedicated event subscribe/poll/unsubscribe lifecycle |
 | ✅ | NeoForge 1.21.1 real world control | 27/27 successful records; bounded gold-block write, readback, restore, readback; chat, screenshot, entity/player/world reads, key/mouse cleanup |
 | ✅ | NeoForge 1.21.1 KeepFocus focus-loss readback | Tick advanced while Minecraft lost focus; remained in-world and did not pause |
 | ✅ | NeoForge 1.21.1 MCP clean shutdown | MCP Escape opened PauseScreen, UI click saved/quitted to title, MCP quit game; Java count 0; no crash markers |

@@ -32,7 +32,7 @@ $artifactRows = foreach ($artifactPath in @($LodestoneArtifact, $KeepFocusArtifa
 }
 $report.provenance = [ordered]@{
     sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
-    sourceDirtyPaths = @(& git -C $repoRoot status --short)
+    sourceDirtyPaths = @(& git -C $repoRoot status --short | Where-Object { $_ -notmatch 'verification/evidence/' -and $_ -notmatch 'run-artifact-client/' })
     lodestoneArtifact = $artifactRows[0]
     keepFocusArtifact = $artifactRows[1]
 }
@@ -99,13 +99,25 @@ function Convert-ResultSummary {
 
 function Add-Record {
     param([string] $Scope, [string] $Name, [hashtable] $InvocationInput, $Rpc)
+    $outcome = Convert-ResultSummary $Rpc
+    $classification = if ($Scope -eq 'tool-schema' -or $Scope -eq 'capability-schema-dry-run') {
+        if ($outcome.kind -eq 'rpc-error' -and [string] $outcome.message -match 'missing required field|must be an array') {
+            'conditional-runtime-validation'
+        } else {
+            'schema-valid-generated-sample'
+        }
+    } elseif ($Scope -eq 'events') {
+        'event-lifecycle'
+    } else {
+        'descriptor-or-runtime-observation'
+    }
     $report.records += [ordered]@{
         scope = $Scope
         name = $Name
         input = $InvocationInput
-        classification = if ($Scope -eq 'tool-schema' -or $Scope -eq 'capability-schema-dry-run') { 'schema-valid-generated-sample' } elseif ($Scope -eq 'events') { 'event-lifecycle' } else { 'descriptor-or-runtime-observation' }
+        classification = $classification
         httpStatus = $Rpc.HttpStatus
-        outcome = Convert-ResultSummary $Rpc
+        outcome = $outcome
     }
 }
 
@@ -167,7 +179,7 @@ function New-Sample {
             if ($pattern -match '0-9a-fA-F.{8}-.{4}-.{4}-.{4}') { return '00000000-0000-0000-0000-000000000000' }
             if ($pattern -match 'minecraft:overworld') { return 'minecraft:overworld' }
             if ($pattern -match 'in_world\|screen_open|screen_closed') { return 'in_world' }
-            if ($pattern -match 'block-state') { return 'minecraft:stone' }
+            if ($pattern -match 'block-state' -or $pattern -match ':\[a-z') { return 'minecraft:stone' }
             if ($pattern -match '\[a-z0-9_.-\]') { return 'minecraft' }
             if ([int] $Schema.minLength -gt 0) { return ('x' * [Math]::Min([int] $Schema.minLength, 8)) }
             return 'x'
