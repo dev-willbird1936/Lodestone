@@ -30,3 +30,5 @@ NPEs, crashes, malformed envelopes, or unexplained adapter failures fail the flo
 
 The profile runner uses explicit expected statuses/error codes and aborts on any unexpected
 outcome. Fabric uses port `37829` by default so its flow can run separately from NeoForge.
+Fabric 1.20.1 also selects its exact-version direct `singleplayer` → `CreateWorldScreen` path and
+records its adapter-level unavailable `minecraft.chat.read` state as an asserted outcome.
