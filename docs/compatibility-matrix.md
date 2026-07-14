@@ -90,5 +90,5 @@ the immutable v1.0.0 release certificate; each report binds its exact artifact h
 | ✅ | Forge 1.20.1 MCP clean shutdown | 6/6 asserted records; Escape/Pause, Save & Quit, MCP quit; Java 0 and no fatal/crash markers |
 | ✅ | Fabric 26.2 main menu → fresh world → authenticated MCP | 99 asserted records; Java 25/Loom 1.17.1 exact client, typed discovery, UI selectors, key/mouse cleanup, explicit world creation, and expected unsupported states |
 | ✅ | Fabric 26.2 real world control | 27/27 asserted records; reversible gold-block mutation/readback, player look readback/restore, screenshot, and explicit heightmap/light/move/slot/chat-read unsupported states |
-| ✅ | Fabric 26.2 MCP clean shutdown | 2/2 asserted records; MCP quit-game path, `Stopping!`, no fatal/crash marker, and zero Minecraft client processes |
+| ✅ | Fabric 26.2 MCP clean shutdown | 6/6 asserted records; MCP quit-game path, `Stopping!`, no fatal/crash marker, and zero Minecraft client processes |
 | 🔄 | Other client loaders/versions | Requires the same ordered fresh-install flow and exact-version artifact evidence per row |
