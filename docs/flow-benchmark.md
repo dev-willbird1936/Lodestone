@@ -10,6 +10,11 @@ flow for the NeoForge 1.21.1 client artifact plus KeepFocus. The Fabric 1.20.1 w
 the state left by the previous stage, and every MCP request uses the authenticated loopback
 session.
 
+Forge 1.20.1 uses `verification/forge-1.20.1-flow-benchmark.ps1` and
+`verification/run-forge-1201-client.bat`. Its exact Forge 47.4.10 controller handles the
+older client tick event API, guarded UI press/release dispatch, and the fresh
+`singleplayer` -> `CreateWorldScreen` route.
+
 Order:
 
 1. `main-menu`: initialize MCP, verify typed discovery/status, exercise menu navigation and honest
@@ -41,6 +46,10 @@ the same unavailable chat-read capability explicitly.
 Forge 1.21.1 uses the artifact-only ForgeGradle runner, records the first-run Forge loading-warning
 dismissal, and asserts its exact unavailable registry/screenshot/input states instead of treating
 them as client failures.
+Forge 1.20.1 uses the same artifact-only ForgeGradle pattern with its exact-version client
+controller, records unavailable typed input/text states honestly, and requires the fresh-world
+button's guarded press/release pair before accepting world creation. Its isolated runner disables
+VSync and sets master volume to zero for deterministic clean shutdown.
 Fabric 26.2 uses Loom 1.17.1 with Java 25, handles first-run accessibility onboarding, performs the
 26.2 press/release UI event pair, and records component-backed title-menu registry reads as a
 bounded registry-only operation. Its expected heightmap/light/move/slot/chat-read gaps remain

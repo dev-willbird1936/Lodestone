@@ -199,6 +199,11 @@ every Minecraft environment.
   15/15 minimal-world mutation/readback records, and 6/6 clean-shutdown records. The first-run
   Forge loading warning and unsupported registry/screenshot/input states remain explicit. The final
   artifact hash is `86bf8ec7c5c2d414af10288bbc1d4205656eb0949294168f64b249095764d2b9`.
+- Forge 1.20.1 now has an artifact-only exact-version client profile: 100/100 main-menu records,
+  15/15 minimal-world mutation/readback records, and 6/6 clean-shutdown records. Its exact Forge
+  client controller handles the older tick event and fresh-world button press/release behavior;
+  unavailable text/legacy input states remain explicit. The final artifact hash is
+  `1b6aaa36a40841c0cb92fe7213e3b25b89f728cf9efed8288a3971fda8757096`.
 - Fabric 26.2 now has an exact Java 25/Loom 1.17.1 client profile: 99 main-menu records, 27
   world records including reversible block mutation/readback and player-look readback, and clean
   MCP shutdown. The final artifact hash is
@@ -207,7 +212,7 @@ every Minecraft environment.
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1, Fabric 1.20.1, Fabric 26.2,
-  and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and
+  Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and
   broader client container/entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
@@ -225,5 +230,5 @@ every Minecraft environment.
 - The typed coverage sweep still records honest negative coverage for unsupported WorldEdit/
   player-command paths and runtime validation guards; those are harness/catalog coverage findings,
   not claims of support. The client benchmark evidence now covers separate exact rows for NeoForge
-  1.21.1, Fabric 1.20.1, Fabric 1.21.1, and Forge 1.21.1; other client loaders and versions remain
+  1.21.1, Fabric 1.20.1, Fabric 1.21.1, Forge 1.20.1, and Forge 1.21.1; other client loaders and versions remain
   separate rows.
