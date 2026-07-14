@@ -34,14 +34,14 @@ minecraft {
             taskName 'runArtifactClient'
             client true
             workingDirectory project.file('run-artifact-client')
-            property 'lodestone.port', System.getProperty('lodestone.port', '37826')
+            property 'lodestone.port', System.getProperty('lodestone.port', '37831')
             property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
             property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
         }
         server {
             workingDirectory project.file('run')
             args '--nogui'
-            property 'lodestone.port', System.getProperty('lodestone.port', '37826')
+            property 'lodestone.port', System.getProperty('lodestone.port', '37831')
             property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
             property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
             mods {
@@ -69,27 +69,25 @@ tasks.register('stageArtifactClient', Copy) {
 }
 tasks.matching { it.name == 'runArtifactClient' }.configureEach {
     dependsOn tasks.named('stageArtifactClient')
+    doFirst {
+        // ForgeGradle 6.0.54 puts only run sources on JavaExec's classpath.
+        // Add the resolved Forge/Minecraft runtime explicitly; the final JAR
+        // already embeds Lodestone's project modules, so omit their loose
+        // development copies from this artifact-only runner.
+        def bundledRoots = artifactClientBundledRoots
+        classpath(runtimeClasspathArtifacts.files.findAll { candidate ->
+            def path = candidate.toPath().toAbsolutePath().normalize()
+            !bundledRoots.any { bundledRoot -> path.startsWith(bundledRoot) }
+        })
+        classpath(minecraftArtifacts)
+    }
 }
 
 // ForgeGradle applies its development defaults after this project is evaluated.
-// Configure after all projects so this runner stays artifact-only while the
-// normal source-based server run remains untouched.
+// Keep the client runner artifact-only while the normal source-based server run
+// remains untouched.
 gradle.projectsEvaluated {
     minecraft.runs.getByName('client').setSources([sourceSets.artifactClient])
-}
-
-gradle.taskGraph.whenReady {
-    def artifactRun = tasks.getByName('runArtifactClient')
-    // The final jar embeds these project modules. Keep Forge/Minecraft and
-    // external libraries, but do not put a second copy of Lodestone modules
-    // onto the Java module path for this artifact-only certification runner.
-    def originalRuntimeArtifacts = artifactRun.runtimeClasspathArtifacts.files
-    artifactRun.runtimeClasspathArtifacts.setFrom(
-        originalRuntimeArtifacts.findAll { candidate ->
-            def path = candidate.toPath().toAbsolutePath().normalize()
-            !artifactClientBundledRoots.any { bundledRoot -> path.startsWith(bundledRoot) }
-        }
-    )
 }
 
 configurations {

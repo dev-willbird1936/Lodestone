@@ -17,6 +17,7 @@ param(
     [switch] $DirectCreateWorld,
     [string[]] $ExpectedWorldUnavailableCapabilities = @(),
     [string[]] $ExpectedMenuUnavailableCapabilities = @(),
+    [string[]] $ExpectedMenuUnavailableTools = @(),
     [switch] $MinimalWorld
 )
 
@@ -201,6 +202,12 @@ function Expected-CapabilityErrors {
     return @()
 }
 
+function Expected-ToolErrors {
+    param([string] $ToolName, [string[]] $ExpectedUnavailable)
+    if ($ExpectedUnavailable -contains $ToolName) { return @('CAPABILITY_UNAVAILABLE') }
+    return @()
+}
+
 function Get-TitleWidget {
     param($State, [string] $Label)
     $widget = @($State.widgets | Where-Object { $_.label -eq $Label -and $_.actions -contains 'click' }) | Select-Object -First 1
@@ -240,9 +247,18 @@ switch ($Stage) {
             Invoke-Tool 'lodestone_capability_get' @{ capability = $capability.id } 'descriptor readback' | Out-Null
         }
         Invoke-Tool 'lodestone_capability_search' @{ query = 'ui' } 'capability search query' | Out-Null
+        $initialUi = (Invoke-Tool 'ui_state' @{} 'initial menu readiness state').result
+        if ([string] $initialUi.screenClass -match 'LoadingErrorScreen') {
+            $proceed = @($initialUi.widgets | Where-Object { $_.label -eq 'Proceed to main menu' -and $_.actions -contains 'click' }) | Select-Object -First 1
+            if (-not $proceed) { throw 'Forge loading warning had no Proceed to main menu control.' }
+            Invoke-Capability 'minecraft.ui.click' '2.0' @{ screenToken = [string] $initialUi.screenToken; snapshotRevision = [string] $initialUi.snapshotRevision; nodeId = [string] $proceed.nodeId } $false 'dismiss first-run Forge loading warning' | Out-Null
+            Start-Sleep -Milliseconds 750
+            $initialUi = (Invoke-Tool 'ui_state' @{} 'title menu after loading warning').result
+        }
+        if ([string] $initialUi.screenClass -notmatch 'TitleScreen') { throw "Ordered flow did not reach title screen: $($initialUi.screenClass)" }
         Invoke-Tool 'get_server_info' @{} 'disconnected client is an expected server-info state' @('CAPABILITY_UNAVAILABLE') | Out-Null
-        Invoke-Tool 'search_minecraft_item' @{ query = 'diamond'; limit = 3 } 'registry search' | Out-Null
-        Invoke-Tool 'capture_screenshot' @{ maxWidth = 320; maxHeight = 180 } 'title-screen capture' | Out-Null
+        Invoke-Tool 'search_minecraft_item' @{ query = 'diamond'; limit = 3 } 'registry search' (Expected-ToolErrors 'search_minecraft_item' $ExpectedMenuUnavailableTools) | Out-Null
+        Invoke-Tool 'capture_screenshot' @{ maxWidth = 320; maxHeight = 180 } 'title-screen capture' (Expected-ToolErrors 'capture_screenshot' $ExpectedMenuUnavailableTools) | Out-Null
 
         $subscription = Invoke-Tool 'lodestone_events_subscribe' @{ eventPrefix = 'minecraft.ui.'; bufferLimit = 32 } 'UI event subscription'
         $subscriptionId = $subscription.result.id

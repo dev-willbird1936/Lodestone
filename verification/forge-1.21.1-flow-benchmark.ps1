@@ -22,5 +22,6 @@ $ErrorActionPreference = 'Stop'
     -ChatMarker '[Lodestone] Forge 1.21.1 flow benchmark marker' `
     -MenuTargets @('options', 'language', 'accessibility') `
     -DirectCreateWorld `
+    -ExpectedMenuUnavailableTools @('search_minecraft_item', 'capture_screenshot') `
     -ExpectedMenuUnavailableCapabilities @('minecraft.ui.text.insert', 'minecraft.input.key.set', 'minecraft.input.mouse.set', 'minecraft.input.release-all') `
     -MinimalWorld
