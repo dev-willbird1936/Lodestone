@@ -187,12 +187,15 @@ every Minecraft environment.
 - MCP `minecraft.ui.key` supports guarded Escape-to-Pause from an active world without an existing
   screen; shutdown evidence proves Save & Quit, title return, normal client stop, saved chunks,
   zero Java client processes, and no fatal/crash markers.
+- Fabric 1.20.1 now has the same profile-backed ordered flow: 97 asserted main-menu records,
+  27/27 world records, reversible mutation/readback, an explicit unavailable chat-read state,
+  MCP Escape-to-Pause, and clean shutdown with zero Java processes. The final artifact hash is
+  `2e6c6b29aa95b33ada97e3f68064708ca54d9cf4f881d332738a87548cb7dd45`.
 
 ## INTENTION NOT MATCHED
 
-- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1 client slices and the bounded
-  Fabric 1.20.1 menu slice is still pending; Fabric 1.20.1's new source evidence and Fabric 26.2
-  client runs are not release claims.
+- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1 and Fabric 1.20.1 client flows
+  is still pending; Fabric 26.2 client runs are not release claims.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
   entities are intentionally rejected rather than overwritten without NBT restoration; Fabric

@@ -62,10 +62,9 @@ profiles. They are not claims of a manual CurseForge GUI import or public CurseF
 
 ## Periodic client-flow benchmark snapshot — 2026-07-14
 
-These rows record post-v1 source evidence for the rebuilt local artifact
-`hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar` with KeepFocus installed alongside it.
-They do not rewrite the immutable v1.0.0 release certificate; each report binds its exact
-artifact hashes and source state.
+These rows record post-v1 source evidence for exact local artifacts. The NeoForge profile has
+KeepFocus installed alongside Lodestone; the Fabric profile is Lodestone-only. They do not rewrite
+the immutable v1.0.0 release certificate; each report binds its exact artifact hash and source state.
 
 | Status | Flow | Evidence |
 | --- | --- | --- |
@@ -74,4 +73,7 @@ artifact hashes and source state.
 | ✅ | NeoForge 1.21.1 KeepFocus focus-loss readback | Tick advanced while Minecraft lost focus; remained in-world and did not pause |
 | ✅ | NeoForge 1.21.1 MCP clean shutdown | MCP Escape opened PauseScreen, UI click saved/quitted to title, MCP quit game; Java count 0; no crash markers |
 | ✅ | NeoForge 1.21.1 MCP typed coverage sweep | 32 tools, 49 capabilities, 315 typed/schema cases; schema-generated inputs are classified and unsupported states remained explicit |
+| ✅ | Fabric 1.20.1 main menu → fresh world → authenticated MCP | 97 asserted records; typed discovery, UI selectors, key/mouse cleanup, direct `CreateWorldScreen` navigation, text insertion, and fresh-world creation |
+| ✅ | Fabric 1.20.1 real world control | 27/27 successful records; bounded gold-block write/readback/restore, player/entity/world reads, chat send, screenshot, and explicit unavailable chat-read state |
+| ✅ | Fabric 1.20.1 MCP clean shutdown | 6 asserted records; MCP Escape opened PauseScreen from the active world, Save & Quit returned to title, MCP quit game; Java count 0 and no crash markers |
 | 🔄 | Other client loaders/versions | Requires the same ordered fresh-install flow and exact-version artifact evidence per row |
