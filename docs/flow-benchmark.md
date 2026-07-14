@@ -3,7 +3,8 @@
 `verification/neoforge-keepfocus-flow-benchmark.ps1` is the profile-backed ordered acceptance
 flow for the NeoForge 1.21.1 client artifact plus KeepFocus. The Fabric 1.20.1 wrapper is
 `verification/fabric-1.20.1-flow-benchmark.ps1`; Fabric 1.21.1 uses
-`verification/fabric-1.21.1-flow-benchmark.ps1`. Each flow is stateful: every stage starts from
+`verification/fabric-1.21.1-flow-benchmark.ps1`; Forge 1.21.1 uses
+`verification/forge-1.21.1-flow-benchmark.ps1`. Each flow is stateful: every stage starts from
 the state left by the previous stage, and every MCP request uses the authenticated loopback
 session.
 
@@ -35,3 +36,6 @@ Fabric 1.20.1 also selects its exact-version direct `singleplayer` → `CreateWo
 records its adapter-level unavailable `minecraft.chat.read` state as an asserted outcome.
 Fabric 1.21.1 selects its exact-version direct fresh-world route when no saves exist and records
 the same unavailable chat-read capability explicitly.
+Forge 1.21.1 uses the artifact-only ForgeGradle runner, records the first-run Forge loading-warning
+dismissal, and asserts its exact unavailable registry/screenshot/input states instead of treating
+them as client failures.

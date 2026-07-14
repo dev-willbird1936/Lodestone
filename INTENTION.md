@@ -195,11 +195,15 @@ every Minecraft environment.
   records, reversible mutation/readback, direct fresh-world route handling, MCP Escape-to-Pause,
   and clean shutdown with zero Java processes. The final artifact hash is
   `1ad86d7d6b63f2f039eed75942873b9fe6df9dba7fd0dc52ed11c496282a5899`.
+- Forge 1.21.1 now has an artifact-only exact-version client profile: 100/100 main-menu records,
+  15/15 minimal-world mutation/readback records, and 6/6 clean-shutdown records. The first-run
+  Forge loading warning and unsupported registry/screenshot/input states remain explicit. The final
+  artifact hash is `86bf8ec7c5c2d414af10288bbc1d4205656eb0949294168f64b249095764d2b9`.
 
 ## INTENTION NOT MATCHED
 
-- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1 and Fabric 1.20.1 client flows
-  is still pending; Fabric 26.2 client runs are not release claims.
+- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1, Fabric 1.20.1, and Forge 1.21.1
+  client flows is still pending; Fabric 26.2 client runs are not release claims.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
   entities are intentionally rejected rather than overwritten without NBT restoration; Fabric
