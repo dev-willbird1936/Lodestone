@@ -40,11 +40,11 @@ $report = [ordered]@{
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $artifactPaths = @($LodestoneArtifact)
 if (-not [string]::IsNullOrWhiteSpace($KeepFocusArtifact)) { $artifactPaths += $KeepFocusArtifact }
-$artifactRows = foreach ($artifactPath in $artifactPaths) {
+$artifactRows = @(foreach ($artifactPath in $artifactPaths) {
     $resolved = (Resolve-Path -LiteralPath $artifactPath -ErrorAction Stop).Path
     $item = Get-Item -LiteralPath $resolved
     [ordered]@{ path = $resolved; bytes = [int64] $item.Length; sha256 = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash.ToLowerInvariant() }
-}
+})
 $report.provenance = [ordered]@{
     sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
     sourceDirtyPaths = @(& git -C $repoRoot status --short | Where-Object { $_ -notmatch 'verification/evidence/' -and $_ -notmatch 'run-artifact-client/' })
