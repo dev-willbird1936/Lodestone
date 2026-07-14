@@ -4,7 +4,9 @@
 flow for the NeoForge 1.21.1 client artifact plus KeepFocus. The Fabric 1.20.1 wrapper is
 `verification/fabric-1.20.1-flow-benchmark.ps1`; Fabric 1.21.1 uses
 `verification/fabric-1.21.1-flow-benchmark.ps1`; Forge 1.21.1 uses
-`verification/forge-1.21.1-flow-benchmark.ps1`. Each flow is stateful: every stage starts from
+`verification/forge-1.21.1-flow-benchmark.ps1`; Fabric 26.2 uses
+`verification/fabric-26.2-flow-benchmark.ps1` and its Java 25 launcher
+`verification/run-fabric-262-client.bat`. Each flow is stateful: every stage starts from
 the state left by the previous stage, and every MCP request uses the authenticated loopback
 session.
 
@@ -39,3 +41,7 @@ the same unavailable chat-read capability explicitly.
 Forge 1.21.1 uses the artifact-only ForgeGradle runner, records the first-run Forge loading-warning
 dismissal, and asserts its exact unavailable registry/screenshot/input states instead of treating
 them as client failures.
+Fabric 26.2 uses Loom 1.17.1 with Java 25, handles first-run accessibility onboarding, performs the
+26.2 press/release UI event pair, and records component-backed title-menu registry reads as a
+bounded registry-only operation. Its expected heightmap/light/move/slot/chat-read gaps remain
+explicit `CAPABILITY_UNAVAILABLE` evidence; timed-out UI waits fail the benchmark.

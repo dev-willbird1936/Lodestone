@@ -59,13 +59,29 @@ public final class FabricAdapter implements LodestoneAdapter {
             "minecraft.world.blocks.write",
             "minecraft.entity.list",
             "minecraft.inventory.read",
-            "minecraft.chat.send");
+            "minecraft.chat.send",
+            "minecraft.input.key.set",
+            "minecraft.input.mouse.set",
+            "minecraft.input.release-all",
+            "minecraft.player.look",
+            "minecraft.ui.state.read",
+            "minecraft.ui.click",
+            "minecraft.ui.key",
+            "minecraft.ui.text.insert");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search",
             "minecraft.server.info.read",
             "minecraft.client.screenshot.capture",
             "minecraft.player.context.read",
-            "minecraft.entity.nearby.read");
+            "minecraft.entity.nearby.read",
+            "minecraft.input.key.set",
+            "minecraft.input.mouse.set",
+            "minecraft.input.release-all",
+            "minecraft.player.look",
+            "minecraft.ui.state.read",
+            "minecraft.ui.click",
+            "minecraft.ui.key",
+            "minecraft.ui.text.insert");
     private static volatile FabricAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -109,6 +125,14 @@ public final class FabricAdapter implements LodestoneAdapter {
         handlers.put("minecraft.client.screenshot.capture", this::clientCall);
         handlers.put("minecraft.player.context.read", this::clientCall);
         handlers.put("minecraft.entity.nearby.read", this::clientCall);
+        handlers.put("minecraft.input.key.set", this::clientCall);
+        handlers.put("minecraft.input.mouse.set", this::clientCall);
+        handlers.put("minecraft.input.release-all", this::clientCall);
+        handlers.put("minecraft.player.look", this::clientCall);
+        handlers.put("minecraft.ui.state.read", this::clientCall);
+        handlers.put("minecraft.ui.click", this::clientCall);
+        handlers.put("minecraft.ui.key", this::clientCall);
+        handlers.put("minecraft.ui.text.insert", this::clientCall);
         handlers.put("minecraft.player.state.read", this::readPlayerState);
         handlers.put("minecraft.world.block.read", this::readBlock);
         handlers.put("minecraft.world.blocks.read", this::readBlocks);

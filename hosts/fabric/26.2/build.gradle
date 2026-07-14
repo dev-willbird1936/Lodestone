@@ -28,6 +28,9 @@ loom {
     runs {
         client {
             client()
+            property 'lodestone.port', System.getProperty('lodestone.port', '37832')
+            property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+            property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
         }
         server {
             server()

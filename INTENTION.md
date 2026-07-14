@@ -199,11 +199,16 @@ every Minecraft environment.
   15/15 minimal-world mutation/readback records, and 6/6 clean-shutdown records. The first-run
   Forge loading warning and unsupported registry/screenshot/input states remain explicit. The final
   artifact hash is `86bf8ec7c5c2d414af10288bbc1d4205656eb0949294168f64b249095764d2b9`.
+- Fabric 26.2 now has an exact Java 25/Loom 1.17.1 client profile: 99 main-menu records, 27
+  world records including reversible block mutation/readback and player-look readback, and clean
+  MCP shutdown. The final artifact hash is
+  `8872c45706e5d019d8eec4ed62a66bf1d26e8dce5fcbdef320c88d46bdea9127`.
 
 ## INTENTION NOT MATCHED
 
-- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1, Fabric 1.20.1, and Forge 1.21.1
-  client flows is still pending; Fabric 26.2 client runs are not release claims.
+- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1, Fabric 1.20.1, Fabric 26.2,
+  and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and
+  broader client container/entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
   entities are intentionally rejected rather than overwritten without NBT restoration; Fabric

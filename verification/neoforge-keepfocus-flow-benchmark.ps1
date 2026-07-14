@@ -168,7 +168,9 @@ function Get-UiState {
 
 function Wait-For {
     param([string] $Until, [int] $TimeoutMs = 30000)
-    return Invoke-Tool 'ui_wait' @{ until = $Until; timeoutMs = $TimeoutMs; pollIntervalMs = 100 } "wait for $Until"
+    $wait = Invoke-Tool 'ui_wait' @{ until = $Until; timeoutMs = $TimeoutMs; pollIntervalMs = 100 } "wait for $Until"
+    if ($wait.status -ne 'ok' -or $wait.result.timedOut) { throw "UI wait timed out: $Until" }
+    return $wait
 }
 
 function Press-Escape {
@@ -254,6 +256,13 @@ switch ($Stage) {
             Invoke-Capability 'minecraft.ui.click' '2.0' @{ screenToken = [string] $initialUi.screenToken; snapshotRevision = [string] $initialUi.snapshotRevision; nodeId = [string] $proceed.nodeId } $false 'dismiss first-run Forge loading warning' | Out-Null
             Start-Sleep -Milliseconds 750
             $initialUi = (Invoke-Tool 'ui_state' @{} 'title menu after loading warning').result
+        }
+        if ([string] $initialUi.screenClass -match 'AccessibilityOnboardingScreen') {
+            $continue = @($initialUi.widgets | Where-Object { $_.label -eq 'Continue' -and $_.actions -contains 'click' }) | Select-Object -First 1
+            if (-not $continue) { throw 'Accessibility onboarding had no Continue control.' }
+            Invoke-Capability 'minecraft.ui.click' '2.0' @{ screenToken = [string] $initialUi.screenToken; snapshotRevision = [string] $initialUi.snapshotRevision; nodeId = [string] $continue.nodeId } $false 'dismiss first-run accessibility onboarding' | Out-Null
+            Start-Sleep -Milliseconds 750
+            $initialUi = (Invoke-Tool 'ui_state' @{} 'title menu after accessibility onboarding').result
         }
         if ([string] $initialUi.screenClass -notmatch 'TitleScreen') { throw "Ordered flow did not reach title screen: $($initialUi.screenClass)" }
         Invoke-Tool 'get_server_info' @{} 'disconnected client is an expected server-info state' @('CAPABILITY_UNAVAILABLE') | Out-Null
@@ -355,8 +364,10 @@ switch ($Stage) {
         $x = [math]::Floor([double] $playerBefore.position.x)
         $y = [math]::Floor([double] $playerBefore.position.y)
         $z = [math]::Floor([double] $playerBefore.position.z)
-        Invoke-Capability 'minecraft.world.heightmap.read' '1.0' @{ x = $x; z = $z; sizeX = 2; sizeZ = 2; includeSurfaceBlocks = $true } $false 'heightmap read' | Out-Null
-        Invoke-Capability 'minecraft.world.light.analyze' '1.0' @{ x = $x; y = $y; z = $z; sizeX = 2; sizeY = 2; sizeZ = 2; resolution = 1; darkSpotLimit = 4; lightSourceLimit = 4 } $false 'light analysis' | Out-Null
+        $heightmapExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.world.heightmap.read') { @('CAPABILITY_UNAVAILABLE') } else { @() }
+        $lightExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.world.light.analyze') { @('CAPABILITY_UNAVAILABLE') } else { @() }
+        Invoke-Capability 'minecraft.world.heightmap.read' '1.0' @{ x = $x; z = $z; sizeX = 2; sizeZ = 2; includeSurfaceBlocks = $true } $false 'heightmap read' $heightmapExpectedCodes | Out-Null
+        Invoke-Capability 'minecraft.world.light.analyze' '1.0' @{ x = $x; y = $y; z = $z; sizeX = 2; sizeY = 2; sizeZ = 2; resolution = 1; darkSpotLimit = 4; lightSourceLimit = 4 } $false 'light analysis' $lightExpectedCodes | Out-Null
         Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $x; y = $y + 3; z = $z; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'block baseline read' | Out-Null
 
         $mutationY = $y + 4
@@ -384,8 +395,10 @@ switch ($Stage) {
         Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw + 1; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
         Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'rotation readback' | Out-Null
         Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
-        Invoke-Capability 'minecraft.player.move' '2.0' @{ forward = 0; strafe = 0; jump = $false; sprint = $false; sneak = $false; durationMs = 1 } $false 'zero-motion control path' | Out-Null
-        Invoke-Capability 'minecraft.inventory.slot.select' '1.0' @{ slot = [int] $playerBefore.selectedSlot } $false 'reselect current slot' | Out-Null
+        $moveExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.player.move') { @('CAPABILITY_UNAVAILABLE') } else { @() }
+        $slotExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.inventory.slot.select') { @('CAPABILITY_UNAVAILABLE') } else { @() }
+        Invoke-Capability 'minecraft.player.move' '2.0' @{ forward = 0; strafe = 0; jump = $false; sprint = $false; sneak = $false; durationMs = 1 } $false 'zero-motion control path' $moveExpectedCodes | Out-Null
+        Invoke-Capability 'minecraft.inventory.slot.select' '1.0' @{ slot = [int] $playerBefore.selectedSlot } $false 'reselect current slot' $slotExpectedCodes | Out-Null
         Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = $ChatMarker } $false 'chat mutation/readback marker' | Out-Null
         Start-Sleep -Milliseconds 300
         $chatReadExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.chat.read') { @('CAPABILITY_UNAVAILABLE') } else { @() }
@@ -435,10 +448,18 @@ switch ($Stage) {
         }
         if ($state.screenClass -match 'TitleScreen') {
             Invoke-Tool 'ui_navigate' @{ target = 'quit_game' } 'normal game shutdown through MCP' | Out-Null
-            Start-Sleep -Milliseconds 1500
+            Start-Sleep -Milliseconds 500
             $latestLog = Join-Path $ClientRunDirectory 'logs\latest.log'
             $logText = if (Test-Path -LiteralPath $latestLog) { Get-Content -Raw -LiteralPath $latestLog } else { '' }
-            $javaCount = @(Get-Process -Name java,javaw -ErrorAction SilentlyContinue).Count
+            $gameProcessCount = {
+                @(Get-CimInstance Win32_Process -Filter "Name = 'java.exe' OR Name = 'javaw.exe'" -ErrorAction SilentlyContinue |
+                    Where-Object { $_.CommandLine -match 'fabric\.dli\.main|KnotClient|ForgeBootstrap|net\.minecraft' }).Count
+            }
+            $javaCount = & $gameProcessCount
+            for ($poll = 0; $poll -lt 30 -and $javaCount -ne 0; $poll++) {
+                Start-Sleep -Milliseconds 500
+                $javaCount = & $gameProcessCount
+            }
             $report.shutdownVerification = [ordered]@{
                 latestLog = $latestLog
                 stoppingMarker = ($logText -match 'Stopping!')
