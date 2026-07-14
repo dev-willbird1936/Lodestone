@@ -20,12 +20,13 @@ not recorded here. An authenticated MCP session negotiated protocol
 | Check | Result |
 | --- | --- |
 | Capability discovery | `minecraft.ui.state.read` was `available`; `minecraft.ui.click`, `minecraft.ui.key`, `minecraft.player.look`, and hotbar selection were correctly `restricted` pending `control-player` authorization. |
-| Main-menu read | `TitleScreen` snapshot returned a typed, complete widget list. |
-| Semantic menu mutation | `Singleplayer` was selected from the guarded snapshot. The request intentionally omitted `button`; the adapter defaulted it to left-click (`0`), returned `handled: true`, and readback reached `CreateWorldScreen`. |
-| Fresh world | `Create New World` was selected from its guarded snapshot with `button` omitted. The mutation committed, exceeded the operation deadline while the integrated server initialized, and returned `OUTCOME_INDETERMINATE`; it was not retried. The retained client log proves `Starting integrated minecraft server version 1.20.1`, spawn preparation, `Player303 joined the game`, and a saved `New World`. |
-| In-world read | A complete `PauseScreen` snapshot and `minecraft.player.state.read` returned the joined player, overworld position, full health/food, rotation, and selected hotbar slot. |
-| Safety boundary | Subsequent mutations returned `CAPABILITY_QUARANTINED` because the world-opening operation had an indeterminate post-commit outcome. This default-deny guard prevented a duplicate world or unchecked follow-up action. |
-| Shutdown | The tracked Minecraft window received its normal close request. The log contains `Saving chunks for level`, `Stopping server`, `Stopping!`, and Gradle `BUILD SUCCESSFUL`; the tracked process tree exited. |
+| Main-menu read | `TitleScreen` returned a typed complete widget list. The endpoint briefly appeared before a title screen existed; only idempotent state reads were retried until the screen was ready. |
+| Semantic menu control | Guarded `lodestone.ui.navigate` advanced title screen → world list → `CreateWorldScreen`; each selection used fresh typed state and a snapshot revision. |
+| Fresh world | The final guarded `Create New World` action loaded an integrated 1.20.1 world in 16,522 ms. The log proves server start, spawn preparation, `Player654 joined the game`, and saved `New World (1)`. |
+| Long-action outcome | `minecraft.ui.click`, `minecraft.ui.key`, and `lodestone.ui.navigate` advertise a bounded 120,000 ms default. The 16.5-second world creation completed without `OUTCOME_INDETERMINATE` or mutation quarantine; an explicit earlier caller deadline still takes precedence. |
+| In-world control/readback | `minecraft.player.look` set yaw `30` and pitch `15`; a subsequent `minecraft.player.state.read` returned exactly yaw `30`, pitch `15`. |
+| Lifecycle honesty | A player capability may be temporarily unavailable during the world/player manifest refresh. No mutation was retried during that transition; after refresh, typed player state and the bounded look mutation were available. |
+| Shutdown | The tracked Minecraft window received a normal close request. The log contains `Saving chunks for level`, `Stopping server`, `Stopping!`, and Gradle `BUILD SUCCESSFUL`; the tracked process tree exited. |
 
 No Lodestone crash was observed during client start, menu control, integrated-world
 creation, or clean shutdown.
@@ -33,14 +34,14 @@ creation, or clean shutdown.
 ## Fix validated
 
 `minecraft.ui.click` declares `button` as optional. The Fabric 1.18.2 and 1.20.1
-client bridges now use `numberOrDefault(..., 0)` instead of requiring that field,
-preserving the protocol's documented left-click default. The final targeted builds
-produced:
+client bridges use `numberOrDefault(..., 0)`, preserving the documented primary
+click default. The shared UI-transition contracts now use a bounded 120-second
+default so normal integrated-world startup does not become an indeterminate
+post-commit result. The final targeted Fabric 1.20.1 artifact is:
 
 | Host | Artifact SHA-256 |
 | --- | --- |
-| Fabric 1.18.2 | `2420401DA73BEAFC06E67CF6EE776258D897660A7C897081053C6771379D457D` |
-| Fabric 1.20.1 | `5BE69F71FC44365B1171BAA85B695759022D8B8667755FD4B04CE814B413C69A` |
+| Fabric 1.20.1 | `45AE98C99A6D6001D3D6E01C7F6575F54C8817285048D109A7A53EC18446DFB8` |
 
-The Fabric 1.18.2 correction is packaging-verified here; this evidence does not
-claim a new manual 1.18.2 client run.
+`ProtocolContractTest` covers all three advertised timeout values. Fabric 1.18.2
+retains the optional-button correction but is not newly client-live-tested here.

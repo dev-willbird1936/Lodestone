@@ -57,10 +57,11 @@ every Minecraft environment.
 - Fabric 1.18.2, 1.19.2, and 1.20.1 hosts now include compiled client bridges for bounded
   key/mouse input, movement, look, interaction, hotbar selection, UI-state, and UI-key control;
   their refreshed server artifacts still pass fresh-world acceptance.
-- Fabric 1.20.1 now has a manual post-v1 client-menu slice: Java 17 Loom launch, authenticated
-  typed menu discovery, an omitted-button semantic click, fresh-world creation, player readback,
-  and clean client shutdown. Its post-commit world-load timeout correctly quarantined later
-  mutations; this is evidence for a later Fabric patch artifact, not a changed v1.0.0 claim.
+- Fabric 1.20.1 now has a manual post-v1 client-menu/control slice: Java 17 Loom launch,
+  authenticated typed menu navigation, fresh-world creation, player-look readback, and clean
+  client shutdown. The three bounded UI-transition defaults are 120 seconds, preventing a normal
+  16.5-second world load from becoming an indeterminate mutation; this is evidence for a later
+  Fabric patch artifact, not a changed v1.0.0 claim.
 - The negotiated catalog now includes normalized open-container reads; Fabric 1.18.2/1.19.2/
   1.20.1/1.21.1 and NeoForge 1.21.1 expose stable slot projections and revisions, while Fabric
   click operations enforce revision, slot, and button bounds.

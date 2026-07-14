@@ -11,6 +11,8 @@ product as a whole; Minecraft and loader compatibility is listed per asset in ea
   `button` field by defaulting it to left-click (`0`).
 - Fabric 1.20.1 Loom `runClient` now uses its required Java 17 toolchain while the monorepo's
   newer projects continue to configure with Java 21.
+- UI click, UI key, and semantic menu navigation now use a bounded 120-second default deadline,
+  preventing normal integrated-world startup from being reported as an indeterminate mutation.
 
 ## 1.0.0 - release candidate
 

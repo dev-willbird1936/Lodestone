@@ -162,6 +162,9 @@ class ProtocolContractTest {
         assertFalse(SchemaValidator.validate(uiState, malformedSnapshot).isEmpty());
 
         var click = capabilitySchema(catalog, "minecraft.ui.click", "inputSchema");
+        assertEquals(120_000L, capabilityTimeout(catalog, "minecraft.ui.click"));
+        assertEquals(120_000L, capabilityTimeout(catalog, "minecraft.ui.key"));
+        assertEquals(120_000L, capabilityTimeout(catalog, "lodestone.ui.navigate"));
         assertTrue(SchemaValidator.validate(click, Map.of("screenToken", "screen-1",
                 "snapshotRevision", revision, "button", 0, "nodeId", "n1")).isEmpty());
         assertTrue(SchemaValidator.validate(click, Map.of("screenToken", "screen-1",
@@ -337,10 +340,19 @@ class ProtocolContractTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> capabilitySchema(com.google.gson.JsonObject catalog, String capabilityId,
                                                         String schemaField) {
+        return JsonSupport.MAPPER.fromJson(capabilityNode(catalog, capabilityId)
+                .getAsJsonObject(schemaField), Map.class);
+    }
+
+    private static long capabilityTimeout(com.google.gson.JsonObject catalog, String capabilityId) {
+        return capabilityNode(catalog, capabilityId).get("timeoutMs").getAsLong();
+    }
+
+    private static com.google.gson.JsonObject capabilityNode(com.google.gson.JsonObject catalog, String capabilityId) {
         for (var element : catalog.getAsJsonArray("capabilities")) {
             var capability = element.getAsJsonObject();
             if (capabilityId.equals(capability.get("id").getAsString())) {
-                return JsonSupport.MAPPER.fromJson(capability.getAsJsonObject(schemaField), Map.class);
+                return capability;
             }
         }
         throw new AssertionError("missing capability: " + capabilityId);
