@@ -1,3 +1,11 @@
 **/run-artifact-client/
 verification/neoforge-artifact-client/run/
 verification/evidence/*.json
+**/build/
+**/.gradle/
+**/run/
+**/runs/
+libraries/
+*.jar.log
+verification/curseforge-profiles/*.zip
+verification/curseforge-profiles/*/overrides/
