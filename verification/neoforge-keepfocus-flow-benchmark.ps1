@@ -9,7 +9,10 @@ param(
     [string] $EvidenceDirectory = (Join-Path $PSScriptRoot 'evidence'),
     [string] $LodestoneArtifact = (Join-Path $PSScriptRoot '..\hosts\neoforge\1.21.1\build\libs\lodestone-1.0.0.jar'),
     [string] $KeepFocusArtifact = (Join-Path $PSScriptRoot '..\..\KeepFocus\build\libs\keep_focus-1.0.0+1.21.1.jar'),
-    [string] $ClientRunDirectory = (Join-Path $PSScriptRoot 'neoforge-artifact-client\run')
+    [string] $ClientRunDirectory = (Join-Path $PSScriptRoot 'neoforge-artifact-client\run'),
+    [string] $BenchmarkName = 'neoforge-1.21.1-keepfocus-flow',
+    [string] $ReportPrefix = 'neoforge-keepfocus-flow',
+    [string] $ChatMarker = '[Lodestone] NeoForge KeepFocus flow benchmark marker'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,14 +20,14 @@ Add-Type -AssemblyName System.Net.Http
 
 New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
 $timestamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
-$reportPath = Join-Path $EvidenceDirectory "neoforge-keepfocus-flow-$Stage-$timestamp.json"
+$reportPath = Join-Path $EvidenceDirectory "$ReportPrefix-$Stage-$timestamp.json"
 $script:requestId = 0
 $script:sessionId = $null
 $script:client = [System.Net.Http.HttpClient]::new()
 $uri = "http://127.0.0.1:$Port/mcp"
 $report = [ordered]@{
     formatVersion = 1
-    benchmark = 'neoforge-1.21.1-keepfocus-flow'
+    benchmark = $BenchmarkName
     stage = $Stage
     startedAtUtc = [DateTime]::UtcNow.ToString('o')
     endpoint = $uri
@@ -32,7 +35,9 @@ $report = [ordered]@{
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$artifactRows = foreach ($artifactPath in @($LodestoneArtifact, $KeepFocusArtifact)) {
+$artifactPaths = @($LodestoneArtifact)
+if (-not [string]::IsNullOrWhiteSpace($KeepFocusArtifact)) { $artifactPaths += $KeepFocusArtifact }
+$artifactRows = foreach ($artifactPath in $artifactPaths) {
     $resolved = (Resolve-Path -LiteralPath $artifactPath -ErrorAction Stop).Path
     $item = Get-Item -LiteralPath $resolved
     [ordered]@{ path = $resolved; bytes = [int64] $item.Length; sha256 = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash.ToLowerInvariant() }
@@ -41,8 +46,8 @@ $report.provenance = [ordered]@{
     sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
     sourceDirtyPaths = @(& git -C $repoRoot status --short | Where-Object { $_ -notmatch 'verification/evidence/' -and $_ -notmatch 'run-artifact-client/' })
     lodestoneArtifact = $artifactRows[0]
-    keepFocusArtifact = $artifactRows[1]
 }
+if ($artifactRows.Count -gt 1) { $report.provenance.keepFocusArtifact = $artifactRows[1] }
 
 trap {
     $report.failure = [ordered]@{ message = $_.Exception.Message; stack = $_.ScriptStackTrace }
@@ -322,7 +327,7 @@ switch ($Stage) {
         Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
         Invoke-Capability 'minecraft.player.move' '2.0' @{ forward = 0; strafe = 0; jump = $false; sprint = $false; sneak = $false; durationMs = 1 } $false 'zero-motion control path' | Out-Null
         Invoke-Capability 'minecraft.inventory.slot.select' '1.0' @{ slot = [int] $playerBefore.selectedSlot } $false 'reselect current slot' | Out-Null
-        Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = '[Lodestone] NeoForge KeepFocus flow benchmark marker' } $false 'chat mutation/readback marker' | Out-Null
+        Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = $ChatMarker } $false 'chat mutation/readback marker' | Out-Null
         Start-Sleep -Milliseconds 300
         Invoke-Capability 'minecraft.chat.read' '1.0' @{ limit = 8 } $false 'chat readback' | Out-Null
         Invoke-Capability 'minecraft.client.screenshot.capture' '1.0' @{ maxWidth = 320; maxHeight = 180 } $false 'in-world capture' | Out-Null

@@ -1,8 +1,10 @@
 # Lodestone ordered client-flow benchmark
 
-`verification/neoforge-keepfocus-flow-benchmark.ps1` is the ordered acceptance flow for the
-NeoForge 1.21.1 client artifact plus KeepFocus. It is stateful: each stage starts from the state
-left by the previous stage, and every MCP request uses the authenticated loopback session.
+`verification/neoforge-keepfocus-flow-benchmark.ps1` is the profile-backed ordered acceptance
+flow for the NeoForge 1.21.1 client artifact plus KeepFocus. The Fabric 1.20.1 wrapper is
+`verification/fabric-1.20.1-flow-benchmark.ps1`. Each flow is stateful: every stage starts from
+the state left by the previous stage, and every MCP request uses the authenticated loopback
+session.
 
 Order:
 
@@ -25,3 +27,6 @@ retries declared rate limits, and records every result under `verification/evide
 report binds the tested artifact hashes and source state. `CAPABILITY_UNAVAILABLE`,
 `DRY_RUN_UNSUPPORTED`, and the deliberate event-capability routing guard are expected outcomes;
 NPEs, crashes, malformed envelopes, or unexplained adapter failures fail the flow.
+
+The profile runner uses explicit expected statuses/error codes and aborts on any unexpected
+outcome. Fabric uses port `37829` by default so its flow can run separately from NeoForge.
