@@ -637,6 +637,11 @@ public final class LodestoneRuntime implements AutoCloseable {
                     } else {
                         var completed = result.completeOutcome(ResultEnvelope.ok(request.requestId(), safeOutput));
                         if (completed) {
+                            // The observer publication may synchronously discover that a caller
+                            // hijacked the public view and roll back committed artifacts.  Publish
+                            // before recording success so audit readers never observe a successful
+                            // invocation while that rollback is still pending.
+                            result.publish();
                             recordAudit(request, trace, "ok");
                         } else {
                             active.rollbackArtifacts();
