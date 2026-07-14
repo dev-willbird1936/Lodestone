@@ -96,4 +96,6 @@ full source/unit/gateway/adapter/contract verification gate, rebuilds the certif
 assembles exactly 36 upload files. It creates an inaccessible draft, confirms its remote filenames
 and count, downloads every asset into a clean directory, and compares every byte length and SHA-256
 to staging before publishing. Any upload or verification failure stops before publication and leaves
-only the draft for inspection. Never replace a published stable asset silently.
+only the draft for inspection. A failed tag job is retried only through the dispatch input that
+checks out the same immutable tag; it never moves or recreates that tag. Never replace a published
+stable asset silently.

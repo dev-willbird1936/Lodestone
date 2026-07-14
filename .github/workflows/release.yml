@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Immutable tag to rebuild and publish after a failed release job
+        required: true
+        default: v1.0.0
 
 permissions:
   contents: write
@@ -20,8 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify checked-out immutable release tag
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = '${{ inputs.tag || github.ref_name }}'
+          $checkedTag = (git describe --exact-match --tags HEAD).Trim()
+          if ($checkedTag -cne $tag) { throw "Checked out $checkedTag instead of requested immutable tag $tag." }
 
       - id: java8
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
@@ -66,6 +80,8 @@ jobs:
 
       - name: Full source, unit, gateway, adapter, and contract verification
         shell: pwsh
+        env:
+          JAVA_HOME: ${{ steps.java21.outputs.path }}
         run: .\gradlew.bat projects check --no-parallel
 
       - name: Rebuild all release artifacts twice where required
@@ -93,7 +109,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $tag = $env:GITHUB_REF_NAME
+          $tag = '${{ inputs.tag || github.ref_name }}'
           if ($tag -ne 'v1.0.0') { throw "This release pipeline only publishes v1.0.0, not $tag." }
           gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
           if ($LASTEXITCODE -eq 0) { throw "GitHub release $tag already exists; refusing to replace it." }

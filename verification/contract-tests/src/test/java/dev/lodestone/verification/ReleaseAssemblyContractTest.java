@@ -102,8 +102,13 @@ class ReleaseAssemblyContractTest {
     @Test
     void releaseWorkflowGatesFullVerificationAndPublishesOnlyAfterDraftReadback() throws Exception {
         var workflow = Files.readString(root.resolve(".github/workflows/release.yml"), StandardCharsets.UTF_8);
+        assertTrue(workflow.contains("ref: ${{ inputs.tag || github.ref }}"),
+                "manual release retries must check out the requested immutable tag");
+        assertTrue(workflow.contains("Verify checked-out immutable release tag"));
         assertTrue(workflow.contains(".\\gradlew.bat projects check --no-parallel"),
                 "tag publishing must run the full verification gate");
+        assertTrue(workflow.contains("JAVA_HOME: ${{ steps.java21.outputs.path }}"),
+                "Gradle 8 verification must not inherit the Java 25 setup action");
         assertTrue(workflow.contains("--draft --title 'Lodestone v1.0.0' --generate-notes"),
                 "uploads must begin as an inaccessible draft");
         assertTrue(workflow.contains("gh release download $tag"),
