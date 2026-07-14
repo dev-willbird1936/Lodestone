@@ -57,6 +57,10 @@ every Minecraft environment.
 - Fabric 1.18.2, 1.19.2, and 1.20.1 hosts now include compiled client bridges for bounded
   key/mouse input, movement, look, interaction, hotbar selection, UI-state, and UI-key control;
   their refreshed server artifacts still pass fresh-world acceptance.
+- Fabric 1.20.1 now has a manual post-v1 client-menu slice: Java 17 Loom launch, authenticated
+  typed menu discovery, an omitted-button semantic click, fresh-world creation, player readback,
+  and clean client shutdown. Its post-commit world-load timeout correctly quarantined later
+  mutations; this is evidence for a later Fabric patch artifact, not a changed v1.0.0 claim.
 - The negotiated catalog now includes normalized open-container reads; Fabric 1.18.2/1.19.2/
   1.20.1/1.21.1 and NeoForge 1.21.1 expose stable slot projections and revisions, while Fabric
   click operations enforce revision, slot, and button bounds.
@@ -164,8 +168,9 @@ every Minecraft environment.
 
 ## INTENTION NOT MATCHED
 
-- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1 client slices is still pending;
-  Fabric 1.20.1 and 26.2 client runs are not release claims.
+- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1 client slices and the bounded
+  Fabric 1.20.1 menu slice is still pending; Fabric 1.20.1's new source evidence and Fabric 26.2
+  client runs are not release claims.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
   entities are intentionally rejected rather than overwritten without NBT restoration; Fabric

@@ -36,6 +36,15 @@ loom {
     }
 }
 
+// Minecraft 1.20.1 and this host's Fabric metadata require Java 17. Keep the
+// monorepo Gradle daemon on Java 21 for newer projects; only the dev client
+// process uses the exact 1.20.1 runtime toolchain.
+tasks.named('runClient', net.fabricmc.loom.task.RunGameTask) {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 configurations {
     embedded
 }

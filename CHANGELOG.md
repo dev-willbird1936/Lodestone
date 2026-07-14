@@ -3,6 +3,15 @@
 All notable user-visible changes are recorded here. Lodestone follows semantic versioning for the
 product as a whole; Minecraft and loader compatibility is listed per asset in each release.
 
+## Unreleased
+
+### Fixed
+
+- Fabric 1.18.2 and 1.20.1 client `minecraft.ui.click` now honor the protocol's optional
+  `button` field by defaulting it to left-click (`0`).
+- Fabric 1.20.1 Loom `runClient` now uses its required Java 17 toolchain while the monorepo's
+  newer projects continue to configure with Java 21.
+
 ## 1.0.0 - release candidate
 
 v1.0.0 is bound by `verification/evidence/release-conformance-v1.0.0.json`, which records the

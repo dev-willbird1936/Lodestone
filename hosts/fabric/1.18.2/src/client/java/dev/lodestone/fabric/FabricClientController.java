@@ -867,7 +867,7 @@ public final class FabricClientController implements ClientModInitializer {
             var expectedToken = requiredText(input, "screenToken");
             var expectedRevision = requiredText(input, "snapshotRevision");
             var selector = UiSelector.from(input);
-            var button = number(input, "button");
+            var button = numberOrDefault(input, "button", 0);
             if (button < 0 || button > 8) {
                 throw new IllegalArgumentException("button must be between 0 and 8");
             }
