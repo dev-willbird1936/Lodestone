@@ -158,9 +158,12 @@ every Minecraft environment.
 - Final Quilt remediation reruns only 1.20.1 and 1.21.1 against the exact JARs extracted from their
   final profile ZIPs, hashes both embedded hosts before startup, and records those byte bindings in
   the retained fresh-world log.
-- The tag-gated GitHub workflow now runs the full source/unit/gateway/adapter/contract gate, creates
-  an inaccessible draft containing all 36 staged release files, downloads and SHA-256-verifies the
-  complete remote inventory, and publishes only after that verification succeeds.
+- The tag-gated GitHub workflow is designed to run the full source/unit/gateway/adapter/contract
+  gate, create an inaccessible draft containing all 36 staged release files, download and
+  SHA-256-verify the complete remote inventory, and publish only after that verification succeeds.
+  Hosted v1.0.0 rebuild attempts remain red because of a Java/Gradle gate failure and a later
+  source-input snapshot mismatch; this is tracked as release-engineering work, not presented as a
+  successful pipeline result.
 - Fabric 1.18.2 profile staging now accepts both namespace-qualified and dependency-less cached
   Maven POMs under strict PowerShell execution. A fresh 49-entry profile rebuild matches the
   certified final ZIP SHA-256 exactly; the immutable v1.0.0 workflow runs its historical stager in
@@ -171,10 +174,10 @@ every Minecraft environment.
 - The release gate's asynchronous furniture workflow assertions now tolerate a bounded five-second
   cold-runner scheduling window rather than spuriously failing at one second; any failed module's
   retained JUnit XML is printed without masking the original gate failure.
-- v1.0.0 is publicly published at https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0.
-  Its 36-file draft was independently downloaded and compared by filename, byte length, and
-  SHA-256 before publication. The final staging run used a clean detached immutable-tag worktree
-  and only the already-certified artifact bytes, avoiding another redundant recompilation.
+- v1.0.0 is published at https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0.
+  Its 36-file asset set was independently downloaded and compared by filename, byte length, and
+  SHA-256 before publication. That proves the published bytes match the retained release record;
+  it does not imply that the hosted rebuild workflow completed successfully.
 
 ## Benchmark evidence added 2026-07-14
 
@@ -208,6 +211,9 @@ every Minecraft environment.
   world records including reversible block mutation/readback and player-look readback, and clean
   MCP shutdown. The final artifact hash is
   `8872c45706e5d019d8eec4ed62a66bf1d26e8dce5fcbdef320c88d46bdea9127`.
+- The final Forge 1.20.1 and Fabric 26.2 client-flow JSON reports are retained in
+  `verification/evidence/` and bound to their exact source commits and artifact SHA-256 values;
+  these are post-v1 evidence and do not rewrite the immutable v1.0.0 certificate.
 
 ## INTENTION NOT MATCHED
 
@@ -232,3 +238,6 @@ every Minecraft environment.
   not claims of support. The client benchmark evidence now covers separate exact rows for NeoForge
   1.21.1, Fabric 1.20.1, Fabric 1.21.1, Forge 1.20.1, and Forge 1.21.1; other client loaders and versions remain
   separate rows.
+- Vibecraft parity is not yet established: the pinned comparison inventory is catalog-level only,
+  with 16 implemented, 50 partial, and 17 missing rows, and no retained live parity suite. Lodestone
+  must not claim behavioral parity until those rows are independently exercised on clean pinned trees.

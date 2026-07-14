@@ -15,15 +15,16 @@ and loader or server.
 - v1.0.0 has a 32-artifact, 22-row release record at
   `verification/evidence/release-conformance-v1.0.0.json`. Its final audit evidence includes exact
   Quilt-profile byte acceptance and Bukkit-family invalid-token checks. [v1.0.0 is published on
-  GitHub](https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0) with 36 public files.
-  The draft was downloaded into a separate directory and every filename, byte length, and SHA-256
-  was compared to staging before publication. Staging used a clean detached checkout of the immutable
-  tag plus only the pre-certified artifact bytes, so no redundant artifact rebuild was needed.
+  GitHub](https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0) with 36 files. The
+  published asset set was independently downloaded and compared by filename, byte length, and
+  SHA-256 before it was accepted as the release record. This is an asset-integrity statement, not a
+  claim that the hosted release workflow completed successfully.
 - The immutable tag workflow retains its full clean-tag rebuild and byte-verification gates for
   diagnostic retries. Its historical Fabric 1.18.2 profile stager runs under Windows PowerShell;
   the recovery overlay remains limited to its audited POM parser and is raw-blob checked before
-  assembly. The stable v1.0.0 release was not retried after its hosted source-snapshot preflight
-  remained stricter than the verified tag-isolated assembly path.
+  assembly. Hosted rebuild attempts remain red: one failed on the Java/Gradle gate and a later retry
+  rejected a source-input snapshot mismatch. A new immutable tag is required after that workflow is
+  corrected; v1.0.0 is never moved or silently replaced.
 
 ## Tags and promotion
 

@@ -1734,7 +1734,15 @@ public final class LodestoneRuntime implements AutoCloseable {
                     }
                 }
             });
-            executeSafely(publicationExecutor, publication);
+            // Publish the observer view synchronously.  The canonical outcome is deliberately
+            // separate from the public CompletableFuture, so a caller may have completed the
+            // observer with forged data while the adapter was still running.  Deferring this
+            // publication to the completion executor created a window in which the audit record
+            // was already visible while a committed artifact was still readable; the eventual
+            // observer-publication failure would roll it back only later.  Keeping the final
+            // observer decision and artifact rollback in this ordered completion path closes that
+            // security-relevant visibility window.
+            publication.run();
         }
 
         private CompletableFuture<Void> terminated() {

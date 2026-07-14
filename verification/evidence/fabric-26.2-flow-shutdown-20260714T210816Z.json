@@ -1,0 +1,889 @@
+﻿{
+    "formatVersion":  1,
+    "benchmark":  "fabric-26.2-client-flow",
+    "stage":  "shutdown",
+    "startedAtUtc":  "2026-07-14T21:08:17.0344836Z",
+    "endpoint":  "http://127.0.0.1:37832/mcp",
+    "records":  [
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "title":  "",
+                                       "coverage":  "complete",
+                                       "width":  427.0,
+                                       "capturedAtTick":  598.0,
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "widgets":  [
+
+                                                   ],
+                                       "screenToken":  "2f0cc777-6d6b-486b-b4e0-806dd98e8b37",
+                                       "screen":  "",
+                                       "inWorld":  true,
+                                       "guiScale":  2.0,
+                                       "height":  240.0,
+                                       "snapshotRevision":  "04453b57c2335d1083cf95603d80db64ad13418fb25549f7abecfc99f581cc8d",
+                                       "screenClass":  "",
+                                       "open":  false,
+                                       "truncated":  false
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.ui.key@1.0",
+                        "input":  {
+                                      "input":  {
+                                                    "scanCode":  0,
+                                                    "key":  256,
+                                                    "modifiers":  0
+                                                },
+                                      "capabilityVersion":  "1.0",
+                                      "capability":  "minecraft.ui.key",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "escape current UI screen",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "handled":  true,
+                                       "openedPause":  true
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "title":  "Game Menu",
+                                       "coverage":  "complete",
+                                       "width":  427.0,
+                                       "capturedAtTick":  601.0,
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "widgets":  [
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  204.0,
+                                                                          "x":  111.0,
+                                                                          "y":  68.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Back to Game",
+                                                           "nodeId":  "widget:0",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        0.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  111.0,
+                                                                          "y":  92.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Advancements",
+                                                           "nodeId":  "widget:1",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        1.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  217.0,
+                                                                          "y":  92.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Statistics",
+                                                           "nodeId":  "widget:2",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        2.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  167.0,
+                                                                          "y":  116.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Report Bugs",
+                                                           "nodeId":  "widget:3",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        3.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  191.0,
+                                                                          "y":  116.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Give Feedback",
+                                                           "nodeId":  "widget:4",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        4.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  215.0,
+                                                                          "y":  116.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Friends",
+                                                           "nodeId":  "widget:5",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        5.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.FriendsButton",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+
+                                                                       ],
+                                                           "active":  false,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  239.0,
+                                                                          "y":  116.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Player Reporting",
+                                                           "nodeId":  "widget:6",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        6.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  111.0,
+                                                                          "y":  140.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Options...",
+                                                           "nodeId":  "widget:7",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        7.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  217.0,
+                                                                          "y":  140.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Open to LAN",
+                                                           "nodeId":  "widget:8",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        8.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  204.0,
+                                                                          "x":  111.0,
+                                                                          "y":  164.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Save and Quit to Title",
+                                                           "nodeId":  "widget:9",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        9.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+
+                                                                       ],
+                                                           "active":  false,
+                                                           "bounds":  {
+                                                                          "height":  9.0,
+                                                                          "width":  52.0,
+                                                                          "x":  187.0,
+                                                                          "y":  40.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Game Menu",
+                                                           "nodeId":  "widget:10",
+                                                           "parentType":  "net.minecraft.client.gui.screens.PauseScreen",
+                                                           "path":  [
+                                                                        10.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.StringWidget",
+                                                           "visible":  true
+                                                       }
+                                                   ],
+                                       "screenToken":  "8f883b23-54a3-4848-a54e-047f4888b63a",
+                                       "screen":  "PauseScreen",
+                                       "inWorld":  true,
+                                       "guiScale":  2.0,
+                                       "height":  240.0,
+                                       "snapshotRevision":  "3e6f0bc5671c092105f4298012e711bb6d00dc522991443057bd8c2c6b2368b8",
+                                       "screenClass":  "net.minecraft.client.gui.screens.PauseScreen",
+                                       "open":  true,
+                                       "truncated":  false
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "capability:minecraft.ui.click@2.0",
+                        "input":  {
+                                      "input":  {
+                                                    "screenToken":  "8f883b23-54a3-4848-a54e-047f4888b63a",
+                                                    "snapshotRevision":  "3e6f0bc5671c092105f4298012e711bb6d00dc522991443057bd8c2c6b2368b8",
+                                                    "nodeId":  "widget:9"
+                                                },
+                                      "capabilityVersion":  "2.0",
+                                      "capability":  "minecraft.ui.click",
+                                      "dryRun":  false
+                                  },
+                        "expectation":  "save and quit to title through MCP UI click",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "y":  174.0,
+                                       "screenToken":  "8f883b23-54a3-4848-a54e-047f4888b63a",
+                                       "x":  213.0,
+                                       "nodeId":  "widget:9",
+                                       "handled":  true,
+                                       "snapshotRevision":  "3e6f0bc5671c092105f4298012e711bb6d00dc522991443057bd8c2c6b2368b8"
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_state",
+                        "input":  {
+
+                                  },
+                        "expectation":  "live UI snapshot",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "title":  "Title Screen",
+                                       "coverage":  "complete",
+                                       "width":  427.0,
+                                       "capturedAtTick":  0.0,
+                                       "truncationCauses":  [
+
+                                                            ],
+                                       "widgets":  [
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  108.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Singleplayer",
+                                                           "nodeId":  "widget:0",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        0.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  132.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Multiplayer",
+                                                           "nodeId":  "widget:1",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        1.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  200.0,
+                                                                          "x":  113.0,
+                                                                          "y":  156.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Minecraft Realms",
+                                                           "nodeId":  "widget:2",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        2.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  179.0,
+                                                                          "y":  180.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Friends",
+                                                           "nodeId":  "widget:3",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        3.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.FriendsButton",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  203.0,
+                                                                          "y":  180.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Language...",
+                                                           "nodeId":  "widget:4",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        4.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  20.0,
+                                                                          "x":  227.0,
+                                                                          "y":  180.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Accessibility Settings...",
+                                                           "nodeId":  "widget:5",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        5.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  113.0,
+                                                                          "y":  204.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Options...",
+                                                           "nodeId":  "widget:6",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        6.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  20.0,
+                                                                          "width":  98.0,
+                                                                          "x":  215.0,
+                                                                          "y":  204.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Quit Game",
+                                                           "nodeId":  "widget:7",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        7.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                           "visible":  true
+                                                       },
+                                                       {
+                                                           "actions":  [
+                                                                           "click"
+                                                                       ],
+                                                           "active":  true,
+                                                           "bounds":  {
+                                                                          "height":  10.0,
+                                                                          "width":  196.0,
+                                                                          "x":  229.0,
+                                                                          "y":  230.0
+                                                                      },
+                                                           "depth":  0.0,
+                                                           "focused":  false,
+                                                           "label":  "Copyright Mojang AB. Do not distribute!",
+                                                           "nodeId":  "widget:8",
+                                                           "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                           "path":  [
+                                                                        8.0
+                                                                    ],
+                                                           "type":  "net.minecraft.client.gui.components.PlainTextButton",
+                                                           "visible":  true
+                                                       }
+                                                   ],
+                                       "screenToken":  "26b0a32d-fdfe-4ae5-b551-2c97923eede5",
+                                       "screen":  "TitleScreen",
+                                       "inWorld":  false,
+                                       "guiScale":  2.0,
+                                       "height":  240.0,
+                                       "snapshotRevision":  "ce5bcc6480a81951cf17f14736341aef56a6d4efdfbd377707acea99fa92cf75",
+                                       "screenClass":  "net.minecraft.client.gui.screens.TitleScreen",
+                                       "open":  true,
+                                       "truncated":  false
+                                   },
+                        "error":  null
+                    },
+                    {
+                        "operation":  "tool:ui_navigate",
+                        "input":  {
+                                      "target":  "quit_game"
+                                  },
+                        "expectation":  "normal game shutdown through MCP",
+                        "expectedStatuses":  [
+                                                 "ok"
+                                             ],
+                        "expectedErrorCodes":  [
+
+                                               ],
+                        "asserted":  true,
+                        "httpStatus":  200,
+                        "status":  "ok",
+                        "result":  {
+                                       "target":  "quit_game",
+                                       "match":  "exact",
+                                       "before":  {
+                                                      "capturedAtTick":  0.0,
+                                                      "coverage":  "complete",
+                                                      "guiScale":  2.0,
+                                                      "height":  240.0,
+                                                      "inWorld":  false,
+                                                      "open":  true,
+                                                      "screen":  "TitleScreen",
+                                                      "screenClass":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                      "screenToken":  "26b0a32d-fdfe-4ae5-b551-2c97923eede5",
+                                                      "snapshotRevision":  "ce5bcc6480a81951cf17f14736341aef56a6d4efdfbd377707acea99fa92cf75",
+                                                      "title":  "Title Screen",
+                                                      "truncated":  false,
+                                                      "truncationCauses":  [
+
+                                                                           ],
+                                                      "widgets":  [
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  108.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Singleplayer",
+                                                                          "nodeId":  "widget:0",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       0.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  132.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Multiplayer",
+                                                                          "nodeId":  "widget:1",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       1.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  200.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  156.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Minecraft Realms",
+                                                                          "nodeId":  "widget:2",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       2.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  20.0,
+                                                                                         "x":  179.0,
+                                                                                         "y":  180.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Friends",
+                                                                          "nodeId":  "widget:3",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       3.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.FriendsButton",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  20.0,
+                                                                                         "x":  203.0,
+                                                                                         "y":  180.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Language...",
+                                                                          "nodeId":  "widget:4",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       4.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  20.0,
+                                                                                         "x":  227.0,
+                                                                                         "y":  180.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Accessibility Settings...",
+                                                                          "nodeId":  "widget:5",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       5.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  98.0,
+                                                                                         "x":  113.0,
+                                                                                         "y":  204.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Options...",
+                                                                          "nodeId":  "widget:6",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       6.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  20.0,
+                                                                                         "width":  98.0,
+                                                                                         "x":  215.0,
+                                                                                         "y":  204.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Quit Game",
+                                                                          "nodeId":  "widget:7",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       7.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.Button$Plain",
+                                                                          "visible":  true
+                                                                      },
+                                                                      {
+                                                                          "actions":  [
+                                                                                          "click"
+                                                                                      ],
+                                                                          "active":  true,
+                                                                          "bounds":  {
+                                                                                         "height":  10.0,
+                                                                                         "width":  196.0,
+                                                                                         "x":  229.0,
+                                                                                         "y":  230.0
+                                                                                     },
+                                                                          "depth":  0.0,
+                                                                          "focused":  false,
+                                                                          "label":  "Copyright Mojang AB. Do not distribute!",
+                                                                          "nodeId":  "widget:8",
+                                                                          "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                          "path":  [
+                                                                                       8.0
+                                                                                   ],
+                                                                          "type":  "net.minecraft.client.gui.components.PlainTextButton",
+                                                                          "visible":  true
+                                                                      }
+                                                                  ],
+                                                      "width":  427.0
+                                                  },
+                                       "label":  "Quit Game",
+                                       "handled":  true,
+                                       "click":  {
+                                                     "handled":  true,
+                                                     "nodeId":  "widget:7",
+                                                     "screenToken":  "26b0a32d-fdfe-4ae5-b551-2c97923eede5",
+                                                     "snapshotRevision":  "ce5bcc6480a81951cf17f14736341aef56a6d4efdfbd377707acea99fa92cf75",
+                                                     "x":  264.0,
+                                                     "y":  214.0
+                                                 }
+                                   },
+                        "error":  null
+                    }
+                ],
+    "provenance":  {
+                       "sourceCommit":  "ceaa99b91a9f0eaf168f09e8f460fcf3d03c813e",
+                       "sourceDirtyPaths":  [
+
+                                            ],
+                       "lodestoneArtifact":  {
+                                                 "path":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\Lodestone\\hosts\\fabric\\26.2\\build\\libs\\lodestone-1.0.0.jar",
+                                                 "bytes":  411035,
+                                                 "sha256":  "8872c45706e5d019d8eec4ed62a66bf1d26e8dce5fcbdef320c88d46bdea9127"
+                                             }
+                   },
+    "sessionId":  "77246b8c-9413-4fa1-81c4-cfd7631f6b82",
+    "shutdownVerification":  {
+                                 "latestLog":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\Lodestone\\verification\\..\\hosts\\fabric\\26.2\\run\\logs\\latest.log",
+                                 "stoppingMarker":  true,
+                                 "fatalMarker":  false,
+                                 "javaProcessCount":  0
+                             },
+    "completedAtUtc":  "2026-07-14T21:08:38.2736666Z"
+}

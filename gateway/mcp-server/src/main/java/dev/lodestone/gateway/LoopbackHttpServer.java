@@ -155,9 +155,22 @@ public final class LoopbackHttpServer implements AutoCloseable {
     }
 
     private static boolean allowedOrigin(String origin) {
-        return "http://localhost".equalsIgnoreCase(origin)
-                || "http://127.0.0.1".equalsIgnoreCase(origin)
-                || "http://[::1]".equalsIgnoreCase(origin);
+        try {
+            var uri = java.net.URI.create(origin);
+            if (!"http".equalsIgnoreCase(uri.getScheme()) || uri.getUserInfo() != null
+                    || uri.getRawQuery() != null || uri.getRawFragment() != null
+                    || uri.getPath() != null && !uri.getPath().isEmpty() && !"/".equals(uri.getPath())) {
+                return false;
+            }
+            var host = uri.getHost();
+            return "localhost".equalsIgnoreCase(host)
+                    || "127.0.0.1".equals(host)
+                    || "0:0:0:0:0:0:0:1".equals(host)
+                    || "::1".equals(host)
+                    || "[::1]".equals(host);
+        } catch (IllegalArgumentException invalidOrigin) {
+            return false;
+        }
     }
 
     private static ExecutorService createExecutor() {

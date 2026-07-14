@@ -1,11 +1,12 @@
 # Lodestone
 
 > [!IMPORTANT]
-> **v1.0.0 is released only by its immutable tag and verified GitHub release.** Its 32 release
+> **v1.0.0 is published from its immutable tag.** Its 32 release
 > artifacts are bound to 22 exact fresh-world rows, a source input snapshot, and checksummed
 > retained logs in [`verification/evidence/release-conformance-v1.0.0.json`](verification/evidence/release-conformance-v1.0.0.json).
-> The release publication process verifies all 36 uploaded files by downloaded SHA-256 before publication;
-> untagged builds remain development snapshots.
+> The published release contains 36 uploaded files whose names, lengths, and SHA-256 values are bound
+> to the retained release record; untagged builds remain development snapshots. The hosted rebuild
+> workflow is still being hardened and is not itself a certification claim.
 
 Lodestone is an independent, version-aware Minecraft MCP/control platform. Its durable product is
 a typed capability protocol: each loader, server, client, or fallback integration is a separate

@@ -247,6 +247,7 @@ public final class McpGateway {
                         subscriptionOwners.remove(subscriptionId, id);
                     }
                 });
+                runtime.releaseCallerArtifacts(id);
             }
         });
     }

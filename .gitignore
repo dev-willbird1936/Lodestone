@@ -1,6 +1,13 @@
 **/run-artifact-client/
 verification/neoforge-artifact-client/run/
 verification/evidence/*.json
+# Durable post-v1 ordered client-flow reports are explicit evidence, not disposable run output.
+!verification/evidence/fabric-26.2-flow-main-menu-20260714T210730Z.json
+!verification/evidence/fabric-26.2-flow-world-20260714T210800Z.json
+!verification/evidence/fabric-26.2-flow-shutdown-20260714T210816Z.json
+!verification/evidence/forge-1.20.1-flow-main-menu-20260714T215732Z.json
+!verification/evidence/forge-1.20.1-flow-world-20260714T215815Z.json
+!verification/evidence/forge-1.20.1-flow-shutdown-20260714T215827Z.json
 **/build/
 **/.gradle/
 **/run/
