@@ -129,9 +129,10 @@ class ReleaseAssemblyContractTest {
         var certification = manifest.getAsJsonObject("certification");
         assertEquals("verification/evidence/release-conformance-v1.0.0.json",
                 certification.get("evidencePath").getAsString());
-        assertEquals(1, certification.get("formatVersion").getAsInt());
+        assertEquals(2, certification.get("formatVersion").getAsInt());
         assertEquals(22, certification.get("matrixRowCount").getAsInt());
         assertEquals(32, certification.get("artifactCount").getAsInt());
+        assertEquals(1, certification.get("retainedLogCount").getAsInt());
         assertEquals(sha256(fixture.resolve("verification/evidence/release-conformance-v1.0.0.json")),
                 certification.get("sha256").getAsString());
         assertEquals(32, manifest.getAsJsonArray("artifacts").size());
@@ -168,9 +169,11 @@ class ReleaseAssemblyContractTest {
         assertEquals("https://in-toto.io/Statement/v1", provenance.get("_type").getAsString());
         assertEquals("https://slsa.dev/provenance/v1", provenance.get("predicateType").getAsString());
         assertEquals(32, provenance.getAsJsonArray("subject").size());
-        assertEquals(SOURCE_TREE, provenance.getAsJsonObject("predicate")
-                .getAsJsonObject("buildDefinition").getAsJsonObject("internalParameters")
-                .get("sourceTree").getAsString());
+        var buildDefinition = provenance.getAsJsonObject("predicate").getAsJsonObject("buildDefinition");
+        assertEquals(SOURCE_TREE, buildDefinition.getAsJsonObject("internalParameters")
+                .get("assemblySourceTree").getAsString());
+        assertEquals(SOURCE_COMMIT, buildDefinition.getAsJsonObject("externalParameters")
+                .getAsJsonObject("certifiedArtifactBuildSource").get("commit").getAsString());
 
         var sbom = readJson(staging.resolve("lodestone-1.0.0-sbom.spdx.json"));
         assertEquals("SPDX-2.3", sbom.get("spdxVersion").getAsString());
@@ -372,6 +375,19 @@ class ReleaseAssemblyContractTest {
     }
 
     @Test
+    void assembleRejectsChangedRetainedEvidenceLog(@TempDir Path temporary) throws Exception {
+        var fixture = temporary.resolve("fixture-project");
+        createArtifactFixture(fixture);
+        Files.writeString(fixture.resolve("verification/evidence/logs/fixture.log"),
+                "tampered evidence\n", StandardCharsets.UTF_8);
+
+        var result = runReleaseTool("Assemble", fixture, temporary.resolve("release"),
+                SOURCE_COMMIT, SOURCE_TREE, true);
+        assertNotEquals(0, result.exitCode(), result.output());
+        assertTrue(result.output().contains("Retained evidence log hash differs"), result.output());
+    }
+
+    @Test
     void finalFreezeRejectsDirtyGitTreeWithoutTestBypass(@TempDir Path temporary) throws Exception {
         var fixture = temporary.resolve("fixture-project");
         createArtifactFixture(fixture);
@@ -397,6 +413,11 @@ class ReleaseAssemblyContractTest {
         runCommand(fixture, "git", "config", "user.email", "contract-test@invalid.example");
         runCommand(fixture, "git", "add", "-A");
         runCommand(fixture, "git", "commit", "--quiet", "-m", "fixture");
+        var buildCommit = runCommand(fixture, "git", "rev-parse", "HEAD").output().trim();
+        var buildTree = runCommand(fixture, "git", "rev-parse", "HEAD^{tree}").output().trim();
+        updateCertificationBuildSource(fixture, buildCommit, buildTree);
+        runCommand(fixture, "git", "add", "verification/evidence/release-conformance-v1.0.0.json");
+        runCommand(fixture, "git", "commit", "--quiet", "-m", "certification");
         runCommand(fixture, "git", "tag", "v1.0.0");
         var commit = runCommand(fixture, "git", "rev-parse", "HEAD").output().trim();
         var tree = runCommand(fixture, "git", "rev-parse", "HEAD^{tree}").output().trim();
@@ -516,9 +537,23 @@ class ReleaseAssemblyContractTest {
 
     private void writeCertificationEvidence(Path fixture, JsonArray artifacts) throws Exception {
         var evidence = new JsonObject();
-        evidence.addProperty("formatVersion", 1);
+        evidence.addProperty("formatVersion", 2);
         evidence.addProperty("productVersion", "1.0.0");
         evidence.addProperty("tag", "v1.0.0");
+        var buildSource = new JsonObject();
+        buildSource.addProperty("commit", SOURCE_COMMIT);
+        buildSource.addProperty("tree", SOURCE_TREE);
+        buildSource.add("inputSnapshot", buildInputSnapshot(fixture));
+        evidence.add("buildSource", buildSource);
+        var logPath = fixture.resolve("verification/evidence/logs/fixture.log");
+        Files.createDirectories(logPath.getParent());
+        Files.writeString(logPath, "fixture release evidence\n", StandardCharsets.UTF_8);
+        var logs = new JsonArray();
+        var log = new JsonObject();
+        log.addProperty("path", "verification/evidence/logs/fixture.log");
+        log.addProperty("sha256", sha256(logPath));
+        logs.add(log);
+        evidence.add("logs", logs);
         var matrixRows = new JsonArray();
         var seenRows = new HashSet<String>();
         for (var element : artifacts) {
@@ -529,7 +564,7 @@ class ReleaseAssemblyContractTest {
                     row.addProperty("id", id);
                     row.addProperty("status", "pass");
                     row.addProperty("method", "fixture");
-                    row.addProperty("runLog", "fixture");
+                    row.addProperty("runLog", "verification/evidence/logs/fixture.log");
                     matrixRows.add(row);
                 }
             }
@@ -555,6 +590,69 @@ class ReleaseAssemblyContractTest {
         var path = fixture.resolve("verification/evidence/release-conformance-v1.0.0.json");
         Files.createDirectories(path.getParent());
         Files.writeString(path, evidence + "\n", StandardCharsets.UTF_8);
+    }
+
+    private void updateCertificationBuildSource(Path fixture, String commit, String tree) throws Exception {
+        var path = fixture.resolve("verification/evidence/release-conformance-v1.0.0.json");
+        var evidence = readJson(path);
+        var source = evidence.getAsJsonObject("buildSource");
+        source.addProperty("commit", commit);
+        source.addProperty("tree", tree);
+        source.add("inputSnapshot", buildInputSnapshot(fixture));
+        Files.writeString(path, evidence + "\n", StandardCharsets.UTF_8);
+    }
+
+    private JsonObject buildInputSnapshot(Path fixture) throws Exception {
+        var roots = List.of("common", "adapters", "gateway", "hosts", "protocol", "verification/curseforge-profiles");
+        var files = new ArrayList<Path>();
+        for (var rootName : roots) {
+            var sourceRoot = fixture.resolve(rootName);
+            if (!Files.isDirectory(sourceRoot)) continue;
+            try (var stream = Files.walk(sourceRoot)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(path -> !path.toString().matches(".*[\\\\/](build|runs|run|\\.gradle)[\\\\/].*"))
+                        .filter(path -> List.of(".java", ".json", ".toml", ".properties", ".gradle", ".kts", ".ps1")
+                                .contains(extension(path)))
+                        .forEach(files::add);
+            }
+        }
+        for (var rootFile : List.of("build.gradle.kts", "settings.gradle.kts", "gradle.properties",
+                "gradle/wrapper/gradle-wrapper.properties")) {
+            var file = fixture.resolve(rootFile);
+            if (Files.isRegularFile(file)) files.add(file);
+        }
+        var rows = files.stream().distinct().sorted(Comparator.comparing(path -> path.toString()))
+                .map(path -> fixture.relativize(path).toString().replace('\\', '/') + "\t" + uncheckedSha256(path))
+                .toList();
+        var digest = MessageDigest.getInstance("SHA-256").digest(String.join("\n", rows).getBytes(StandardCharsets.UTF_8));
+        var snapshot = new JsonObject();
+        snapshot.addProperty("algorithm", "sha256");
+        snapshot.addProperty("fileCount", rows.size());
+        snapshot.addProperty("sha256", hex(digest));
+        var serializedRows = new JsonArray();
+        rows.forEach(serializedRows::add);
+        snapshot.add("rows", serializedRows);
+        return snapshot;
+    }
+
+    private static String extension(Path path) {
+        var name = path.getFileName().toString();
+        var dot = name.lastIndexOf('.');
+        return dot < 0 ? "" : name.substring(dot);
+    }
+
+    private static String uncheckedSha256(Path path) {
+        try {
+            return sha256(path);
+        } catch (Exception failure) {
+            throw new IllegalStateException(failure);
+        }
+    }
+
+    private static String hex(byte[] digest) {
+        var result = new StringBuilder(64);
+        for (var value : digest) result.append(String.format("%02x", value));
+        return result.toString();
     }
 
     private void refreshCertificationArtifact(Path fixture, JsonObject artifact) throws Exception {

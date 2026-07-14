@@ -50,6 +50,7 @@ if (@($entries | Where-Object Name -ceq 'manifest.json').Count -ne 1) {
 
 $temporary = Join-Path $outputDirectory ((Split-Path -Leaf $outputPath) + '.tmp-' + [Guid]::NewGuid().ToString('N'))
 $backup = Join-Path $outputDirectory ((Split-Path -Leaf $outputPath) + '.bak-' + [Guid]::NewGuid().ToString('N'))
+$archiveTimestamp = [DateTimeOffset]::new(1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 try {
     $stream = [IO.File]::Open($temporary, [IO.FileMode]::CreateNew, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     try {
@@ -57,7 +58,9 @@ try {
         try {
             foreach ($source in $entries) {
                 $entry = $archive.CreateEntry($source.Name, [IO.Compression.CompressionLevel]::Optimal)
-                $entry.LastWriteTime = [DateTimeOffset]$source.File.LastWriteTime
+                # ZIP metadata must not inherit the local filesystem clock: profile hashes are
+                # release inputs and must reproduce from the same staged bytes.
+                $entry.LastWriteTime = $archiveTimestamp
                 $input = [IO.File]::OpenRead($source.File.FullName)
                 $destination = $entry.Open()
                 try { $input.CopyTo($destination) } finally { $destination.Dispose(); $input.Dispose() }

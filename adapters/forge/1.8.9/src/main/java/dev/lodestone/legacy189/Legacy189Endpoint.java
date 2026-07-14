@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import dev.lodestone.legacyshared.LegacyBatchMutationRollback;
+import dev.lodestone.legacyshared.LegacyAuthorizationPolicy;
 import dev.lodestone.legacyshared.LegacyTokenFile;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -59,6 +60,7 @@ public final class Legacy189Endpoint implements AutoCloseable {
 
     private final MinecraftServer server;
     private final String token;
+    private final LegacyAuthorizationPolicy authorization;
     private final int port;
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private HttpServer httpServer;
@@ -67,6 +69,7 @@ public final class Legacy189Endpoint implements AutoCloseable {
         this.server = server;
         this.port = integerProperty("lodestone.legacy.port", 37954);
         this.token = token();
+        this.authorization = LegacyAuthorizationPolicy.fromConfiguredEnvironment();
     }
 
     void start() {
@@ -119,6 +122,10 @@ public final class Legacy189Endpoint implements AutoCloseable {
                 if (!parsed.isJsonObject()) throw new IllegalArgumentException("request must be a JSON object");
                 JsonObject request = parsed.getAsJsonObject();
                 final String capability = requiredText(request, "capability");
+                if (!authorization.allows(capability)) {
+                    respond(exchange, 403, error("AUTHORIZATION_DENIED", authorization.deniedMessage(capability)));
+                    return;
+                }
                 final JsonObject input = request.has("input") && request.get("input").isJsonObject()
                         ? request.getAsJsonObject("input") : new JsonObject();
                 final long deadline = request.has("deadlineEpochMs") && request.get("deadlineEpochMs").isJsonPrimitive()

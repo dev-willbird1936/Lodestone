@@ -160,6 +160,44 @@ function Resolve-SourcePath([string]$RelativePath) {
     return $resolved
 }
 
+function Get-BuildInputSnapshot {
+    $roots = @('common', 'adapters', 'gateway', 'hosts', 'protocol', 'verification/curseforge-profiles')
+    $files = @()
+    foreach ($relativeRoot in $roots) {
+        $fullRoot = Join-Path $ProjectRoot $relativeRoot
+        if (-not (Test-Path -LiteralPath $fullRoot -PathType Container)) { continue }
+        $files += @(Get-ChildItem -LiteralPath $fullRoot -Recurse -File | Where-Object {
+                $_.FullName -notmatch '[\\/](build|runs|run|\.gradle)[\\/]' -and
+                $_.Extension.ToLowerInvariant() -in @('.java', '.json', '.toml', '.properties', '.gradle', '.kts', '.ps1')
+            })
+    }
+    foreach ($relativeFile in @('build.gradle.kts', 'settings.gradle.kts', 'gradle.properties',
+            'gradle/wrapper/gradle-wrapper.properties')) {
+        $fullFile = Join-Path $ProjectRoot $relativeFile
+        if (Test-Path -LiteralPath $fullFile -PathType Leaf) { $files += Get-Item -LiteralPath $fullFile }
+    }
+    $rows = @($files | Sort-Object FullName -Unique | ForEach-Object {
+            $relative = $_.FullName.Substring($ProjectRoot.Length + 1).Replace('\', '/')
+            "$relative`t$(Get-Sha256 $_.FullName)"
+        })
+    $bytes = [Text.Encoding]::UTF8.GetBytes(($rows -join "`n"))
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = ([BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha.Dispose()
+    }
+    return [ordered]@{ algorithm = 'sha256'; fileCount = $rows.Count; sha256 = $digest }
+}
+
+function Resolve-EvidenceLog([string]$RelativePath) {
+    Assert-RelativePath $RelativePath 'Evidence log path'
+    if (-not $RelativePath.StartsWith('verification/evidence/logs/', [StringComparison]::Ordinal)) {
+        throw "Evidence logs must be retained beneath verification/evidence/logs: $RelativePath"
+    }
+    return Resolve-SourcePath $RelativePath
+}
+
 function Assert-UploadFilename([string]$Filename) {
     if ([string]::IsNullOrWhiteSpace($Filename) -or
             $Filename -cnotmatch '^[a-z0-9][a-z0-9._-]*$') {
@@ -263,16 +301,54 @@ function Get-Inventory {
     return $inventory
 }
 
-function Get-ReleaseCertification([object]$Inventory) {
+function Get-ReleaseCertification([object]$Inventory, [hashtable]$Source) {
     if (-not (Test-Path -LiteralPath $CertificationPath -PathType Leaf)) {
         throw "Release certification evidence is missing: $CertificationPath"
     }
     $evidence = Get-Content -Raw -LiteralPath $CertificationPath | ConvertFrom-Json
-    if ([int]$evidence.formatVersion -ne 1 -or
+    if ([int]$evidence.formatVersion -ne 2 -or
             [string]$evidence.productVersion -cne '1.0.0' -or
             [string]$evidence.tag -cne 'v1.0.0') {
-        throw 'Release certification evidence must describe product 1.0.0 and tag v1.0.0 with formatVersion 1.'
+        throw 'Release certification evidence must describe product 1.0.0 and tag v1.0.0 with formatVersion 2.'
     }
+
+    $buildSource = $evidence.buildSource
+    if ($null -eq $buildSource -or $null -eq $buildSource.inputSnapshot) {
+        throw 'Release certification must retain buildSource commit, tree, and inputSnapshot.'
+    }
+    Assert-HashIdentity ([string]$buildSource.commit) 'Certification buildSource.commit'
+    Assert-HashIdentity ([string]$buildSource.tree) 'Certification buildSource.tree'
+    $snapshot = $buildSource.inputSnapshot
+    if ([string]$snapshot.algorithm -cne 'sha256' -or [int]$snapshot.fileCount -lt 1 -or
+            [string]$snapshot.sha256 -cnotmatch '^[0-9a-f]{64}$') {
+        throw 'Release certification buildSource.inputSnapshot is malformed.'
+    }
+    if (-not [bool]$Source.testBypass) {
+        Invoke-Git @('merge-base', '--is-ancestor', [string]$buildSource.commit, [string]$Source.commit) | Out-Null
+        $declaredTree = (Invoke-Git @('rev-parse', "$($buildSource.commit)^{tree}")).ToLowerInvariant()
+        if ($declaredTree -cne [string]$buildSource.tree) {
+            throw 'Release certification buildSource tree does not match its declared commit.'
+        }
+        $currentSnapshot = Get-BuildInputSnapshot
+        if ([int]$currentSnapshot.fileCount -ne [int]$snapshot.fileCount -or
+                [string]$currentSnapshot.sha256 -cne [string]$snapshot.sha256) {
+            throw "Release build inputs differ from the snapshot that produced the certified artifacts: expected $($snapshot.fileCount)/$($snapshot.sha256), got $($currentSnapshot.fileCount)/$($currentSnapshot.sha256)."
+        }
+    }
+
+    $logsByPath = @{}
+    foreach ($log in @($evidence.logs)) {
+        if ($log.PSObject.Properties.Name -notcontains 'path' -or $log.PSObject.Properties.Name -notcontains 'sha256') {
+            throw 'Release certification log is missing path or sha256.'
+        }
+        $path = [string]$log.path
+        if ($logsByPath.ContainsKey($path)) { throw "Duplicate release certification log: $path" }
+        $logPath = Resolve-EvidenceLog $path
+        if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { throw "Retained evidence log is missing: $path" }
+        if ((Get-Sha256 $logPath) -cne [string]$log.sha256) { throw "Retained evidence log hash differs: $path" }
+        $logsByPath.Add($path, $log)
+    }
+    if ($logsByPath.Count -eq 0) { throw 'Release certification must retain at least one checksummed evidence log.' }
 
     $referencedRows = New-Object 'Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     foreach ($artifact in @($Inventory.artifacts)) {
@@ -294,6 +370,9 @@ function Get-ReleaseCertification([object]$Inventory) {
         if (-not $seenRows.Add($id)) { throw "Duplicate release certification matrix row: $id" }
         if (-not $referencedRows.Contains($id)) { throw "Release certification has an unreferenced matrix row: $id" }
         if ([string]$row.status -cne 'pass') { throw "Release certification matrix row is not PASS: $id" }
+        if (-not $logsByPath.ContainsKey([string]$row.runLog)) {
+            throw "Release certification matrix row must reference a retained checksummed log: $id"
+        }
     }
     foreach ($id in $referencedRows) {
         if (-not $seenRows.Contains($id)) { throw "Release certification is missing matrix row: $id" }
@@ -353,12 +432,22 @@ function Get-ReleaseCertification([object]$Inventory) {
     return [ordered]@{
         evidence = $evidence
         artifactByName = $evidenceByName
+        buildSource = [ordered]@{
+            commit = [string]$buildSource.commit
+            tree = [string]$buildSource.tree
+            inputSnapshot = [ordered]@{
+                algorithm = [string]$snapshot.algorithm
+                fileCount = [int]$snapshot.fileCount
+                sha256 = [string]$snapshot.sha256
+            }
+        }
         binding = [ordered]@{
             evidencePath = $CertificationRelativePath
             formatVersion = [int]$evidence.formatVersion
             sha256 = Get-Sha256 $CertificationPath
             matrixRowCount = $matrixRows.Count
             artifactCount = $evidenceArtifacts.Count
+            retainedLogCount = $logsByPath.Count
         }
     }
 }
@@ -645,7 +734,8 @@ function ConvertTo-CompactJson([object]$Value) {
     return ($Value | ConvertTo-Json -Depth 20 -Compress)
 }
 
-function New-Provenance([object[]]$ArtifactRows, [hashtable]$Source, [string]$GeneratedAtUtc) {
+function New-Provenance([object[]]$ArtifactRows, [hashtable]$Source, [hashtable]$Certification,
+                        [string]$GeneratedAtUtc) {
     $subjects = @($ArtifactRows | Sort-Object uploadFilename | ForEach-Object {
             [ordered]@{
                 name = $_.uploadFilename
@@ -663,17 +753,18 @@ function New-Provenance([object[]]$ArtifactRows, [hashtable]$Source, [string]$Ge
                     productVersion = '1.0.0'
                     tag = 'v1.0.0'
                     inventory = 'verification/release-assets-v1.0.0.json'
+                    certifiedArtifactBuildSource = $Certification.buildSource
                 }
                 internalParameters = [ordered]@{
-                    sourceCommit = $Source.commit
-                    sourceTree = $Source.tree
+                    assemblySourceCommit = $Source.commit
+                    assemblySourceTree = $Source.tree
                     dirtyTreeAllowedForTests = [bool]$Source.testBypass
                 }
                 resolvedDependencies = @([ordered]@{
                         uri = "git+$Repository"
                         digest = [ordered]@{
-                            gitCommit = $Source.commit
-                            gitTree = $Source.tree
+                            gitCommit = $Certification.buildSource.commit
+                            gitTree = $Certification.buildSource.tree
                         }
                     })
             }
@@ -836,7 +927,7 @@ function Invoke-Assemble([object]$Inventory, [hashtable]$Source, [hashtable]$Cer
             artifacts = $artifactRows
         }
         Write-AtomicText (Join-Path $temporaryDirectory $ManifestName) (ConvertTo-CanonicalJson $manifest)
-        $provenance = New-Provenance $artifactRows $Source $generatedAtUtc
+        $provenance = New-Provenance $artifactRows $Source $Certification $generatedAtUtc
         Write-AtomicText (Join-Path $temporaryDirectory $ProvenanceName) (ConvertTo-CanonicalJson $provenance)
         $sbom = New-SpdxSbom $artifactRows $Source $generatedAtUtc
         Write-AtomicText (Join-Path $temporaryDirectory $SbomName) (ConvertTo-CanonicalJson $sbom)
@@ -861,9 +952,9 @@ function Assert-SidecarBindings([string]$Directory, [object]$Manifest, [object[]
             [string]$provenance.predicateType -cne 'https://slsa.dev/provenance/v1') {
         throw 'Portable provenance has an unsupported statement or predicate type.'
     }
-    if ([string]$provenance.predicate.buildDefinition.internalParameters.sourceCommit -cne
+    if ([string]$provenance.predicate.buildDefinition.internalParameters.assemblySourceCommit -cne
             [string]$Manifest.source.commit -or
-            [string]$provenance.predicate.buildDefinition.internalParameters.sourceTree -cne
+            [string]$provenance.predicate.buildDefinition.internalParameters.assemblySourceTree -cne
             [string]$Manifest.source.tree) {
         throw 'Portable provenance source identity differs from release-manifest.json.'
     }
@@ -941,7 +1032,7 @@ function Invoke-Verify([object]$Inventory, [hashtable]$Source, [hashtable]$Certi
             [bool]$manifest.source.testBypass -ne [bool]$Source.testBypass) {
         throw 'Release manifest source repository, commit, tree, or test-bypass state differs from current source identity.'
     }
-    $expectedCertificationFields = @('artifactCount', 'evidencePath', 'formatVersion', 'matrixRowCount', 'sha256')
+    $expectedCertificationFields = @('artifactCount', 'evidencePath', 'formatVersion', 'matrixRowCount', 'retainedLogCount', 'sha256')
     $actualCertificationFields = @($manifest.certification.PSObject.Properties.Name | Sort-Object)
     if ((ConvertTo-CompactJson $actualCertificationFields) -cne
             (ConvertTo-CompactJson @($expectedCertificationFields | Sort-Object))) {
@@ -1050,7 +1141,7 @@ function Invoke-Verify([object]$Inventory, [hashtable]$Source, [hashtable]$Certi
 
 $inventory = Get-Inventory
 $sourceIdentity = Get-SourceIdentity
-$certification = Get-ReleaseCertification $inventory
+$certification = Get-ReleaseCertification $inventory $sourceIdentity
 if ($Mode -ceq 'Assemble') {
     Invoke-Assemble $inventory $sourceIdentity $certification
 } else {

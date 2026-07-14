@@ -16,7 +16,9 @@ param(
     [int]$BridgePort = 37940,
     [int]$McpPort = 37941,
     [string]$BridgeToken = 'legacy-native-1122-bridge-token',
-    [string]$GatewayToken = 'legacy-native-1122-gateway-token'
+    [string]$GatewayToken = 'legacy-native-1122-gateway-token',
+    [string]$ServerPermissions = 'observe,modify-world,communicate,administer-server',
+    [switch]$AuthorizationAuditOnly
 )
 $ErrorActionPreference = 'Stop'
 
@@ -55,6 +57,21 @@ function Invoke-Mcp([string]$uri, [string]$token, [object]$request) {
 function Invoke-Capability([string]$uri, [string]$token, [int]$id, [string]$capability, [hashtable]$payload) {
     return Invoke-Mcp $uri $token ([ordered]@{ jsonrpc = '2.0'; id = $id; method = 'tools/call'; params = @{ name = 'lodestone_capability_invoke'; arguments = @{ capability = $capability; input = $payload } } })
 }
+function Assert-DirectBridgeDenied([string]$uri, [string]$capability, [hashtable]$payload) {
+    $status = 0; $body = $null
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $uri -Method Post -Headers @{ 'X-Lodestone-Token' = $BridgeToken } `
+            -ContentType 'application/json' -Body (@{ capability = $capability; input = $payload } | ConvertTo-Json -Depth 20) | Out-Null
+    } catch {
+        $status = $_.Exception.Response.StatusCode.value__
+        $stream = $_.Exception.Response.GetResponseStream()
+        if ($null -ne $stream) {
+            try { $body = [IO.StreamReader]::new($stream).ReadToEnd() } finally { $stream.Dispose() }
+        }
+    }
+    Assert ($status -eq 403) "Direct native bridge did not default-deny $capability (HTTP $status)."
+    Assert ($body -match 'AUTHORIZATION_DENIED') "Direct native bridge returned the wrong denial for ${capability}: $body"
+}
 
 Assert (Test-Path -LiteralPath $Java8) "Java 8 executable not found: $Java8"
 Assert (Test-Path -LiteralPath $LauncherJava) "Launcher Java executable not found: $LauncherJava"
@@ -92,7 +109,12 @@ try {
 
     $serverOut = Join-Path $serverDirectory 'native.stdout.log'; $serverErr = Join-Path $serverDirectory 'native.stderr.log'
     Remove-Item -LiteralPath $serverOut, $serverErr -Force -ErrorAction SilentlyContinue
-    $server = Start-Process -FilePath $Java8 -ArgumentList @('-Xmx1G',('-Dlodestone.legacy.port=' + $BridgePort),('-Dlodestone.legacy.token=' + $BridgeToken),'-Dfml.queryResult=confirm','-jar',$universal.Name,'nogui','--port',[string]$ServerPort) -WorkingDirectory $serverDirectory -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr -PassThru
+    $serverArguments = @('-Xmx1G', ('-Dlodestone.legacy.port=' + $BridgePort), ('-Dlodestone.legacy.token=' + $BridgeToken))
+    if (-not $AuthorizationAuditOnly) {
+        $serverArguments += ('-Dlodestone.permissions=' + $ServerPermissions)
+    }
+    $serverArguments += @('-Dfml.queryResult=confirm', '-jar', $universal.Name, 'nogui', '--port', [string]$ServerPort)
+    $server = Start-Process -FilePath $Java8 -ArgumentList $serverArguments -WorkingDirectory $serverDirectory -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr -PassThru
     $deadline = (Get-Date).AddMinutes(4); $log = ''
     while ((Get-Date) -lt $deadline) {
         Start-Sleep -Seconds 2; $log = Read-Log $serverDirectory
@@ -104,6 +126,15 @@ try {
     Assert ((Test-Path -LiteralPath (Join-Path $serverDirectory 'world/level.dat')) -or
         (Test-Path -LiteralPath (Join-Path $serverDirectory 'world/region'))) "Forge $Minecraft did not create a world."
     Assert ($log -match 'Legacy .*MCP bridge listening') 'Lodestone native bridge did not report listening.'
+
+    if ($AuthorizationAuditOnly) {
+        $bridgeEndpoint = "http://127.0.0.1:$BridgePort/invoke"
+        Assert-DirectBridgeDenied $bridgeEndpoint 'minecraft.world.blocks.write' @{ changes = @(@{ x = 0; y = 64; z = 0; block = 'minecraft:gold_block' }) }
+        Assert-DirectBridgeDenied $bridgeEndpoint 'minecraft.chat.send' @{ message = 'must not send' }
+        Assert-DirectBridgeDenied $bridgeEndpoint 'minecraft.command.execute' @{ command = 'say must not execute' }
+        Write-Output "PASS Forge $Minecraft / $Forge native bridge direct observe-only mutation denial"
+        return
+    }
 
     foreach ($name in @('LODESTONE_LEGACY_TOKEN','LODESTONE_TOKEN','LODESTONE_LEGACY_HOST','LODESTONE_LEGACY_VERSION','LODESTONE_LEGACY_PORT','LODESTONE_MCP_PORT','LODESTONE_PERMISSIONS')) { $oldEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
     $env:LODESTONE_LEGACY_TOKEN = $BridgeToken; $env:LODESTONE_TOKEN = $GatewayToken; $env:LODESTONE_LEGACY_HOST = '127.0.0.1'; $env:LODESTONE_LEGACY_VERSION = $Minecraft; $env:LODESTONE_LEGACY_PORT = [string]$BridgePort; $env:LODESTONE_MCP_PORT = [string]$McpPort; $env:LODESTONE_PERMISSIONS = 'observe,modify-world,communicate,administer-server'
