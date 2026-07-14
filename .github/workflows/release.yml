@@ -1,0 +1,93 @@
+name: Release v1
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - id: java8
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '8'
+      - id: java21
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - id: java25
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Download checksummed historical Gradle distributions
+        id: gradle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tools = Join-Path $env:RUNNER_TEMP 'lodestone-gradle'
+          New-Item -ItemType Directory -Force -Path $tools | Out-Null
+          function Get-Gradle([string]$version, [string]$sha256) {
+            $archive = Join-Path $tools "gradle-$version-bin.zip"
+            Invoke-WebRequest -UseBasicParsing "https://services.gradle.org/distributions/gradle-$version-bin.zip" -OutFile $archive
+            $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -cne $sha256) { throw "Gradle $version SHA-256 mismatch: $actual" }
+            Expand-Archive -LiteralPath $archive -DestinationPath $tools
+            return (Join-Path $tools "gradle-$version/bin/gradle.bat")
+          }
+          "gradle2=$(Get-Gradle '2.7' 'cde43b90945b5304c43ee36e58aab4cc6fb3a3d5f9bd9449bb1709a68371cb06')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "gradle4=$(Get-Gradle '4.10.3' '8626cbf206b4e201ade7b87779090690447054bc93f052954c78480fa6ed186e')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "gradle9=$(Get-Gradle '9.5.1' 'bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Contract tests
+        shell: pwsh
+        run: .\gradlew.bat :common:legacy-java8:test :adapters:legacy-bridge:java:test :verification:contract-tests:test --no-daemon
+
+      - name: Rebuild all release artifacts twice where required
+        shell: pwsh
+        run: >-
+          .\verification\build-v1-release.ps1
+          -Java8 "${{ steps.java8.outputs.path }}\bin\java.exe"
+          -Java21 "${{ steps.java21.outputs.path }}\bin\java.exe"
+          -Java25 "${{ steps.java25.outputs.path }}\bin\java.exe"
+          -Gradle2 "${{ steps.gradle.outputs.gradle2 }}"
+          -Gradle4 "${{ steps.gradle.outputs.gradle4 }}"
+          -Gradle9 "${{ steps.gradle.outputs.gradle9 }}"
+
+      - name: Verify and stage the exact tagged release
+        shell: pwsh
+        run: >-
+          .\verification\assemble-v1-release.ps1 -Mode Assemble
+          -StagingDirectory "$env:RUNNER_TEMP\lodestone-v1.0.0-release"
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -ne 'v1.0.0') { throw "This release pipeline only publishes v1.0.0, not $tag." }
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "GitHub release $tag already exists; refusing to replace it." }
+          $assets = Get-ChildItem "$env:RUNNER_TEMP\lodestone-v1.0.0-release" -File | ForEach-Object { $_.FullName }
+          gh release create $tag $assets --repo $env:GITHUB_REPOSITORY --verify-tag --title 'Lodestone v1.0.0' --generate-notes
