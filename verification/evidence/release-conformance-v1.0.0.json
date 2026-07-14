@@ -1,0 +1,119 @@
+{
+  "formatVersion": 1,
+  "productVersion": "1.0.0",
+  "tag": "v1.0.0",
+  "certificationWindowUtc": {
+    "started": "2026-07-14T00:07:53.201Z",
+    "completed": "2026-07-14T01:16:04.0274351Z"
+  },
+  "acceptanceContract": {
+    "nativeAndPluginRows": "fresh world; authenticated MCP; capability discovery; read; dry-run; real bounded mutation and readback; default-deny safety check; bad-token rejection; normal server shutdown",
+    "legacyNativeRows": "fresh world; authenticated MCP over the exact legacy-bridge launcher ZIP; supported native control slice; real mutation and readback; normal server shutdown",
+    "rconRows": "fresh world; authenticated MCP over the exact RCON launcher ZIP; command capability; gamerule mutation and query readback; bad-token rejection; normal server shutdown",
+    "profileRows": "generated after the final artifact builds; the assembler validates each nested profile manifest, dependency archive, and byte-identical embedded host artifact"
+  },
+  "logs": [
+    {
+      "pathHint": "%TEMP%/lodestone-final-modern-build.stdout.log",
+      "sha256": "24175cb9655a8c4502b915e526d41f5c53e076853423300bb06283572ce9dcb9"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-fabric262-build.stdout.log",
+      "sha256": "6a37701092b8014a8932c8922571dcc721b5179e00ce6594d519f633f57cf007"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-forge1122-build.stdout.log",
+      "sha256": "7cfbfb57b178b6ff9885cebdfe7203fcb51a8fbe2e17058cb25e5a8231296e12"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-forge1710-build.stdout.log",
+      "sha256": "d7115e3a594e9078534f26c266792edb0ed9212dcfb5601bf77e554d23e43bc6"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-forge189-build.stdout.log",
+      "sha256": "f43df88172b9c7dbab435abeb1bdb978ff1f01fa7d8d8c7a72b4c610f73f5627"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-launchers-build.stdout.log",
+      "sha256": "d82e963847912c9390cc8e42e002eaad2f4012dc5cb4a6c2c9b41d1405024a2b"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-packaged-matrix.stdout.log",
+      "sha256": "ebfbaf359693996a284ccecc6c78fea2ae4b52bad60da9d917ad2287abeac3b3"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-plugin-matrix.stdout.log",
+      "sha256": "7a0b106e26ea73069d0871f44f31b048972894afec704dc81ef85063b2fb630e"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-legacy-native-matrix.stdout.log",
+      "sha256": "101b757c3f313866c141e5752bc08fafd8d5c0a9fc4cc8bfafa7ddbe0159b885"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-legacy-rcon-mutation-matrix.stdout.log",
+      "sha256": "80682acbf6da74843bb2f091b85245b97ccd70a2d467d8273b34f22f010098b5"
+    },
+    {
+      "pathHint": "%TEMP%/lodestone-final-profiles.stdout.log",
+      "sha256": "8410af948ca9024b037beeb8999d934f8c96e03ea13b9ae0c2c68d396c2fc0a7"
+    }
+  ],
+  "matrixRows": [
+    {"id": "fabric-1.18.2", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "fabric-1.19.2", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "fabric-1.20.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "fabric-1.21.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "fabric-26.2", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "quilt-1.20.1", "status": "pass", "method": "nativeAndPluginRows via Fabric compatibility", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "quilt-1.21.1", "status": "pass", "method": "nativeAndPluginRows via Fabric compatibility", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "neoforge-1.21.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "forge-1.16.5", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "forge-1.18.2", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "forge-1.19.2", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "forge-1.20.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "forge-1.21.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-packaged-matrix.stdout.log"},
+    {"id": "paper-1.21.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-plugin-matrix.stdout.log"},
+    {"id": "spigot-1.21.1", "status": "pass", "method": "nativeAndPluginRows", "runLog": "%TEMP%/lodestone-final-plugin-matrix.stdout.log"},
+    {"id": "folia-1.21.4", "status": "pass", "method": "nativeAndPluginRows (Folia scheduler slice)", "runLog": "%TEMP%/lodestone-final-plugin-matrix.stdout.log"},
+    {"id": "forge-1.12.2-native", "status": "pass", "method": "legacyNativeRows", "runLog": "%TEMP%/lodestone-final-legacy-native-matrix.stdout.log"},
+    {"id": "forge-1.8.9-native", "status": "pass", "method": "legacyNativeRows", "runLog": "%TEMP%/lodestone-final-legacy-native-matrix.stdout.log"},
+    {"id": "forge-1.7.10-native", "status": "pass", "method": "legacyNativeRows", "runLog": "%TEMP%/lodestone-final-legacy-native-matrix.stdout.log"},
+    {"id": "rcon-forge-1.12.2", "status": "pass", "method": "rconRows", "runLog": "%TEMP%/lodestone-final-legacy-rcon-mutation-matrix.stdout.log"},
+    {"id": "rcon-forge-1.8.9", "status": "pass", "method": "rconRows", "runLog": "%TEMP%/lodestone-final-legacy-rcon-mutation-matrix.stdout.log"},
+    {"id": "rcon-forge-1.7.10", "status": "pass", "method": "rconRows", "runLog": "%TEMP%/lodestone-final-legacy-rcon-mutation-matrix.stdout.log"}
+  ],
+  "artifacts": [
+    {"uploadFilename": "lodestone-1.0.0-launcher-legacy-bridge-legacy-forge.zip", "sourcePath": "gateway/legacy-bridge-launcher/build/distributions/legacy-bridge-launcher.zip", "bytes": 382051, "sha256": "9cadda073b1c6f89b20dd825c8355c52dc8bee84b887e26dcd4a06b241493df7", "evidenceRows": ["forge-1.7.10-native", "forge-1.8.9-native", "forge-1.12.2-native"]},
+    {"uploadFilename": "lodestone-1.0.0-launcher-rcon-legacy-any.zip", "sourcePath": "gateway/rcon-launcher/build/distributions/rcon-launcher.zip", "bytes": 387722, "sha256": "699a213e0a6ab7aee3ca5946669bd01df3d1c511f10a3967e80fa763bad23cda", "evidenceRows": ["rcon-forge-1.7.10", "rcon-forge-1.8.9", "rcon-forge-1.12.2"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.18.2.jar", "sourcePath": "hosts/fabric/1.18.2/build/libs/lodestone-1.0.0.jar", "bytes": 435720, "sha256": "b812ab58004400496208ce3ef98daec96331f1168723c3f93897a4985881696d", "evidenceRows": ["fabric-1.18.2"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.19.2.jar", "sourcePath": "hosts/fabric/1.19.2/build/libs/lodestone-1.0.0.jar", "bytes": 430988, "sha256": "feb89faa03c9c3f582d5e8226504d201d06a1166f135f8f78eaf36a557cf8c00", "evidenceRows": ["fabric-1.19.2"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.20.1.jar", "sourcePath": "hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar", "bytes": 431012, "sha256": "d219f06ee33fa8cd9fea3a232b8bc44c38946513037cbc615352816ed8a246c0", "evidenceRows": ["fabric-1.20.1"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.21.1.jar", "sourcePath": "hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar", "bytes": 435408, "sha256": "2b2cf967f72fe526be36d7a4b6bcfe4dfc329a69a9d8b36762f4f6c56b0db632", "evidenceRows": ["fabric-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-fabric-mc-26.2.jar", "sourcePath": "hosts/fabric/26.2/build/libs/lodestone-1.0.0.jar", "bytes": 399244, "sha256": "d2bfdc0d6dcdd93c08c23ce8d539008faa741197b641018085deeb32392ee867", "evidenceRows": ["fabric-26.2"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.12.2.jar", "sourcePath": "hosts/forge/1.12.2/build/libs/lodestone-1.0.0.jar", "bytes": 25888, "sha256": "d3baa25f39ca607d22735fbe8382428dc4eb1404d432a63294817cd706aa89b2", "evidenceRows": ["forge-1.12.2-native"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.16.5.jar", "sourcePath": "hosts/forge/1.16.5/build/reobfJar/output.jar", "bytes": 362787, "sha256": "9322af9cd79c8f0b64ed71e325a12f9f5f8de39e74cfcabb00e8b3914eb76143", "evidenceRows": ["forge-1.16.5"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.18.2.jar", "sourcePath": "hosts/forge/1.18.2/build/reobfJar/output.jar", "bytes": 362830, "sha256": "1a765a533d0b61a5100bf44c0ef1a8ede2e18a540a1534ac8a0a8a5ecf24e464", "evidenceRows": ["forge-1.18.2"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.19.2.jar", "sourcePath": "hosts/forge/1.19.2/build/reobfJar/output.jar", "bytes": 362773, "sha256": "b924f22c1b0a60a846fafbd24669514872842012143ee2328cd94268a1c756ff", "evidenceRows": ["forge-1.19.2"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.20.1.jar", "sourcePath": "hosts/forge/1.20.1/build/reobfJar/output.jar", "bytes": 363207, "sha256": "38bbdf5546640285a1cea063e25a6c9b2e936071c31fa051f673a278e1c21788", "evidenceRows": ["forge-1.20.1"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.21.1.jar", "sourcePath": "hosts/forge/1.21.1/build/libs/lodestone-1.0.0.jar", "bytes": 361743, "sha256": "2b71d0cb7bc910bfec4d6b3228478be18d93a5b36102bdbe565f7df574e0b3a6", "evidenceRows": ["forge-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.7.10.jar", "sourcePath": "hosts/forge/1.7.10/build/libs/lodestone-1.0.0.jar", "bytes": 26818, "sha256": "7b41ee0f67749706a42ced45f85e1845f958b8b306f6a03088dcb058e8ec3d8a", "evidenceRows": ["forge-1.7.10-native"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.8.9.jar", "sourcePath": "hosts/forge/1.8.9/build/libs/lodestone-1.0.0.jar", "bytes": 26209, "sha256": "a98cfb394fcbcab69817f466d481149a6f08596e097a13fde5aac8c77a9b02d1", "evidenceRows": ["forge-1.8.9-native"]},
+    {"uploadFilename": "lodestone-1.0.0-mod-neoforge-mc-1.21.1.jar", "sourcePath": "hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar", "bytes": 431267, "sha256": "814b8f77bf5c7221bfeffc57125202350662a98595cbef03e85a1606498d0aac", "evidenceRows": ["neoforge-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-plugin-folia-mc-1.21.4.jar", "sourcePath": "hosts/folia/1.21.4/build/libs/lodestone-1.0.0.jar", "bytes": 372215, "sha256": "b3d58e31ed1603aab69eddd795ce896d72298a6ed979ab2e74b7d474c87e31ef", "evidenceRows": ["folia-1.21.4"]},
+    {"uploadFilename": "lodestone-1.0.0-plugin-paper-mc-1.21.1.jar", "sourcePath": "hosts/paper/1.21.1/build/libs/lodestone-1.0.0.jar", "bytes": 366667, "sha256": "e9c9b848385da147a63b84d0e643b9c5ad5c7584f596e5320f7b5683d859e47a", "evidenceRows": ["paper-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-plugin-spigot-mc-1.21.1.jar", "sourcePath": "hosts/spigot/1.21.1/build/libs/lodestone-1.0.0.jar", "bytes": 369277, "sha256": "dc05bc570e7031c5a0762270a1dc07c0a6cf4a9fe057f51196833b75b39fa5c8", "evidenceRows": ["spigot-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.18.2-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.18.2-local.zip", "bytes": 1902809, "sha256": "4d3f09cf7c4efab5a2fb295e9642322e7bffedbdb13ff7ac2bfecb40841cbc36", "evidenceRows": ["fabric-1.18.2"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.19.2-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.19.2-local.zip", "bytes": 2286808, "sha256": "4fe49ed91d719919b54f44f085152e2254cab19bace0bbfb037bb4f75e78230a", "evidenceRows": ["fabric-1.19.2"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.20.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.20.1-local.zip", "bytes": 2512238, "sha256": "8727071396cf6993040e983209a9ccd73d4c0a60f46882ca00a2ebceec196a89", "evidenceRows": ["fabric-1.20.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.21.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.21.1-local.zip", "bytes": 2834977, "sha256": "46cddcb33dce1cf96277625126863691313268ce8924082d72db3027b486d67b", "evidenceRows": ["fabric-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-fabric-mc-26.2-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-fabric-26.2-local.zip", "bytes": 2897460, "sha256": "784ac201d5ac60b89fe9512f6a7facf673081b1a2fca8a8ed580f93a21f80332", "evidenceRows": ["fabric-26.2"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.16.5-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.16.5-local.zip", "bytes": 345757, "sha256": "e59e6f2283e1c52c120c0613f15c50b669b5209bc29944965058bec86e654b06", "evidenceRows": ["forge-1.16.5"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.18.2-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.18.2-local.zip", "bytes": 345877, "sha256": "a469fd8cb8939c9a3698a564072fcee7a0619ad0fbbbec82d81fa92cfcac6f22", "evidenceRows": ["forge-1.18.2"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.19.2-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.19.2-local.zip", "bytes": 345809, "sha256": "6ca988d32a0670ead724b386efa04cae5be485578ca388af0b0960fcfd027c3b", "evidenceRows": ["forge-1.19.2"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.20.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.20.1-local.zip", "bytes": 346264, "sha256": "cbce58275520bebd5e6125dd7d5bd2cb8ff09caeeec7cf6421193b5ebfa1d619", "evidenceRows": ["forge-1.20.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.21.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.21.1-local.zip", "bytes": 346979, "sha256": "4e3f9e1508f4d48355ea085cfbfa3e931034ff114032615646623cc9740c6360", "evidenceRows": ["forge-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-neoforge-mc-1.21.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-neoforge-1.21.1-local.zip", "bytes": 412370, "sha256": "27c98a605b3c5b239f995085c4e196156e1e033117f116039f3edad9b4dcba07", "evidenceRows": ["neoforge-1.21.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-quilt-mc-1.20.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-quilt-1.20.1-local.zip", "bytes": 2512237, "sha256": "8e11f446ce4847d75733297a3d130608c1f23951f3854000ff6b2b733d18ce05", "evidenceRows": ["quilt-1.20.1"]},
+    {"uploadFilename": "lodestone-1.0.0-profile-quilt-mc-1.21.1-curseforge.zip", "sourcePath": "verification/curseforge-profiles/lodestone-quilt-1.21.1-local.zip", "bytes": 2834977, "sha256": "7ccc7891bffbacb2789caa4b921cea2ca82e0e9df682723bcec506360bb6d3a0", "evidenceRows": ["quilt-1.21.1"]}
+  ]
+}

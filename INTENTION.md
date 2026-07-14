@@ -5,9 +5,10 @@ platform. Its durable product is a negotiated capability protocol: clients can d
 complete declared surface, invoke typed operations through one gateway, and see honest
 unavailable/restricted/degraded states for the active versioned adapter.
 
-The first production path is a NeoForge 1.21.1 adapter with a loopback-authenticated MCP endpoint.
-Future loaders and server integrations must be separate adapters with their own evidence rather
-than pretending one binary supports every Minecraft environment.
+The v1.0.0 production path spans exact Fabric, Quilt-compatibility, NeoForge, Forge, Paper,
+Spigot, Folia, legacy Forge bridge, and legacy RCON rows. Future loaders and server integrations
+must still be separate adapters with their own evidence rather than pretending one binary supports
+every Minecraft environment.
 
 ## INTENTION MATCHED
 
@@ -23,7 +24,7 @@ than pretending one binary supports every Minecraft environment.
 - Live Fabric dedicated-server startup, authorized command execution, security checks, clean
   shutdown, and reproducible CurseForge profile manifests.
 - Loader-neutral RCON transport with bounded authenticated command execution, an external MCP
-  launcher, and live evidence against Fabric 1.20.1 and NeoForge 1.21.1 servers.
+  launcher, and release-certified fresh-world evidence for Forge 1.7.10, 1.8.9, and 1.12.2.
 - Pure adapter modules separated from loader host composition; host artifacts carry the loader
   metadata and gateway while adapters do not depend on the MCP gateway implementation.
 - Bounded, validated overworld block mutation with dry-run support, cancellation checks, and
@@ -93,8 +94,15 @@ than pretending one binary supports every Minecraft environment.
 - Folia 1.21.4 server-plugin coverage now reaches a fresh world and passes a scheduler-aware MCP
   slice through distinct global-region, region, and entity scheduling paths. Folia 1.21.1 remains
   pending because the official build service does not currently publish that server version.
-- Final 2026-07-12 compatibility evidence covers every prepared native/plugin/RCON target, with
-  fresh-world startup, authenticated MCP operations, and clean shutdown passing across the matrix.
+- v1.0.0 release conformance binds 32 exact artifacts to 22 fresh-world rows, including final
+  CurseForge profile ZIPs and both launchers. Assembly rejects any source byte that no longer
+  matches `verification/evidence/release-conformance-v1.0.0.json`.
+- Final 2026-07-14 compatibility evidence covers every release-certified native/plugin/RCON row,
+  with authenticated MCP operations, real mutation/readback within its supported slice, and clean
+  server shutdown. The legacy RCON rows use a gamerule mutation/query readback because it is
+  available across 1.7.10 through 1.12.2.
+- Final Forge 1.16.5 startup compatibility avoids newer-only Gson APIs in the shared runtime and
+  MCP gateway; the focused compatibility scan and fresh-world row pass on its old Gson runtime.
 - Final hardening adds bounded event subscriptions and HTTP admission, rejects coordinate overflow,
   and refuses implicit chunk loading during native/Paper/Folia writes; acceptance fixtures explicitly
   prepare loaded test chunks before exercising writes.

@@ -12,8 +12,9 @@ and loader or server.
 
 - C0 is an immutable compatibility baseline, not a tag reconstructed from newer source. Its frozen
   manifest and evidence remain under `verification/evidence/`.
-- v1.0.0 is unreleased parity work. No v1.0.0 tag or binary release may be published until all
-  gates below pass.
+- v1.0.0 has a 32-artifact, 22-row release candidate record at
+  `verification/evidence/release-conformance-v1.0.0.json`. The remaining promotion gates are the
+  final read-only audit, clean tagged assembly/verification, and GitHub publication.
 
 ## Tags and promotion
 
@@ -73,9 +74,12 @@ Every RC and stable release includes:
 - `release-manifest.json` with source commit, platform metadata, byte lengths, SHA-256 hashes, and
   evidence identifiers;
 - `SHA256SUMS` generated from the exact uploaded files;
-- a signed manifest or signed checksum file;
 - SPDX or CycloneDX SBOMs for distinct distributables;
 - portable build-provenance material.
+
+Detached signatures are included only when a configured signing identity is available. A release
+must never imply that unsigned artifacts are signed; v1.0.0's assembler always provides exact
+SHA-256 checksums, provenance, and the first-party SPDX inventory.
 
 Signing keys and service credentials never enter the repository. Prefer keyless Sigstore/cosign
 signing when its public identity disclosure is acceptable; otherwise use a protected offline key.

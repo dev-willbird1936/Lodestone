@@ -11,7 +11,9 @@ Compatibility is measured per adapter and capability, never inferred from a near
 | manually verified | reproducible human acceptance evidence exists |
 
 Initial target: NeoForge 1.21.1. Future adapter families are introduced only with a milestone,
-native test plan, and capability evidence.
+native test plan, and capability evidence. The release-certified source of truth is
+`verification/evidence/release-conformance-v1.0.0.json`; the historical C0 files below are not
+used to certify v1.0.0 bytes.
 
 ## Current evidence
 
@@ -36,7 +38,7 @@ native test plan, and capability evidence.
 | Paper host + adapter | Minecraft Java 1.21.1 | Paper 1.21.1-133, Paper API 1.21.1-R0.1-SNAPSHOT, Java 21 | integration-tested (server-plugin matrix) | `verification/evidence/compatibility-live-2026-07-12.md`, `verification/evidence/paper-1.21.1-live.md`, and `verification/paper-server-matrix.ps1` | Bukkit/Paper server slice is live-tested; command discovery, connected-player semantics, and container/NBT automation remain open |
 | Spigot host + adapter | Minecraft Java 1.21.1 | Spigot BuildTools `4344-Spigot-a759b62`, Spigot API 1.21.1-R0.1-SNAPSHOT, Java 21 | integration-tested (server-plugin matrix) | `verification/evidence/compatibility-live-2026-07-12.md`, `verification/evidence/spigot-1.21.1-live.md`, and `verification/spigot-server-matrix.ps1` | Bukkit-compatible server slice is live-tested; command discovery, connected-player semantics, container/NBT automation, and broader events/mutations remain open |
 | Folia host + adapter | Minecraft Java 1.21.4 | Folia build 6, Folia API 1.21.4-R0.1-SNAPSHOT, Java 21 | integration-tested (server-plugin matrix) | `verification/evidence/compatibility-live-2026-07-12.md`, `verification/evidence/folia-1.21.4-live.md`, and `verification/folia-server-matrix.ps1` | Global/region/entity scheduler slice is live-tested; entity listing is explicitly unavailable; Folia 1.21.1 is not currently published by the official build service |
-| RCON transport profile | Java-edition remote server | Java 21 standard-library transport; launcher module | integration-tested across Fabric 1.20.1, NeoForge 1.21.1, and Forge 1.8.9 / 1.7.10 / 1.12.2 | `verification/evidence/compatibility-live-2026-07-12.md` and `verification/evidence/rcon-live.md` | Only authenticated command execution; output is unstructured and native player/UI semantics remain unavailable; all tested legacy Forge rows also have native bridges where documented above |
+| RCON transport profile | Forge 1.7.10 / 1.8.9 / 1.12.2 | Java 21 standard-library transport; launcher module | integration-tested on the exact v1.0.0 launcher ZIP | `verification/evidence/release-conformance-v1.0.0.json` and `verification/legacy-forge-rcon-matrix.ps1` | Only authenticated command execution; the certified rows mutate and query `doDaylightCycle`; native player/UI semantics remain unavailable |
 | Protocol/runtime/gateway | Loader-neutral | Java 21 | contract-tested | focused protocol, runtime, gateway, and contract tests passed on 2026-07-12 | Does not prove any native game behavior |
 
 The NeoForge, Fabric, and Forge adapters' current implemented native slice is covered by Fabric 1.18.2/1.19.2/1.20.1/1.21.1/26.2 and Forge 1.16.5/1.18.2/1.19.2/1.20.1/1.21.1. The slice is
@@ -79,10 +81,10 @@ profiles are test infrastructure, not claims that CurseForge distribution or a r
 has been manually verified. Paper and Spigot use server-plugin matrix scripts because they are
 server-plugin platforms rather than CurseForge mod-loader profiles.
 
-Release evidence is hash-bound. After the final build and profile staging, run
-`verification/release-artifact-manifest.ps1 -Mode Freeze`; run the same script with `-Mode Verify`
-before and after live matrices. Verification fails if production source, any release host/launcher,
-or any of the thirteen profile ZIPs changed after the freeze.
+Release evidence is hash-bound. `verification/assemble-v1-release.ps1` validates the exact
+32-artifact source set against `verification/evidence/release-conformance-v1.0.0.json`, then
+creates the upload manifest, checksums, provenance, and SPDX inventory. Assembly and verification
+fail if any source artifact or profile ZIP differs from the certified byte binding.
 
 Folia uses `verification/folia-server-matrix.ps1` for the same reason. Its adapter has a separate
 scheduler implementation: global-region calls are used for server-wide command/chat work, region

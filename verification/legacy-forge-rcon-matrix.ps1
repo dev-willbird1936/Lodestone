@@ -189,13 +189,28 @@ foreach ($target in $targets) {
         Assert ($command.result.structuredContent.status -eq 'ok') "RCON command failed: $($command | ConvertTo-Json -Depth 20 -Compress)"
         Assert (-not [string]::IsNullOrWhiteSpace($command.result.structuredContent.output.text)) 'RCON command returned no output.'
 
-        $time = Invoke-Mcp $endpoint $target.Token ([ordered]@{
-                jsonrpc = '2.0'; id = 3; method = 'tools/call'
+        # The MCP gateway has a bounded mutation rate. This is a separate, intentional
+        # dispatch after the read-only probes rather than a retry of an uncertain command.
+        Start-Sleep -Seconds 7
+        $setGameRule = Invoke-Mcp $endpoint $target.Token ([ordered]@{
+                jsonrpc = '2.0'; id = 6; method = 'tools/call'
                 params = @{ name = 'lodestone_capability_invoke'; arguments = @{
-                        capability = 'minecraft.command.rcon.execute'; input = @{ command = 'time query day' }
+                        capability = 'minecraft.command.rcon.execute'; input = @{ command = 'gamerule doDaylightCycle false' }
                     } }
             })
-        Assert ($time.result.structuredContent.status -eq 'ok') 'RCON world-time query failed.'
+        Assert ($setGameRule.result.structuredContent.status -eq 'ok') `
+            "RCON gamerule mutation command failed: $($setGameRule | ConvertTo-Json -Depth 20 -Compress)"
+        Start-Sleep -Seconds 7
+        $readBack = Invoke-Mcp $endpoint $target.Token ([ordered]@{
+                jsonrpc = '2.0'; id = 7; method = 'tools/call'
+                params = @{ name = 'lodestone_capability_invoke'; arguments = @{
+                        capability = 'minecraft.command.rcon.execute'; input = @{ command = 'gamerule doDaylightCycle' }
+                    } }
+            })
+        Assert ($readBack.result.structuredContent.status -eq 'ok') `
+            "RCON gamerule readback command failed: $($readBack | ConvertTo-Json -Depth 20 -Compress)"
+        Assert ([string]$readBack.result.structuredContent.output.text -match '(?i)\bfalse\b') `
+            "RCON gamerule mutation was not confirmed by readback: $($readBack.result.structuredContent.output.text)"
         Start-Sleep -Seconds 7
         $say = Invoke-Mcp $endpoint $target.Token ([ordered]@{
                 jsonrpc = '2.0'; id = 4; method = 'tools/call'

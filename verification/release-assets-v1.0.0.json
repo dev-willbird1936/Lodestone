@@ -1,0 +1,363 @@
+{
+  "formatVersion": 1,
+  "productVersion": "1.0.0",
+  "tag": "v1.0.0",
+  "artifacts": [
+    {
+      "sourcePath": "hosts/fabric/1.18.2/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.18.2.jar",
+      "type": "mod",
+      "platform": "fabric",
+      "minecraftVersions": ["1.18.2"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["fabric-1.18.2"]
+    },
+    {
+      "sourcePath": "hosts/fabric/1.19.2/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.19.2.jar",
+      "type": "mod",
+      "platform": "fabric",
+      "minecraftVersions": ["1.19.2"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["fabric-1.19.2"]
+    },
+    {
+      "sourcePath": "hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.20.1.jar",
+      "type": "mod",
+      "platform": "fabric",
+      "minecraftVersions": ["1.20.1"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["fabric-1.20.1"]
+    },
+    {
+      "sourcePath": "hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.21.1.jar",
+      "type": "mod",
+      "platform": "fabric",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "evidenceRows": ["fabric-1.21.1"]
+    },
+    {
+      "sourcePath": "hosts/fabric/26.2/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-fabric-mc-26.2.jar",
+      "type": "mod",
+      "platform": "fabric",
+      "minecraftVersions": ["26.2"],
+      "buildJava": ["25"],
+      "runtimeJava": ["25"],
+      "evidenceRows": ["fabric-26.2"]
+    },
+    {
+      "sourcePath": "hosts/neoforge/1.21.1/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-neoforge-mc-1.21.1.jar",
+      "type": "mod",
+      "platform": "neoforge",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "evidenceRows": ["neoforge-1.21.1"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.16.5/build/reobfJar/output.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.16.5.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.16.5"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["forge-1.16.5"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.18.2/build/reobfJar/output.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.18.2.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.18.2"],
+      "buildJava": ["21"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["forge-1.18.2"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.19.2/build/reobfJar/output.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.19.2.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.19.2"],
+      "buildJava": ["21"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["forge-1.19.2"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.20.1/build/reobfJar/output.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.20.1.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.20.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["17"],
+      "evidenceRows": ["forge-1.20.1"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.21.1/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.21.1.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "evidenceRows": ["forge-1.21.1"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.12.2/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.12.2.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.12.2"],
+      "buildJava": ["8"],
+      "runtimeJava": ["8"],
+      "evidenceRows": ["forge-1.12.2-native"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.7.10/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.7.10.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.7.10"],
+      "buildJava": ["8"],
+      "runtimeJava": ["8"],
+      "evidenceRows": ["forge-1.7.10-native"]
+    },
+    {
+      "sourcePath": "hosts/forge/1.8.9/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-mod-forge-mc-1.8.9.jar",
+      "type": "mod",
+      "platform": "forge",
+      "minecraftVersions": ["1.8.9"],
+      "buildJava": ["8"],
+      "runtimeJava": ["8"],
+      "evidenceRows": ["forge-1.8.9-native"]
+    },
+    {
+      "sourcePath": "hosts/paper/1.21.1/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-plugin-paper-mc-1.21.1.jar",
+      "type": "plugin",
+      "platform": "paper",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "evidenceRows": ["paper-1.21.1"]
+    },
+    {
+      "sourcePath": "hosts/spigot/1.21.1/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-plugin-spigot-mc-1.21.1.jar",
+      "type": "plugin",
+      "platform": "spigot",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "evidenceRows": ["spigot-1.21.1"]
+    },
+    {
+      "sourcePath": "hosts/folia/1.21.4/build/libs/lodestone-1.0.0.jar",
+      "uploadFilename": "lodestone-1.0.0-plugin-folia-mc-1.21.4.jar",
+      "type": "plugin",
+      "platform": "folia",
+      "minecraftVersions": ["1.21.4"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "evidenceRows": ["folia-1.21.4"]
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.18.2-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.18.2-curseforge.zip",
+      "type": "profile",
+      "platform": "fabric",
+      "minecraftVersions": ["1.18.2"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["fabric-1.18.2"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.18.2.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.19.2-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.19.2-curseforge.zip",
+      "type": "profile",
+      "platform": "fabric",
+      "minecraftVersions": ["1.19.2"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["fabric-1.19.2"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.19.2.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.20.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.20.1-curseforge.zip",
+      "type": "profile",
+      "platform": "fabric",
+      "minecraftVersions": ["1.20.1"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["fabric-1.20.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.20.1.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-fabric-1.21.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-fabric-mc-1.21.1-curseforge.zip",
+      "type": "profile",
+      "platform": "fabric",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "installerJava": ["21"],
+      "evidenceRows": ["fabric-1.21.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.21.1.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-fabric-26.2-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-fabric-mc-26.2-curseforge.zip",
+      "type": "profile",
+      "platform": "fabric",
+      "minecraftVersions": ["26.2"],
+      "buildJava": ["25"],
+      "runtimeJava": ["25"],
+      "installerJava": ["25"],
+      "evidenceRows": ["fabric-26.2"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-26.2.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.16.5-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.16.5-curseforge.zip",
+      "type": "profile",
+      "platform": "forge",
+      "minecraftVersions": ["1.16.5"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "installerJava": ["8"],
+      "evidenceRows": ["forge-1.16.5"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-forge-mc-1.16.5.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.18.2-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.18.2-curseforge.zip",
+      "type": "profile",
+      "platform": "forge",
+      "minecraftVersions": ["1.18.2"],
+      "buildJava": ["21"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["forge-1.18.2"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-forge-mc-1.18.2.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.19.2-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.19.2-curseforge.zip",
+      "type": "profile",
+      "platform": "forge",
+      "minecraftVersions": ["1.19.2"],
+      "buildJava": ["21"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["forge-1.19.2"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-forge-mc-1.19.2.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.20.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.20.1-curseforge.zip",
+      "type": "profile",
+      "platform": "forge",
+      "minecraftVersions": ["1.20.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["forge-1.20.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-forge-mc-1.20.1.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-forge-1.21.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-forge-mc-1.21.1-curseforge.zip",
+      "type": "profile",
+      "platform": "forge",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "installerJava": ["21"],
+      "evidenceRows": ["forge-1.21.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-forge-mc-1.21.1.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-neoforge-1.21.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-neoforge-mc-1.21.1-curseforge.zip",
+      "type": "profile",
+      "platform": "neoforge",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "installerJava": ["21"],
+      "evidenceRows": ["neoforge-1.21.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-neoforge-mc-1.21.1.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-quilt-1.20.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-quilt-mc-1.20.1-curseforge.zip",
+      "type": "profile",
+      "platform": "quilt",
+      "minecraftVersions": ["1.20.1"],
+      "buildJava": ["17"],
+      "runtimeJava": ["17"],
+      "installerJava": ["17"],
+      "evidenceRows": ["quilt-1.20.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.20.1.jar"
+    },
+    {
+      "sourcePath": "verification/curseforge-profiles/lodestone-quilt-1.21.1-local.zip",
+      "uploadFilename": "lodestone-1.0.0-profile-quilt-mc-1.21.1-curseforge.zip",
+      "type": "profile",
+      "platform": "quilt",
+      "minecraftVersions": ["1.21.1"],
+      "buildJava": ["21"],
+      "runtimeJava": ["21"],
+      "installerJava": ["21"],
+      "evidenceRows": ["quilt-1.21.1"],
+      "embeddedArtifactUploadFilename": "lodestone-1.0.0-mod-fabric-mc-1.21.1.jar"
+    },
+    {
+      "sourcePath": "gateway/rcon-launcher/build/distributions/rcon-launcher.zip",
+      "uploadFilename": "lodestone-1.0.0-launcher-rcon-legacy-any.zip",
+      "type": "launcher",
+      "platform": "rcon",
+      "minecraftVersions": ["1.7.10", "1.8.9", "1.12.2"],
+      "buildJava": ["21"],
+      "runtimeJava": ["8", "17", "21"],
+      "launcherJava": ["21"],
+      "evidenceRows": [
+        "rcon-forge-1.7.10",
+        "rcon-forge-1.8.9",
+        "rcon-forge-1.12.2"
+      ]
+    },
+    {
+      "sourcePath": "gateway/legacy-bridge-launcher/build/distributions/legacy-bridge-launcher.zip",
+      "uploadFilename": "lodestone-1.0.0-launcher-legacy-bridge-legacy-forge.zip",
+      "type": "launcher",
+      "platform": "legacy-bridge",
+      "minecraftVersions": ["1.7.10", "1.8.9", "1.12.2"],
+      "buildJava": ["21"],
+      "runtimeJava": ["8"],
+      "launcherJava": ["21"],
+      "evidenceRows": [
+        "forge-1.7.10-native",
+        "forge-1.8.9-native",
+        "forge-1.12.2-native"
+      ]
+    }
+  ]
+}

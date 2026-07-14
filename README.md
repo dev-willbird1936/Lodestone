@@ -1,105 +1,77 @@
 # Lodestone
 
-> [!WARNING]
-> **v1.0.0 CERTIFICATION IN PROGRESS.** The frozen C0 evidence proves its exact compatibility
-> baseline, but current source and v1.0.0 artifacts contain later parity work. Do not treat
-> untagged builds as a release. See [RELEASING.md](RELEASING.md) for the certification and asset
-> policy.
+> [!IMPORTANT]
+> **v1.0.0 release candidate.** The 32 release artifacts are bound to 22 exact fresh-world rows in
+> [`verification/evidence/release-conformance-v1.0.0.json`](verification/evidence/release-conformance-v1.0.0.json).
+> Untagged builds are development snapshots; use the tagged release after publication.
 
-Lodestone is a version-aware Minecraft MCP and automation platform. Its stable product is a
-capability protocol; client mods, server plugins, and fallback integrations are independent
-adapters that report exactly what they can do.
+Lodestone is an independent, version-aware Minecraft MCP/control platform. Its durable product is
+a typed capability protocol: each loader, server, client, or fallback integration is a separate
+adapter that reports what it can actually do for the running game.
 
-## Status
+## v1.0.0 at a glance
 
-Active vertical slice. The protocol, runtime, MCP stdio/loopback gateway, and concrete NeoForge
-1.21.1, Fabric 1.21.1/1.20.1/1.19.2/1.18.2/26.2, Forge
-1.21.1/1.20.1/1.19.2/1.18.2/1.16.5, Paper 1.21.1, Spigot 1.21.1, and Folia 1.21.4
-adapter/host distributions build and have fresh-world dedicated-server evidence. Fabric 1.20.1
-and 1.21.1 also pass Quilt Loader 0.29.2 compatibility rows. Forge 1.12.2, 1.8.9, and 1.7.10
-have Java 8 native bridges plus a loader-neutral authenticated RCON fallback.
-Native mod adapters expose command discovery/execution; the Paper, Spigot, and Folia plugins expose
-their documented server-control subsets. Native/plugin capabilities vary honestly by adapter: most
-provide server-player state, bounded overworld reads/scans/writes, inventory projection, and chat;
-Folia omits loaded-entity queries, and RCON intentionally exposes only authenticated command
-execution. All unsupported catalog operations remain explicitly unavailable or restricted. Full cross-version client control, complete UI/container
-semantics, block-entity/NBT mutation, broader mutation coverage, and additional loader/version
-lines remain open.
+| What | Release-certified coverage |
+| --- | --- |
+| Mod loaders | Fabric 1.18.2, 1.19.2, 1.20.1, 1.21.1, 26.2; Quilt compatibility 1.20.1/1.21.1; NeoForge 1.21.1; Forge 1.16.5 through 1.21.1 |
+| Legacy Forge | Native Java 8 bridges for 1.7.10, 1.8.9, and 1.12.2, plus authenticated RCON fallback |
+| Server plugins | Paper 1.21.1, Spigot 1.21.1, Folia 1.21.4 |
+| Profiles | Thirteen local CurseForge-compatible profiles with byte-identical embedded host artifacts |
+| Security | Loopback token authentication, default-deny mutations, typed capability discovery, and honest unavailable/restricted states |
+
+Read the full [compatibility matrix](docs/compatibility-matrix.md) before choosing an asset.
 
 ## Start here
 
-- [Getting started](docs/getting-started.md) — choose the right artifact, install it, connect an
-  MCP client, and enable only the permissions you need.
-- [Compatibility matrix](docs/compatibility-matrix.md) — exact loader, Minecraft, Java, and
-  evidence rows.
-- [Security model](docs/security-model.md) — loopback authentication, permission classes, and
-  mutation safeguards.
-- [Release policy](RELEASING.md) — certification gates, asset naming, checksums, and tags.
-- [Changelog](CHANGELOG.md) — user-visible changes and release status.
+1. Choose an exact mod, plugin, profile, or launcher from the tagged release and the
+   [compatibility matrix](docs/compatibility-matrix.md).
+2. Follow [Getting started](docs/getting-started.md) to install it and connect an MCP client.
+3. Grant only the required permissions. Mutations are denied until explicitly authorized.
+4. Use capability discovery before invocation. An unsupported operation is a structured state, not
+   a silent fallback.
 
-## Design rules
+## What Lodestone controls
 
-- No universal binary claim. Compatibility is version-, loader-, and environment-specific.
-- Every discoverable native operation is represented by an available, unavailable, restricted, or
-  degraded capability.
-- Mutating capabilities are default-deny until explicitly authorized.
-- The MCP gateway contains no loader-specific implementation.
-- Protocol contracts and tests are written before adapter behavior.
+The supported server-side slice varies by adapter but includes typed command discovery/execution,
+player and inventory projections, bounded world reads/scans/writes, chat, and selected entity
+queries. Client input, UI/menu, container, and screen capabilities are explicit, versioned
+contracts; they never become available merely because another adapter supports a nearby feature.
 
-## Layout
+RCON is intentionally command-only (`minecraft.command.rcon.execute`). It does not claim native
+player, inventory, UI, event, or structured-world semantics.
 
-- `hosts/` — loader entrypoints that compose one pure adapter with the MCP gateway.
+## Safety model
 
-- `protocol/` — versioned JSON Schema contracts, capability catalog, and fixtures.
-- `common/` — protocol model, adapter API, and runtime orchestration boundaries.
-- `gateway/` — MCP-facing service.
-- `adapters/` — active native platform integrations for NeoForge 1.21.1, Fabric
-  1.21.1/1.20.1/1.19.2/1.18.2/26.2, Forge 1.21.1/1.20.1/1.19.2/1.18.2/1.16.5,
-  Paper 1.21.1, Spigot 1.21.1, and Folia 1.21.4; legacy Forge bridges live with their hosts.
-- `verification/` — cross-adapter contract tests.
-- `docs/` — architecture, security, compatibility, and implementation requirements.
+- The MCP gateway is loader-neutral and binds loopback only.
+- Authentication tokens are owner-only by default.
+- Mutation, chat, and server administration require explicit permissions.
+- Capability discovery distinguishes `available`, `unavailable`, `restricted`, and `degraded`.
+- Existing block entities are rejected before mutation until an NBT-safe restoration contract exists.
 
-Run `gradlew.bat check` for protocol/runtime/gateway contracts and catalog checks. Build the
-NeoForge artifact with:
+See the [security model](docs/security-model.md) for threat boundaries and configuration details.
+
+## Build from source
+
+Most current hosts build with Java 21 and the included Gradle wrapper:
 
 ```text
 gradlew.bat :hosts:neoforge:mc1_21_1:build
-```
-
-Build the Fabric artifact with:
-
-```text
 gradlew.bat :hosts:fabric:mc1_21_1:build
+gradlew.bat :hosts:forge:mc1_20_1:build
+gradlew.bat :gateway:rcon-launcher:installDist
 ```
 
-Build the long-lived Fabric 1.20.1 artifact with:
+Fabric 26.2 is isolated to Java 25 and Gradle 9.5.1. Forge 1.16.5 and Java 8 legacy hosts use
+their documented isolated toolchains. See [Compatibility](docs/compatibility.md) for exact build
+and runtime requirements.
 
-```text
-gradlew.bat :hosts:fabric:mc1_20_1:build
-```
+## Project map
 
-Build the non-remapping Fabric 26.2 artifact with Java 25 and Gradle 9.5.1. Loom 1.17.1
-requires Gradle 9.5+, while ForgeGradle remains on the default Gradle 8.14 path, so the
-incompatible Forge projects are excluded for this isolated build:
+- `protocol/`: versioned schemas and capability catalog
+- `common/`: protocol model, adapter API, and runtime
+- `gateway/`: authenticated MCP transports
+- `adapters/`: exact-version platform integrations
+- `hosts/`: loader and plugin entrypoints
+- `verification/`: contract, matrix, profile, and release assembly checks
 
-```text
-gradle-9.5.1/bin/gradle.bat :hosts:fabric:mc1_26_2:build -PincludeFabric262=true -PincludeForge=false -PincludeForge121=false --no-daemon --console=plain
-```
-
-Minecraft 26.2's Vulkan backend is an experimental client graphics option; the dedicated-server
-acceptance row proves the server/MCP path and does not claim to exercise a GPU renderer.
-
-Build the RCON transport and launcher with:
-
-```text
-gradlew.bat :gateway:rcon-launcher:build
-```
-
-Run the launcher with `LODESTONE_RCON_HOST`, `LODESTONE_RCON_PORT`, `LODESTONE_RCON_PASSWORD`,
-and `LODESTONE_TOKEN` configured. It exposes only `minecraft.command.rcon.execute`; output stays
-unstructured by design.
-
-Current Java hosts and server plugins bind an authenticated loopback MCP endpoint at
-`127.0.0.1:37821` by default. The token is atomically generated with owner-only access at
-`config/lodestone.token`; override with `LODESTONE_TOKEN` and grant mutation permissions explicitly
-with `LODESTONE_PERMISSIONS` or `-Dlodestone.permissions=...`.
+For release policy, integrity files, and promotion gates, see [RELEASING.md](RELEASING.md).

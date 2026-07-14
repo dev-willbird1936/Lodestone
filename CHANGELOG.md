@@ -3,16 +3,17 @@
 All notable user-visible changes are recorded here. Lodestone follows semantic versioning for the
 product as a whole; Minecraft and loader compatibility is listed per asset in each release.
 
-## 1.0.0 — certification in progress
+## 1.0.0 - release candidate
 
-v1.0.0 is the current parity candidate and is not yet a release. Its source and artifacts differ
-from the frozen C0 baseline, so C0 evidence must not be used to certify v1.0.0 binaries.
+v1.0.0 is bound by `verification/evidence/release-conformance-v1.0.0.json`, which records the
+exact 32 release artifact hashes and 22 fresh-world compatibility rows. It is promoted only after
+the final audit, clean tagged assembly, verification, and GitHub publication.
 
 ### Added
 
-- Loader-neutral MCP runtime, authenticated loopback HTTP gateway, and versioned capability model.
-- Native Fabric, Quilt-compatibility, Forge, NeoForge, Paper, Spigot, Folia, legacy Forge, and RCON
-  integration lines documented in the compatibility matrix.
+- Loader-neutral MCP runtime, authenticated loopback HTTP gateway, and typed capability model.
+- Native Fabric, Quilt-compatibility, Forge, NeoForge, Paper, Spigot, Folia, legacy Forge, and
+  RCON integration lines documented in the compatibility matrix.
 - Bounded server, player, world, inventory, UI/input, geometry, structure, and WorldEdit-facing
   capability contracts with explicit availability and permission metadata.
 - Hash-bound release evidence, fresh-world verification harnesses, and per-loader CurseForge test
@@ -22,15 +23,12 @@ from the frozen C0 baseline, so C0 evidence must not be used to certify v1.0.0 b
 
 - Default-deny mutations, loopback-only listeners, owner-only token files, request bounds,
   cancellation-aware rollback, and audit resources.
+- Legacy bridge write preflight keeps remote command rejections retryable while quarantining only
+  uncertain post-dispatch mutations.
+- Older-Gson compatibility fixes cover the Forge 1.16.5 runtime path.
 
-### Release status
+## C0 compatibility baseline - 2026-07-12
 
-- Source backup on `main` is allowed after secret and import review.
-- `v1.0.0` remains blocked until all affected rows pass fresh-world certification and the v1.0.0
-  artifact manifest and final audit are complete.
-
-## C0 compatibility baseline — 2026-07-12
-
-C0 is an immutable evidence baseline rather than a reconstructed Git tag. Its exact source and 32
-artifacts are frozen by `verification/evidence/release-artifacts-2026-07-12.json`; the consolidated
-22-row result is in `verification/evidence/compatibility-live-2026-07-13-c0.md`.
+C0 is an immutable historical baseline rather than a reconstructed Git tag. Its exact source and
+32 artifacts are frozen by `verification/evidence/release-artifacts-2026-07-12.json`; it is not
+used to certify v1.0.0 bytes.

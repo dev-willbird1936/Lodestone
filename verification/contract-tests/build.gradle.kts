@@ -14,6 +14,7 @@ tasks.named<Test>("test") {
         rootProject.fileTree("verification/curseforge-profiles") {
             include("*/manifest.json")
         },
+        rootProject.file("verification/evidence/release-conformance-v1.0.0.json"),
         rootProject.fileTree("hosts") {
             include("**/*.properties", "**/*.toml", "**/fabric.mod.json", "**/*Plugin.java")
         }
