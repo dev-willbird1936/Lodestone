@@ -637,12 +637,15 @@ public final class LodestoneRuntime implements AutoCloseable {
                     } else {
                         var completed = result.completeOutcome(ResultEnvelope.ok(request.requestId(), safeOutput));
                         if (completed) {
-                            // The observer publication may synchronously discover that a caller
-                            // hijacked the public view and roll back committed artifacts.  Publish
-                            // before recording success so audit readers never observe a successful
-                            // invocation while that rollback is still pending.
-                            result.publish();
+                            // A forged observer completion must be resolved before the success
+                            // audit becomes visible, otherwise a committed artifact can remain
+                            // readable during the rollback window. Normal publication stays after
+                            // the audit so callers cannot observe success before its audit record.
+                            var observerHijackedAfterArtifactCommit = active.hasCommittedArtifacts()
+                                    && result.observerViewIsDone();
+                            if (observerHijackedAfterArtifactCommit) result.publish();
                             recordAudit(request, trace, "ok");
+                            if (!observerHijackedAfterArtifactCommit) result.publish();
                         } else {
                             active.rollbackArtifacts();
                         }
@@ -1712,6 +1715,10 @@ public final class LodestoneRuntime implements AutoCloseable {
             return outcome.isDone();
         }
 
+        private boolean observerViewIsDone() {
+            return isDone();
+        }
+
         private void whenOutcomeComplete(BiConsumer<? super ResultEnvelope, ? super Throwable> observer) {
             outcome.whenComplete((value, failure) -> executeSafely(publicationExecutor,
                     () -> observer.accept(value, failure)));
@@ -1817,6 +1824,10 @@ public final class LodestoneRuntime implements AutoCloseable {
 
         private void rollbackArtifacts() {
             if (artifactSink != null) artifactSink.rollback();
+        }
+
+        private boolean hasCommittedArtifacts() {
+            return artifactSink != null && artifactSink.hasCommittedArtifacts();
         }
 
         private boolean started() {

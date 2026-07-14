@@ -632,6 +632,10 @@ final class CallerArtifactStore implements AutoCloseable {
             return removed;
         }
 
+        synchronized boolean hasCommittedArtifacts() {
+            return state == SinkState.COMMITTED && !committedReferences.isEmpty();
+        }
+
         private void requireOpen() {
             if (state != SinkState.OPEN) throw new IllegalStateException("artifact sink is already finalized");
         }
