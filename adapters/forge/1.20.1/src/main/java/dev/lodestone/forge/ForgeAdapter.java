@@ -17,7 +17,6 @@ import dev.lodestone.protocol.CapabilityDescriptor;
 import dev.lodestone.protocol.CapabilityManifest;
 import dev.lodestone.protocol.Environment;
 import dev.lodestone.runtime.CoreCatalog;
-import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -29,6 +28,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -42,20 +43,33 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public final class ForgeAdapter implements LodestoneAdapter {
-    private static final String MINECRAFT_VERSION = SharedConstants.getCurrentVersion().getName();
+    // Keep this exact adapter binary-stable. SharedConstants' mapped accessor
+    // changed across the Forge/Minecraft line and is not needed here.
+    private static final String MINECRAFT_VERSION = "1.20.1";
     public static final String ADAPTER_ID = "lodestone.forge.mc" + MINECRAFT_VERSION.replace('.', '_');
     private static final Set<String> IMPLEMENTED = Set.of(
             "minecraft.command.discover", "minecraft.command.execute",
             "minecraft.player.state.read", "minecraft.world.block.read",
             "minecraft.world.blocks.read", "minecraft.world.region.scan",
             "minecraft.world.blocks.write", "minecraft.entity.list",
-            "minecraft.inventory.read", "minecraft.chat.send");
+            "minecraft.inventory.read", "minecraft.chat.send",
+            "minecraft.player.look", "minecraft.ui.state.read",
+            "minecraft.ui.click", "minecraft.ui.key");
+    private static final Set<String> CLIENT_ONLY = Set.of(
+            "minecraft.player.look", "minecraft.ui.state.read", "minecraft.ui.click", "minecraft.ui.key");
+    private static volatile ForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
-            ADAPTER_ID, "0.1.0", "minecraft-java", MINECRAFT_VERSION, "forge", Environment.DEDICATED_SERVER);
+            ADAPTER_ID, "0.1.0", "minecraft-java", MINECRAFT_VERSION, "forge", environment());
     private volatile AdapterContext context;
     private volatile MinecraftServer server;
     private volatile boolean serverReady;
+    private volatile ClientBridge clientBridge;
+    private volatile Runnable refreshHook = () -> { };
+
+    public ForgeAdapter() { active = this; }
+
+    static ForgeAdapter active() { return active; }
 
     @Override
     public AdapterDescriptor descriptor() { return descriptor; }
@@ -72,7 +86,8 @@ public final class ForgeAdapter implements LodestoneAdapter {
 
     @Override
     public Map<String, CapabilityHandler> handlers() {
-        return Map.of(
+        var handlers = new LinkedHashMap<String, CapabilityHandler>();
+        handlers.putAll(Map.of(
                 "minecraft.command.discover", this::discoverCommands,
                 "minecraft.command.execute", this::executeCommand,
                 "minecraft.player.state.read", this::readPlayerState,
@@ -82,17 +97,28 @@ public final class ForgeAdapter implements LodestoneAdapter {
                 "minecraft.world.blocks.write", this::writeBlocks,
                 "minecraft.entity.list", this::listEntities,
                 "minecraft.inventory.read", this::readInventory,
-                "minecraft.chat.send", this::sendChat);
+                "minecraft.chat.send", this::sendChat));
+        handlers.put("minecraft.player.look", this::clientCall);
+        handlers.put("minecraft.ui.state.read", this::clientCall);
+        handlers.put("minecraft.ui.click", this::clientCall);
+        handlers.put("minecraft.ui.key", this::clientCall);
+        return Map.copyOf(handlers);
     }
 
     @Override
     public void start(AdapterContext context) { this.context = context; }
 
+    void setRefreshHook(Runnable refreshHook) { this.refreshHook = refreshHook == null ? () -> { } : refreshHook; }
+
+    void attachClientBridge(ClientBridge bridge) { clientBridge = bridge; refreshHook.run(); }
+
+    void refreshClientState() { refreshHook.run(); }
+
     @Override
     public AdapterHealth health() {
-        return serverReady
-                ? new AdapterHealth(AdapterHealth.State.READY, "Forge server is available", null)
-                : new AdapterHealth(AdapterHealth.State.NO_WORLD, "Forge loaded without a running world", null);
+        if (serverReady) return new AdapterHealth(AdapterHealth.State.READY, "Forge server is available", null);
+        if (clientBridge != null) return new AdapterHealth(AdapterHealth.State.READY, "Forge client bridge is available", null);
+        return new AdapterHealth(AdapterHealth.State.NO_WORLD, "Forge loaded without a running world", null);
     }
 
     public void onServerStarted(MinecraftServer server) {
@@ -113,7 +139,21 @@ public final class ForgeAdapter implements LodestoneAdapter {
                     new AvailabilityReason("not-implemented", "This operation is not implemented by the Forge " + MINECRAFT_VERSION + " adapter yet.",
                             Map.of("adapter", ADAPTER_ID)));
         }
-        if (!serverReady) {
+        var bridge = clientBridge;
+        if (bridge != null && bridge.available(capability.id())) {
+            var availability = capability.availability() == Availability.RESTRICTED
+                    ? Availability.RESTRICTED : Availability.AVAILABLE;
+            return capability.forAdapter(descriptor, availability,
+                    availability == Availability.RESTRICTED ? capability.reason() : null);
+        }
+        if (CLIENT_ONLY.contains(capability.id())) {
+            return capability.forAdapter(descriptor, Availability.UNAVAILABLE,
+                    new AvailabilityReason("client-not-ready",
+                            "This client capability requires a physical client, player, world, or screen that is not currently available.",
+                            Map.of("capability", capability.id())));
+        }
+        var clientReady = clientBridge != null && clientBridge.available(capability.id());
+        if (!serverReady && !clientReady) {
             return capability.forAdapter(descriptor, Availability.DEGRADED,
                     new AvailabilityReason("server-not-ready", "The adapter is loaded, but no logical server/world is running.", Map.of()));
         }
@@ -140,6 +180,10 @@ public final class ForgeAdapter implements LodestoneAdapter {
     }
 
     private CompletionStage<Map<String, Object>> readPlayerState(InvocationContext invocation) {
+        var bridge = clientBridge;
+        if (bridge != null && bridge.available("minecraft.player.state.read")) {
+            return bridge.invoke("minecraft.player.state.read", invocation);
+        }
         return serverCall(invocation.cancellation(), server -> {
             var requested = invocation.request().input().get("player");
             var player = findPlayer(server, requested == null ? null : String.valueOf(requested));
@@ -299,6 +343,14 @@ public final class ForgeAdapter implements LodestoneAdapter {
         return serverCall(invocation.cancellation(), server -> { invocation.cancellation().commitMutation(); server.getPlayerList().broadcastSystemMessage(Component.literal(message), false); return Map.of("sent", true, "message", message, "recipientCount", server.getPlayerList().getPlayers().size()); });
     }
 
+    private CompletionStage<Map<String, Object>> clientCall(InvocationContext invocation) {
+        var bridge = clientBridge;
+        if (bridge == null || !bridge.available(invocation.request().capability())) {
+            return CompletableFuture.failedFuture(new IllegalStateException("client capability is not available in the current environment"));
+        }
+        return bridge.invoke(invocation.request().capability(), invocation);
+    }
+
     private CompletionStage<Map<String, Object>> serverCall(CancellationToken cancellation,
                                                               Function<MinecraftServer, Map<String, Object>> operation) {
         var current = server; if (!serverReady || current == null) return CompletableFuture.failedFuture(new IllegalStateException("logical server/world is not available"));
@@ -329,6 +381,11 @@ public final class ForgeAdapter implements LodestoneAdapter {
     private static int changeInteger(Map<?, ?> input, String key) { var value = input.get(key); if (!(value instanceof Number number)) throw new IllegalArgumentException("change field must be numeric: " + key); return InputNumbers.exactInt(number, key); }
     private static String changeText(Map<?, ?> input, String key) { var value = input.get(key); if (!(value instanceof String text) || text.isBlank()) throw new IllegalArgumentException("change field must be a non-empty string: " + key); return text; }
     private void publish(String event, Map<String, Object> payload, long gameTick) { var current = context; if (current != null) current.eventSink().publish(event, payload, gameTick); }
+    private static Environment environment() { return FMLEnvironment.dist == Dist.CLIENT ? Environment.CLIENT : Environment.DEDICATED_SERVER; }
+    interface ClientBridge {
+        boolean available(String capability);
+        CompletionStage<Map<String, Object>> invoke(String capability, InvocationContext invocation);
+    }
     private record BlockChange(int x, int y, int z, String block) { private String position() { return x + ":" + y + ":" + z; } }
     private record PreparedChange(BlockChange source, BlockPos position, BlockState next, BlockState previous) { }
 }

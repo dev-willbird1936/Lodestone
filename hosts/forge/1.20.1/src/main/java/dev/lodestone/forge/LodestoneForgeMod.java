@@ -9,7 +9,9 @@ import dev.lodestone.runtime.TokenFile;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,8 @@ public final class LodestoneForgeMod {
         adapter = new ForgeAdapter();
         runtime.registerAdapter(adapter);
         MinecraftForge.EVENT_BUS.register(this);
+        adapter.setRefreshHook(() -> runtime.refreshAdapter(adapter));
+        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ForgeClientController::register);
 
         var port = Integer.parseInt(System.getProperty("lodestone.port", "37821"));
         var token = token();

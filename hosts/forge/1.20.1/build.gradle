@@ -21,12 +21,27 @@ sourceSets {
     main {
         java.srcDir("${rootDir}/adapters/forge/1.20.1/src/main/java")
     }
+    // Empty on purpose: the physical client run loads the final shaded JAR.
+    artifactClient
 }
+
+// Forge's client source mapping validates every source-set output path, even
+// though this run intentionally loads the already-built final JAR only.
+file("${buildDir}/resources/artifactClient").mkdirs()
+file("${buildDir}/classes/java/artifactClient").mkdirs()
 
 minecraft {
     mappings channel: 'official', version: project.minecraft_version
     copyIdeResources = true
     runs {
+        client {
+            taskName 'runArtifactClient'
+            client true
+            workingDirectory project.file('run-artifact-client')
+            property 'lodestone.port', System.getProperty('lodestone.port', '37833')
+            property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+            property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+        }
         server {
             workingDirectory project.file('run')
             args '--nogui'
@@ -40,6 +55,38 @@ minecraft {
             }
         }
     }
+}
+
+def artifactClientJar = layout.buildDirectory.file("libs/${project.mod_id}-${project.mod_version}.jar")
+def artifactClientBundledRoots = [
+    rootProject.file('common').toPath().toAbsolutePath().normalize(),
+    rootProject.file('gateway').toPath().toAbsolutePath().normalize()
+]
+tasks.register('stageArtifactClient', Copy) {
+    from artifactClientJar
+    into layout.projectDirectory.dir('run-artifact-client/mods')
+    doFirst {
+        if (!artifactClientJar.get().asFile.isFile()) {
+            throw new GradleException("Final Lodestone artifact is required before runArtifactClient: ${artifactClientJar.get().asFile}")
+        }
+    }
+}
+tasks.matching { it.name == 'runArtifactClient' }.configureEach {
+    dependsOn tasks.named('stageArtifactClient')
+    doFirst {
+        file("${buildDir}/resources/artifactClient").mkdirs()
+        file("${buildDir}/classes/java/artifactClient").mkdirs()
+        def bundledRoots = artifactClientBundledRoots
+        classpath(runtimeClasspathArtifacts.files.findAll { candidate ->
+            def path = candidate.toPath().toAbsolutePath().normalize()
+            !bundledRoots.any { bundledRoot -> path.startsWith(bundledRoot) }
+        })
+        classpath(minecraftArtifacts)
+    }
+}
+
+gradle.projectsEvaluated {
+    minecraft.runs.getByName('client').setSources([sourceSets.artifactClient])
 }
 
 configurations {
