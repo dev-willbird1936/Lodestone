@@ -127,6 +127,16 @@ every Minecraft environment.
   tests inject native failure/deadline failure and validate POSIX or Windows ACL ownership.
 - Folia world load/unload events refresh runtime adapter metadata after the scheduler-safe world
   snapshot changes.
+- The v1.0.0 format-2 certificate now retains checksummed fresh-world logs in source control, binds
+  all 32 final artifact bytes to the source input snapshot that produced them, and rejects a
+  release assembly when any retained log, artifact byte, source input, tag, or matrix row differs.
+- Final-byte re-certification reran only changed Forge, NeoForge, Bukkit-family, Java 8 native, and
+  launcher rows; byte-identical Fabric and generated Quilt host rows retain their unchanged green
+  evidence. The final legacy and RCON tests use distributions extracted from their exact release
+  ZIPs, not `build/install` directories.
+- Java 8 native endpoints default to `observe` only and deny direct world writes, chat, and command
+  execution before game scheduling when no permission grant is configured; all three final legacy
+  rows have clean direct default-deny proof.
 
 ## INTENTION NOT MATCHED
 

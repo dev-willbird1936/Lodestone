@@ -6,8 +6,9 @@
 > mutation with readback where that slice permits it, and shut down cleanly.
 
 `verification/evidence/release-conformance-v1.0.0.json` binds every matrix row below to the
-exact byte length and SHA-256 of its release upload. The release assembler rejects an artifact
-whose source bytes no longer match that evidence.
+exact byte length and SHA-256 of its release upload, a source input snapshot, and checksummed
+retained acceptance logs. The release assembler rejects an artifact whose source bytes no longer
+match that evidence.
 
 | Status | Meaning |
 | --- | --- |

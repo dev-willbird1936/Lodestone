@@ -1,9 +1,10 @@
 # Lodestone
 
 > [!IMPORTANT]
-> **v1.0.0 release candidate.** The 32 release artifacts are bound to 22 exact fresh-world rows in
+> **v1.0.0 is awaiting its immutable tag and GitHub publication.** Its 32 release artifacts are
+> bound to 22 exact fresh-world rows, a source input snapshot, and checksummed retained logs in
 > [`verification/evidence/release-conformance-v1.0.0.json`](verification/evidence/release-conformance-v1.0.0.json).
-> Untagged builds are development snapshots; use the tagged release after publication.
+> Untagged builds remain development snapshots.
 
 Lodestone is an independent, version-aware Minecraft MCP/control platform. Its durable product is
 a typed capability protocol: each loader, server, client, or fallback integration is a separate
@@ -60,6 +61,9 @@ gradlew.bat :hosts:fabric:mc1_21_1:build
 gradlew.bat :hosts:forge:mc1_20_1:build
 gradlew.bat :gateway:rcon-launcher:installDist
 ```
+
+On Windows, [`Run-Lodestone-Checks.bat`](Run-Lodestone-Checks.bat) starts the core Java 8,
+legacy-bridge, and release-contract checks from the repository root.
 
 Fabric 26.2 is isolated to Java 25 and Gradle 9.5.1. Forge 1.16.5 and Java 8 legacy hosts use
 their documented isolated toolchains. See [Compatibility](docs/compatibility.md) for exact build
