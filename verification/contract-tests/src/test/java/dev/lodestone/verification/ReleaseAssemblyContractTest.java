@@ -100,6 +100,32 @@ class ReleaseAssemblyContractTest {
     }
 
     @Test
+    void releaseWorkflowGatesFullVerificationAndPublishesOnlyAfterDraftReadback() throws Exception {
+        var workflow = Files.readString(root.resolve(".github/workflows/release.yml"), StandardCharsets.UTF_8);
+        assertTrue(workflow.contains(".\\gradlew.bat projects check --no-parallel"),
+                "tag publishing must run the full verification gate");
+        assertTrue(workflow.contains("--draft --title 'Lodestone v1.0.0' --generate-notes"),
+                "uploads must begin as an inaccessible draft");
+        assertTrue(workflow.contains("gh release download $tag"),
+                "draft upload must be downloaded for byte verification");
+        assertTrue(workflow.contains("Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256"),
+                "draft upload must compare every staged SHA-256");
+        assertTrue(workflow.contains("gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false"),
+                "only a verified complete draft may publish");
+        assertTrue(workflow.indexOf("--draft --title") < workflow.indexOf("gh release download $tag")
+                        && workflow.indexOf("gh release download $tag")
+                        < workflow.indexOf("--draft=false"),
+                "release publication must follow draft upload and downloaded-byte verification");
+
+        var quiltProfileMatrix = Files.readString(root.resolve("verification/quilt-profile-matrix.ps1"),
+                StandardCharsets.UTF_8);
+        assertTrue(quiltProfileMatrix.contains("Extract-ProfileHost"));
+        assertTrue(quiltProfileMatrix.contains("-Quilt1201HostJar $host1201"));
+        assertFalse(quiltProfileMatrix.contains("prepare-quilt-host"),
+                "final Quilt profile acceptance must not rewrite embedded bytes");
+    }
+
+    @Test
     void assembleCreatesCompleteFormatV2ReleaseThenVerifyIsReadOnly(@TempDir Path temporary) throws Exception {
         var fixture = temporary.resolve("fixture-project");
         createArtifactFixture(fixture);

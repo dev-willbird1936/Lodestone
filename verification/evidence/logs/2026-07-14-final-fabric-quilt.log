@@ -12,3 +12,7 @@ PASS Forge 1.21.1 / 52.1.0
 PASS Forge 1.20.1 / 47.4.10
 PASS Forge 1.19.2 / 43.5.2
 PASS Forge 1.18.2 / 40.3.12
+Exact Quilt profile host: lodestone-1.0.0-profile-quilt-mc-1.20.1-curseforge.zip SHA-256 d219f06ee33fa8cd9fea3a232b8bc44c38946513037cbc615352816ed8a246c0
+Exact Quilt profile host: lodestone-1.0.0-profile-quilt-mc-1.21.1-curseforge.zip SHA-256 2b2cf967f72fe526be36d7a4b6bcfe4dfc329a69a9d8b36762f4f6c56b0db632
+PASS Quilt 1.20.1 / Loader 0.29.2 via Fabric compatibility
+PASS Quilt 1.21.1 / Loader 0.29.2 via Fabric compatibility

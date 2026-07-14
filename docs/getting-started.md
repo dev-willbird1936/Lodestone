@@ -1,7 +1,7 @@
 # Getting started
 
-Lodestone v1.0.0 is a release candidate. Use the tagged release assets after publication;
-untagged builds are development snapshots. The current artifact evidence is
+Use Lodestone v1.0.0 only from its tagged GitHub release; untagged builds are development
+snapshots. The current artifact evidence is
 `verification/evidence/release-conformance-v1.0.0.json`, not the historical C0 baseline.
 
 ## 1. Choose one integration

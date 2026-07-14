@@ -12,9 +12,10 @@ and loader or server.
 
 - C0 is an immutable compatibility baseline, not a tag reconstructed from newer source. Its frozen
   manifest and evidence remain under `verification/evidence/`.
-- v1.0.0 has a 32-artifact, 22-row release candidate record at
-  `verification/evidence/release-conformance-v1.0.0.json`. The remaining promotion gates are the
-  final read-only audit, clean tagged assembly/verification, and GitHub publication.
+- v1.0.0 has a 32-artifact, 22-row release record at
+  `verification/evidence/release-conformance-v1.0.0.json`. Its final audit evidence includes exact
+  Quilt-profile byte acceptance and Bukkit-family invalid-token checks. The immutable tag workflow
+  still performs the clean tagged rebuild, assembly, remote upload verification, and publication.
 
 ## Tags and promotion
 
@@ -90,6 +91,9 @@ The source of truth is `main`. Source may be pushed before a release as a privat
 provided the complete staged inventory and secret scan are clean. Generated builds, local profiles,
 worlds, logs, caches, credentials, and downloaded server libraries remain outside Git.
 
-A release is created only after certification, from the exact signed tag. Upload scripts must fail
-if an asset name, length, or SHA-256 differs from the frozen manifest. Never replace a published
-stable asset silently.
+A release is created only after certification, from the exact signed tag. The tag workflow runs the
+full source/unit/gateway/adapter/contract verification gate, rebuilds the certified inventory, and
+assembles exactly 36 upload files. It creates an inaccessible draft, confirms its remote filenames
+and count, downloads every asset into a clean directory, and compares every byte length and SHA-256
+to staging before publishing. Any upload or verification failure stops before publication and leaves
+only the draft for inspection. Never replace a published stable asset silently.

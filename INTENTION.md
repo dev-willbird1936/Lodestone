@@ -38,9 +38,10 @@ every Minecraft environment.
   reverified across all three packaged rows.
 - Bounded no-chunk-load overworld region scans implemented with loaded/unloaded cell counts and
   block-frequency output across all three packaged rows.
-- Quilt Loader 0.29.2 compatibility verified on Minecraft 1.20.1 and 1.21.1 through generated
-  Fabric-compatible host variants; this is explicitly documented as compatibility, not a
-  separate Quilt-native adapter.
+- Quilt Loader 0.29.2 compatibility is verified on Minecraft 1.20.1 and 1.21.1 using the exact
+  Fabric-compatible host bytes embedded in each final CurseForge profile; no metadata-rewritten
+  surrogate is used for the release rows. This remains compatibility, not a separate Quilt-native
+  adapter.
 - Native Forge 1.21.1 and 1.20.1 support is packaged and live-tested with the same bounded MCP
   slice; ForgeGradle remains isolated to the Gradle 8.14 build path.
 - Fabric 26.2 support is packaged and live-tested with the non-remapping Loom 1.17.1 path,
@@ -81,8 +82,9 @@ every Minecraft environment.
   failure. An atomic mutation-commit boundary prevents a timeout from being reported after the
   final write has become irrevocable; cancellation/failure/commit-race regressions cover it.
 - Standalone Fabric manifests are pinned to the exact tested Minecraft, Fabric Loader, and Fabric
-  API versions. Quilt 1.20.1 uses an explicit generated compatibility-host variant because Quilt's
-  compatibility layer does not resolve the standalone Fabric Loader exact dependency.
+  API versions. Quilt profile acceptance extracts and hashes the exact embedded host from its final
+  profile ZIP before fresh-world control testing, so the certified compatibility claim names the
+  actual consumer bytes.
 - Generated `runs/` runtime state is excluded from synced/source scans, while disposable matrix
   roots remain the authoritative scope for crash-free acceptance evidence.
 - Paper 1.21.1 server-plugin coverage now reaches a fresh world, passes authenticated MCP reads,
@@ -137,6 +139,14 @@ every Minecraft environment.
 - Java 8 native endpoints default to `observe` only and deny direct world writes, chat, and command
   execution before game scheduling when no permission grant is configured; all three final legacy
   rows have clean direct default-deny proof.
+- Final release-audit remediation adds HTTP 401 invalid-token proof to Paper, Spigot, and Folia;
+  reruns their three final plugin artifacts; and binds the retained Bukkit log to the certificate.
+- Final Quilt remediation reruns only 1.20.1 and 1.21.1 against the exact JARs extracted from their
+  final profile ZIPs, hashes both embedded hosts before startup, and records those byte bindings in
+  the retained fresh-world log.
+- The tag-gated GitHub workflow now runs the full source/unit/gateway/adapter/contract gate, creates
+  an inaccessible draft containing all 36 staged release files, downloads and SHA-256-verifies the
+  complete remote inventory, and publishes only after that verification succeeds.
 
 ## INTENTION NOT MATCHED
 

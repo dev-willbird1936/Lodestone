@@ -51,6 +51,21 @@ function Invoke-Mcp([string]$uri, [string]$authToken, [object]$request, [string]
     }
 }
 
+function Assert-BadTokenRejected([string]$uri) {
+    $statusCode = 0
+    try {
+        Invoke-WebRequest -UseBasicParsing -Uri $uri -Method Post -Headers @{
+            'X-Lodestone-Token' = 'invalid-paper-matrix-token'
+            'MCP-Protocol-Version' = '2025-11-25'
+        } -ContentType 'application/json' -Body '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{}}' | Out-Null
+    } catch {
+        if ($null -eq $_.Exception.Response) { throw }
+        $statusCode = [int]$_.Exception.Response.StatusCode
+    }
+    Assert ($statusCode -eq 401) "Paper bad-token request returned HTTP $statusCode instead of 401."
+    Write-Host 'Paper bad-token rejection verified (HTTP 401).'
+}
+
 function Invoke-Capability([string]$uri, [string]$authToken, [string]$sessionId,
                            [int]$id, [string]$capability, [hashtable]$payload) {
     return Invoke-Mcp $uri $authToken ([ordered]@{
@@ -116,6 +131,7 @@ try {
     Assert ($log -match 'Done \(') 'Paper did not reach Done within three minutes.'
     Assert (Test-Path -LiteralPath (Join-Path $Root 'world')) 'Paper did not create a world directory.'
 
+    Assert-BadTokenRejected $uri
     $initialize = Invoke-Mcp $uri $token ([ordered]@{
             jsonrpc = '2.0'; id = 1; method = 'initialize'
             params = @{ protocolVersion = '2025-11-25'; capabilities = @{}; clientInfo = @{ name = 'paper-matrix'; version = '1' } }

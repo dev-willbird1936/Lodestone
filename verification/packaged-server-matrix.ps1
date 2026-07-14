@@ -8,11 +8,25 @@
 param(
     [string]$Root = (Join-Path $env:TEMP 'lodestone-matrix'),
     [switch]$SkipCleanWorld,
-    [string[]]$Only = @()
+    [string[]]$Only = @(),
+    [string]$Quilt1201HostJar,
+    [string]$Quilt1211HostJar
 )
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$quilt1201HostJar = Join-Path $Root 'quilt-1.20.1/lodestone-quilt.jar'
+$quilt1201SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar'
+if (-not [string]::IsNullOrWhiteSpace($Quilt1201HostJar)) {
+    $quilt1201HostJar = (Resolve-Path -LiteralPath $Quilt1201HostJar).Path
+    $quilt1201SourceHostJar = $null
+}
+$quilt1211HostJar = Join-Path $Root 'quilt-1.21.1/lodestone-quilt.jar'
+$quilt1211SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar'
+if (-not [string]::IsNullOrWhiteSpace($Quilt1211HostJar)) {
+    $quilt1211HostJar = (Resolve-Path -LiteralPath $Quilt1211HostJar).Path
+    $quilt1211SourceHostJar = $null
+}
 $targets = @(
     [pscustomobject]@{
         Name = 'Fabric 1.20.1 / Loader 0.15.11'
@@ -76,8 +90,8 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Quilt 1.20.1 / Loader 0.29.2 via Fabric compatibility'
         Directory = Join-Path $Root 'quilt-1.20.1'
-        HostJar = Join-Path $Root 'quilt-1.20.1/lodestone-quilt.jar'
-        SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.20.1/build/libs/lodestone-1.0.0.jar'
+        HostJar = $quilt1201HostJar
+        SourceHostJar = $quilt1201SourceHostJar
         QuiltMinecraft = '1.20.1'
         QuiltFabricLoaderRange = '>=0.15.11'
         ServerPort = 25564
@@ -91,8 +105,8 @@ $targets = @(
     [pscustomobject]@{
         Name = 'Quilt 1.21.1 / Loader 0.29.2 via Fabric compatibility'
         Directory = Join-Path $Root 'quilt-1.21.1'
-        HostJar = Join-Path $Root 'quilt-1.21.1/lodestone-quilt.jar'
-        SourceHostJar = Join-Path $projectRoot 'hosts/fabric/1.21.1/build/libs/lodestone-1.0.0.jar'
+        HostJar = $quilt1211HostJar
+        SourceHostJar = $quilt1211SourceHostJar
         QuiltMinecraft = '1.21.1'
         QuiltFabricLoaderRange = '>=0.16.10'
         ServerPort = 25572
@@ -233,7 +247,8 @@ function Invoke-Mcp([string]$uri, [string]$token, [object]$request, [string]$ses
 foreach ($target in $targets) {
     $process = $null
     try {
-        if ($target.PSObject.Properties.Name -contains 'SourceHostJar') {
+        if ($target.PSObject.Properties.Name -contains 'SourceHostJar' -and
+                -not [string]::IsNullOrWhiteSpace($target.SourceHostJar)) {
             $quiltArgs = @{
                 Jar = $target.SourceHostJar
                 Output = $target.HostJar
