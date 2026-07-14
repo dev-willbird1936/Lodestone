@@ -109,6 +109,13 @@ try {
 
     $serverOut = Join-Path $serverDirectory 'native.stdout.log'; $serverErr = Join-Path $serverDirectory 'native.stderr.log'
     Remove-Item -LiteralPath $serverOut, $serverErr -Force -ErrorAction SilentlyContinue
+    # The audit must exercise the endpoint's true fallback. Start-Process inherits
+    # this shell's environment, so explicitly remove an ambient grant as well as
+    # omitting the JVM property.
+    if ($AuthorizationAuditOnly) {
+        $oldEnvironment['LODESTONE_PERMISSIONS'] = [Environment]::GetEnvironmentVariable('LODESTONE_PERMISSIONS', 'Process')
+        [Environment]::SetEnvironmentVariable('LODESTONE_PERMISSIONS', $null, 'Process')
+    }
     $serverArguments = @('-Xmx1G', ('-Dlodestone.legacy.port=' + $BridgePort), ('-Dlodestone.legacy.token=' + $BridgeToken))
     if (-not $AuthorizationAuditOnly) {
         $serverArguments += ('-Dlodestone.permissions=' + $ServerPermissions)
