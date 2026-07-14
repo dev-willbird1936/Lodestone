@@ -18,7 +18,7 @@ and loader or server.
   still performs the clean tagged rebuild, assembly, remote upload verification, and publication.
   Its historical profile rebuild runs under Windows PowerShell, the exact v1.0.0 stager runtime;
   the recovery workflow overlays its audited PS7-safe Fabric 1.18.2 POM parser only while rebuilding,
-  force-rematerializes and raw-blob-verifies the exact tag stager before assembly, and rejects every
+  streams, raw-blob-verifies, and restores the exact tag stager before assembly, and rejects every
   rebuilt profile ZIP whose bytes differ from certification.
 
 ## Tags and promotion

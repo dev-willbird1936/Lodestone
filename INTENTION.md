@@ -152,8 +152,8 @@ every Minecraft environment.
   certified final ZIP SHA-256 exactly; the immutable v1.0.0 workflow runs its historical stager in
   the compatible Windows PowerShell runtime before the same final-byte assembly gate. During an
   immutable-tag recovery, the workflow overlays only this audited portability parser, then
-  force-rematerializes and raw-blob-verifies the exact tag file before clean-tree assembly; final
-  profile ZIP bytes must still equal C0.
+  streams and raw-blob-verifies the exact tag file before clean-tree assembly; final profile ZIP
+  bytes must still equal C0.
 
 ## INTENTION NOT MATCHED
 

@@ -147,14 +147,30 @@ jobs:
           } finally {
             git restore --source=HEAD --worktree -- $relativeStager
             if ($LASTEXITCODE -ne 0) { throw "Could not restore immutable tag stager $relativeStager." }
-            # A text diff accepts CRLF/LF normalization, but the certified source
-            # snapshot hashes raw bytes. Force the index blob back into the worktree
-            # and prove the raw blob identity before invoking assembly.
-            git checkout-index -f -- $relativeStager
-            if ($LASTEXITCODE -ne 0) { throw "Could not re-materialize immutable tag stager $relativeStager." }
+            # A text diff and ordinary git hash-object both accept clean/smudge
+            # filtering. The certification snapshot hashes raw bytes, so stream the
+            # immutable Git blob itself back into the worktree without a text filter.
+            $rawStager = [IO.Path]::GetTempFileName()
+            try {
+              $start = New-Object System.Diagnostics.ProcessStartInfo
+              $start.FileName = 'git'
+              $start.Arguments = "cat-file blob `"HEAD:$relativeStager`""
+              $start.UseShellExecute = $false
+              $start.RedirectStandardOutput = $true
+              $start.RedirectStandardError = $true
+              $process = [Diagnostics.Process]::Start($start)
+              $output = [IO.File]::Open($rawStager, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
+              try { $process.StandardOutput.BaseStream.CopyTo($output) } finally { $output.Dispose() }
+              $stderr = $process.StandardError.ReadToEnd()
+              $process.WaitForExit()
+              if ($process.ExitCode -ne 0) { throw "Could not read immutable tag stager bytes: $stderr" }
+              [IO.File]::Copy($rawStager, $stagerPath, $true)
+            } finally {
+              if (Test-Path -LiteralPath $rawStager) { Remove-Item -LiteralPath $rawStager -Force }
+            }
           }
           $expectedStagerBlob = (git rev-parse "HEAD:$relativeStager").Trim()
-          $actualStagerBlob = (git hash-object -- $relativeStager).Trim()
+          $actualStagerBlob = (git hash-object --no-filters -- $relativeStager).Trim()
           if ($LASTEXITCODE -ne 0 -or $actualStagerBlob -cne $expectedStagerBlob) {
             throw "Recovered stager raw bytes do not match immutable tag $relativeStager."
           }
