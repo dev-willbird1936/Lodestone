@@ -14,12 +14,16 @@ and loader or server.
   manifest and evidence remain under `verification/evidence/`.
 - v1.0.0 has a 32-artifact, 22-row release record at
   `verification/evidence/release-conformance-v1.0.0.json`. Its final audit evidence includes exact
-  Quilt-profile byte acceptance and Bukkit-family invalid-token checks. The immutable tag workflow
-  still performs the clean tagged rebuild, assembly, remote upload verification, and publication.
-  Its historical profile rebuild runs under Windows PowerShell, the exact v1.0.0 stager runtime;
-  the recovery workflow overlays its audited PS7-safe Fabric 1.18.2 POM parser only while rebuilding,
-  streams, raw-blob-verifies, and restores the exact tag stager before assembly, and rejects every
-  rebuilt profile ZIP whose bytes differ from certification.
+  Quilt-profile byte acceptance and Bukkit-family invalid-token checks. [v1.0.0 is published on
+  GitHub](https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0) with 36 public files.
+  The draft was downloaded into a separate directory and every filename, byte length, and SHA-256
+  was compared to staging before publication. Staging used a clean detached checkout of the immutable
+  tag plus only the pre-certified artifact bytes, so no redundant artifact rebuild was needed.
+- The immutable tag workflow retains its full clean-tag rebuild and byte-verification gates for
+  diagnostic retries. Its historical Fabric 1.18.2 profile stager runs under Windows PowerShell;
+  the recovery overlay remains limited to its audited POM parser and is raw-blob checked before
+  assembly. The stable v1.0.0 release was not retried after its hosted source-snapshot preflight
+  remained stricter than the verified tag-isolated assembly path.
 
 ## Tags and promotion
 

@@ -157,6 +157,10 @@ every Minecraft environment.
 - The release gate's asynchronous furniture workflow assertions now tolerate a bounded five-second
   cold-runner scheduling window rather than spuriously failing at one second; any failed module's
   retained JUnit XML is printed without masking the original gate failure.
+- v1.0.0 is publicly published at https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0.
+  Its 36-file draft was independently downloaded and compared by filename, byte length, and
+  SHA-256 before publication. The final staging run used a clean detached immutable-tag worktree
+  and only the already-certified artifact bytes, avoiding another redundant recompilation.
 
 ## INTENTION NOT MATCHED
 
