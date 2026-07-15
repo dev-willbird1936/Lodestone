@@ -7,6 +7,11 @@ import java.util.Optional;
 
 public final class GoalTaskCatalog {
     private static final List<TaskDefinition> TASKS = List.of(
+            task("creative.wool-tree-zombie-defense", "creative",
+                    "Load a fresh world, manually build a wool-leaf tree in creative, set up a nearby zombie, teleport away, equip a diamond sword, switch to survival, and mine the tree while reacting defensively to observed threats.",
+                    "creative-then-survival",
+                    List.of("lodestone.ui.navigate", "minecraft.goal.creative.wool-tree-zombie-defense"),
+                    "Creative setup commands are separated and silent. Every tree block is placed and mined with normal client input; zombie defense is triggered only by fresh visibility and distance observations; terminal readback proves survival, sword, reactive defense, full tree removal, and no direct mutation or unconditional kill routine."),
             task("survival.wooden-axe-mine-tree", "survival", "Load a fresh survival world, craft a wooden axe, and mine one whole tree.",
                     "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.wooden-axe-tree"),
                     "A fresh empty survival world is loaded through Minecraft UI. Normal player input must hand-mine at least three logs, craft planks/sticks/table/wooden axe through visible inventory menus, equip the axe, and remove every initially observed log in a second tree."),

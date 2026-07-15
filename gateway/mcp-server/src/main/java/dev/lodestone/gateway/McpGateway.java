@@ -313,6 +313,7 @@ public final class McpGateway {
                     "maxSteps", Map.of("type", "integer", "minimum", 1, "maximum", 1000),
                     "maxDurationMs", Map.of("type", "integer", "minimum", 100, "maximum", 600000),
                     "dryRun", Map.of("type", "boolean"),
+                    "suppressInGameMessages", Map.of("type", "boolean"),
                     "plan", Map.of("type", "object"))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
                     "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
@@ -963,7 +964,8 @@ public final class McpGateway {
         try {
             var customPlan = GoalService.parsePlan(args.get("plan"));
             var report = goalService.run(goal, mode, text(args, "taskId", null), maxSteps, maxDurationMs,
-                    bool(args, "dryRun", false), customPlan, session().id, session().authorization);
+                    bool(args, "dryRun", false), customPlan,
+                    bool(args, "suppressInGameMessages", false), session().id, session().authorization);
             return toolResult(report);
         } catch (IllegalArgumentException invalid) {
             throw new GatewayException(-32602, invalid.getMessage());

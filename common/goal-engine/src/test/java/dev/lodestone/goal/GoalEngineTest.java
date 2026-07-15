@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GoalEngineTest {
@@ -87,6 +88,34 @@ class GoalEngineTest {
                 });
         assertEquals(GoalStatus.SUCCEEDED, report.status());
         assertEquals("all goal predicates passed", report.message());
+    }
+
+    @Test
+    void woolTreeZombiePlanPropagatesCleanGameplayAndRequiresReactiveDefense() {
+        var quiet = new GoalSpec("build a tree with wool and defend from a zombie using a diamond sword",
+                GoalMode.SCRIPT, "creative.wool-tree-zombie-defense", 256, 120_000,
+                false, null, true);
+        var plan = new BuiltinGoalPlanner().plan(quiet).plan();
+        var workflow = plan.segments().stream().flatMap(segment -> segment.steps().stream())
+                .filter(step -> "minecraft.goal.creative.wool-tree-zombie-defense".equals(step.capability()))
+                .findFirst().orElseThrow();
+        assertEquals(true, workflow.input().get("suppressInGameMessages"));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.wool-tree-defense.inGameMessagesEmitted")
+                        && assertion.expected().equals(0)));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.wool-tree-defense.defensiveResponses")));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.wool-tree-defense.unconditionalKillRoutine")
+                        && assertion.expected().equals(false)));
+
+        var defaultOld = new BuiltinGoalPlanner().plan(GoalSpec.of(
+                "get a wooden axe and mine an entire tree", GoalMode.SCRIPT,
+                "survival.wooden-axe-mine-tree", false)).plan();
+        var oldWorkflow = defaultOld.segments().stream().flatMap(segment -> segment.steps().stream())
+                .filter(step -> "minecraft.goal.survival.wooden-axe-tree".equals(step.capability()))
+                .findFirst().orElseThrow();
+        assertFalse((Boolean) oldWorkflow.input().get("suppressInGameMessages"));
     }
 
     @Test

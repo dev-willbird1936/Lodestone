@@ -84,6 +84,7 @@ public final class NeoForgeClientController {
         clientTick++;
         BRIDGE.releaseExpiredInput(monotonicMillis());
         BRIDGE.tickSurvivalTreeGoal();
+        BRIDGE.tickWoolTreeZombieGoal();
         var adapter = NeoForgeAdapter.active();
         if (adapter == null) {
             return;
@@ -209,6 +210,7 @@ public final class NeoForgeClientController {
         private long screenSequence;
         private String currentScreenToken = "neo121-0";
         private NeoForgeSurvivalTreeGoal survivalTreeGoal;
+        private NeoForgeWoolTreeZombieGoal woolTreeZombieGoal;
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -235,7 +237,8 @@ public final class NeoForgeClientController {
                         "minecraft.client.screenshot.capture",
                         "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
                         "minecraft.ui.state.read",
-                        "minecraft.chat.read", "minecraft.goal.survival.wooden-axe-tree" -> true;
+                        "minecraft.chat.read", "minecraft.goal.survival.wooden-axe-tree",
+                        "minecraft.goal.creative.wool-tree-zombie-defense" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
@@ -249,6 +252,9 @@ public final class NeoForgeClientController {
         public CompletionStage<Map<String, Object>> invoke(String capability, dev.lodestone.adapter.InvocationContext invocation) {
             if ("minecraft.goal.survival.wooden-axe-tree".equals(capability)) {
                 return startSurvivalTreeGoal(invocation);
+            }
+            if ("minecraft.goal.creative.wool-tree-zombie-defense".equals(capability)) {
+                return startWoolTreeZombieGoal(invocation);
             }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
@@ -303,6 +309,31 @@ public final class NeoForgeClientController {
             if (current == null) return;
             current.tick(Minecraft.getInstance());
             if (current.done()) survivalTreeGoal = null;
+        }
+
+        private CompletionStage<Map<String, Object>> startWoolTreeZombieGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if ((survivalTreeGoal != null && !survivalTreeGoal.done())
+                            || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    woolTreeZombieGoal = new NeoForgeWoolTreeZombieGoal(invocation, result);
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickWoolTreeZombieGoal() {
+            var current = woolTreeZombieGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) woolTreeZombieGoal = null;
         }
 
         private static Map<String, Object> screenshot(

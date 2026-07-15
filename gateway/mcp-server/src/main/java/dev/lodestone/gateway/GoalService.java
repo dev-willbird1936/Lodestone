@@ -36,9 +36,11 @@ public final class GoalService {
     }
 
     public GoalRunReport run(String goal, GoalMode mode, String taskId, int maxSteps, long maxDurationMs,
-                             boolean dryRun, GoalPlan customPlan, String callerSessionId,
+                             boolean dryRun, GoalPlan customPlan, boolean suppressInGameMessages,
+                             String callerSessionId,
                              AuthorizationPolicy authorization) {
-        var spec = new GoalSpec(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan);
+        var spec = new GoalSpec(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
+                suppressInGameMessages);
         return engine.run(spec, invoker(callerSessionId, authorization));
     }
 

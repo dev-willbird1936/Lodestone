@@ -29,6 +29,7 @@ class McpGatewayGoalTest {
             var listed = gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}");
             assertTrue(listed.contains("minecraft_goal"));
             assertTrue(listed.contains("minecraft_goal_benchmark"));
+            assertTrue(listed.contains("suppressInGameMessages"));
 
             var result = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"minecraft_goal\",\"arguments\":{\"goal\":\"get a wooden axe and mine an entire tree\",\"mode\":\"script\"}}}"))
                     .getAsJsonObject().getAsJsonObject("result");

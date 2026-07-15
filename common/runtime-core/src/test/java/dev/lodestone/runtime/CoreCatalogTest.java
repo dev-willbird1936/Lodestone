@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(50, CoreCatalog.load().size());
+        assertEquals(51, CoreCatalog.load().size());
     }
 
     @Test
@@ -36,8 +36,65 @@ final class CoreCatalogTest {
                 Map.entry("targetTreeMinedLogs", 5), Map.entry("targetTreeRemainingLogs", 0),
                 Map.entry("fullTreeMined", true), Map.entry("allTargetLogsMinedWithWoodenAxe", true),
                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
+                Map.entry("suppressInGameMessages", false), Map.entry("inGameMessagesEmitted", 8),
                 Map.entry("navigationDiagnostics", java.util.List.of("planned resource tree route")),
                 Map.entry("inputActions", java.util.List.of("move", "attack", "container-click")))).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("suppressInGameMessages", true)).isEmpty());
+    }
+
+    @Test
+    void woolTreeZombieGoalSeparatesSilentSetupFromReactiveInputGameplay() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.creative.wool-tree-zombie-defense"))
+                .findFirst().orElseThrow();
+        assertTrue(capability.featureFlags().contains("manual-placement-input"));
+        assertTrue(capability.featureFlags().contains("silent-explicit-setup-commands"));
+        assertTrue(capability.featureFlags().contains("reactive-defense"));
+        assertTrue(capability.featureFlags().contains("no-unconditional-kill"));
+        assertTrue(capability.featureFlags().contains("no-direct-world-mutation"));
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("suppressInGameMessages", true)).isEmpty());
+        var output = new java.util.LinkedHashMap<String, Object>();
+        output.put("freshWorld", true);
+        output.put("creativeSetupMode", true);
+        output.put("manualTreeBuilt", true);
+        output.put("manualPlacementInputOnly", true);
+        output.put("trunkLogsPlaced", 3);
+        output.put("woolLeavesPlaced", 9);
+        output.put("manuallyPlacedBlocks", 12);
+        output.put("zombieSetupComplete", true);
+        output.put("teleportedAway", true);
+        output.put("teleportDistance", 8.0);
+        output.put("diamondSwordEquipped", true);
+        output.put("survivalMode", true);
+        output.put("zombieObserved", true);
+        output.put("reactiveDefenseEvaluated", true);
+        output.put("defensePolicyEvaluations", 40);
+        output.put("threatDetections", 1);
+        output.put("defensiveResponses", 8);
+        output.put("defensiveAttacks", 2);
+        output.put("zombieKilledByReactiveDefense", true);
+        output.put("unconditionalKillRoutine", false);
+        output.put("treeInitialBlocks", 12);
+        output.put("treeMinedBlocks", 12);
+        output.put("treeRemainingBlocks", 0);
+        output.put("fullTreeMined", true);
+        output.put("playerAlive", true);
+        output.put("healthAtEnd", 18.0);
+        output.put("setupCommandsUsed", true);
+        output.put("setupCommandCount", 8);
+        output.put("setupCommands", java.util.List.of("gamemode creative @p"));
+        output.put("commandFeedbackSuppressed", true);
+        output.put("suppressInGameMessages", true);
+        output.put("inGameMessagesEmitted", 0);
+        output.put("directMutationUsed", false);
+        output.put("defenseDiagnostics", java.util.List.of("threat-detected"));
+        output.put("inputActions", java.util.List.of("place:key.use", "defense:key.attack-reactive"));
+        output.put("buildOrigin", Map.of("x", 2, "y", 64, "z", 2));
+        output.put("awayPosition", Map.of("x", -6, "y", 64, "z", 2));
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), output).isEmpty());
     }
 
     @Test

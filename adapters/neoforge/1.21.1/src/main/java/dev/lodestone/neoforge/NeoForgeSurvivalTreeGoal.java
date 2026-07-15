@@ -48,6 +48,7 @@ final class NeoForgeSurvivalTreeGoal {
 
     private final InvocationContext invocation;
     private final CompletableFuture<Map<String, Object>> result;
+    private final boolean suppressInGameMessages;
     private final LinkedHashSet<String> inputActions = new LinkedHashSet<>();
     private final List<String> navigationDiagnostics = new ArrayList<>();
     private final ArrayDeque<ClickOp> clicks = new ArrayDeque<>();
@@ -62,6 +63,7 @@ final class NeoForgeSurvivalTreeGoal {
     private int mineIndex;
     private int handMinedLogs;
     private int targetMinedLogs;
+    private int inGameMessagesEmitted;
     private int planksCrafted;
     private int sticksCrafted;
     private int tableHotbarSlot = -1;
@@ -90,6 +92,8 @@ final class NeoForgeSurvivalTreeGoal {
     NeoForgeSurvivalTreeGoal(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
         this.invocation = invocation;
         this.result = result;
+        this.suppressInGameMessages = Boolean.TRUE.equals(
+                invocation.request().input().get("suppressInGameMessages"));
     }
 
     boolean done() {
@@ -585,6 +589,8 @@ final class NeoForgeSurvivalTreeGoal {
                 Map.entry("fullTreeMined", remaining == 0 && targetMinedLogs == targetTree.logs().size()),
                 Map.entry("allTargetLogsMinedWithWoodenAxe", allTargetLogsMinedWithWoodenAxe),
                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
+                Map.entry("suppressInGameMessages", suppressInGameMessages),
+                Map.entry("inGameMessagesEmitted", inGameMessagesEmitted),
                 Map.entry("navigationDiagnostics", List.copyOf(navigationDiagnostics)),
                 Map.entry("inputActions", List.copyOf(inputActions))));
     }
@@ -1016,9 +1022,11 @@ final class NeoForgeSurvivalTreeGoal {
     }
 
     private void announce(Minecraft client, String message) {
+        if (suppressInGameMessages) return;
         var text = Component.literal("[Lodestone Goal] " + message);
         if (client.player != null) client.player.displayClientMessage(text, true);
         client.gui.getChat().addMessage(text);
+        inGameMessagesEmitted += 2;
     }
 
     private static LocalPlayer requirePlayer(Minecraft client) {

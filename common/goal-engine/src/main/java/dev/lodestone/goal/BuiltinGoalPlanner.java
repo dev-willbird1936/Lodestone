@@ -13,11 +13,13 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         var task = spec.taskId() == null ? infer(spec.goal()) : GoalTaskCatalog.find(spec.taskId()).orElse(null);
         if (task == null) return PlanResult.unsupported(
                 "no bounded plan matches goal; provide taskId or a declarative plan");
-        return PlanResult.supported(planFor(task.id(), spec.goal()));
+        return PlanResult.supported(planFor(task.id(), spec));
     }
 
     private static GoalTaskCatalog.TaskDefinition infer(String goal) {
         var normalized = goal.toLowerCase(java.util.Locale.ROOT);
+        if (normalized.contains("wool") && normalized.contains("zombie") && normalized.contains("diamond sword"))
+            return GoalTaskCatalog.find("creative.wool-tree-zombie-defense").orElseThrow();
         if (normalized.contains("wooden axe") || normalized.contains("mine an entire tree"))
             return GoalTaskCatalog.find("survival.wooden-axe-mine-tree").orElseThrow();
         if (normalized.contains("pillar") && (normalized.contains("place") || normalized.contains("build")))
@@ -35,9 +37,11 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         return null;
     }
 
-    private static GoalPlan planFor(String taskId, String goal) {
+    private static GoalPlan planFor(String taskId, GoalSpec spec) {
+        var goal = spec.goal();
         return switch (taskId) {
-            case "survival.wooden-axe-mine-tree" -> woodenAxePlan(goal);
+            case "creative.wool-tree-zombie-defense" -> woolTreeZombieDefensePlan(spec);
+            case "survival.wooden-axe-mine-tree" -> woodenAxePlan(spec);
             case "creative.place-pillar" -> blockPlan("creative.place-pillar", goal, "minecraft:stone", "pillar must be stone");
             case "creative.clear-pillar" -> blockPlan("creative.clear-pillar", goal, "minecraft:air", "pillar must be air");
             case "navigation.reach-waypoint" -> navigationPlan(goal);
@@ -50,7 +54,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         };
     }
 
-    private static GoalPlan woodenAxePlan(String goal) {
+    private static GoalPlan woodenAxePlan(GoalSpec spec) {
+        var goal = spec.goal();
         var open = GoalStep.invoke("open-singleplayer", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "singleplayer"), false);
         var createScreen = GoalStep.invoke("open-create-world", "lodestone.ui.navigate", "1.0",
@@ -58,7 +63,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_world"), false);
         var workflow = GoalStep.invoke("survival-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
-                Map.of(), true,
+                Map.of("suppressInGameMessages", spec.suppressInGameMessages()), true,
                 new GoalAssertion("steps.survival-workflow.survival", "equals", true),
                 new GoalAssertion("steps.survival-workflow.freshWorld", "equals", true),
                 new GoalAssertion("steps.survival-workflow.handMinedLogs", "gte", 3),
@@ -85,6 +90,58 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("taskId", "survival.wooden-axe-mine-tree", "craftingRequired", true,
                         "adaptiveTreeTraversalRequired", true, "authenticPlayerInputRequired", true,
                         "completionPredicateReady", true));
+    }
+
+    private static GoalPlan woolTreeZombieDefensePlan(GoalSpec spec) {
+        var open = GoalStep.invoke("open-singleplayer", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "singleplayer"), false);
+        var createScreen = GoalStep.invoke("open-create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_new_world"), false);
+        var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_world"), false);
+        var assertions = new ArrayList<GoalAssertion>(List.of(
+                new GoalAssertion("steps.wool-tree-defense.freshWorld", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.creativeSetupMode", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.manualTreeBuilt", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.manualPlacementInputOnly", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.trunkLogsPlaced", "gte", 3),
+                new GoalAssertion("steps.wool-tree-defense.woolLeavesPlaced", "gte", 9),
+                new GoalAssertion("steps.wool-tree-defense.zombieSetupComplete", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.teleportedAway", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.diamondSwordEquipped", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.survivalMode", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.zombieObserved", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.reactiveDefenseEvaluated", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.threatDetections", "gte", 1),
+                new GoalAssertion("steps.wool-tree-defense.defensiveResponses", "gte", 1),
+                new GoalAssertion("steps.wool-tree-defense.defensiveAttacks", "gte", 1),
+                new GoalAssertion("steps.wool-tree-defense.treeRemainingBlocks", "equals", 0),
+                new GoalAssertion("steps.wool-tree-defense.fullTreeMined", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.playerAlive", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.setupCommandsUsed", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.commandFeedbackSuppressed", "equals", true),
+                new GoalAssertion("steps.wool-tree-defense.unconditionalKillRoutine", "equals", false),
+                new GoalAssertion("steps.wool-tree-defense.directMutationUsed", "equals", false)));
+        if (spec.suppressInGameMessages()) {
+            assertions.add(new GoalAssertion("steps.wool-tree-defense.suppressInGameMessages", "equals", true));
+            assertions.add(new GoalAssertion("steps.wool-tree-defense.inGameMessagesEmitted", "equals", 0));
+        }
+        var workflow = new GoalStep("wool-tree-defense", GoalStepKind.INVOKE,
+                "minecraft.goal.creative.wool-tree-zombie-defense", "1.0",
+                Map.of("suppressInGameMessages", spec.suppressInGameMessages()), assertions, true);
+        return new GoalPlan("creative.wool-tree-zombie-defense", spec.goal(), List.of(
+                new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
+                        List.of(open), List.of()),
+                new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
+                        List.of(createScreen), List.of()),
+                new GoalSegment("create-fresh-world", "Create a fresh world through guarded UI input.",
+                        List.of(createWorld), List.of()),
+                new GoalSegment("creative-setup-and-survival-defense",
+                        "Build by normal placement input, perform explicit silent command setup, then mine with live reactive defense.",
+                        List.of(workflow), List.of())),
+                Map.of("taskId", "creative.wool-tree-zombie-defense",
+                        "manualTreeInputRequired", true, "reactiveDefenseRequired", true,
+                        "setupCommandsSeparated", true, "completionPredicateReady", true));
     }
 
     private static GoalPlan blockPlan(String id, String goal, String block, String description) {
