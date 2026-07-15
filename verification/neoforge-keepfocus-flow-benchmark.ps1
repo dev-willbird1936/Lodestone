@@ -463,7 +463,11 @@ switch ($Stage) {
             $report.shutdownVerification = [ordered]@{
                 latestLog = $latestLog
                 stoppingMarker = ($logText -match 'Stopping!')
-                fatalMarker = ($logText -match 'FATAL|Crash report|---- Minecraft Crash Report ----|Minecraft has crashed')
+                # PowerShell -match is case-insensitive; matching the generic
+                # phrase "Crash report" falsely classified Fabric's harmless
+                # `fabric-crash-report-info-v1` module name as a crash. Keep the
+                # actual fatal/crash markers case-sensitive and explicit.
+                fatalMarker = ($logText -cmatch 'FATAL|---- Minecraft Crash Report ----|Minecraft has crashed')
                 javaProcessCount = $javaCount
             }
             if (-not $report.shutdownVerification.stoppingMarker -or $report.shutdownVerification.fatalMarker -or $javaCount -ne 0) {

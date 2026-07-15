@@ -28,11 +28,22 @@ loom {
     runs {
         client {
             client()
+            property 'lodestone.port', System.getProperty('lodestone.port', '37832')
+            property 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
+            property 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
         }
         server {
             server()
             programArgs '--nogui'
         }
+    }
+}
+
+// Keep the monorepo Gradle process on Java 21 for newer projects, while the
+// exact 1.19.2 client process runs on its required Java 17 runtime.
+tasks.named('runClient', net.fabricmc.loom.task.RunGameTask) {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
