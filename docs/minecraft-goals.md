@@ -1,0 +1,48 @@
+# Minecraft goals
+
+This surface is currently enabled only by the NeoForge 1.21.1 host. Other loaders continue to
+expose the individual capability gateway without these goal tools.
+
+NeoForge 1.21.1 exposes three goal tools through the MCP gateway:
+
+- `minecraft_goal`: run one goal in `script` or `realtime` mode.
+- `minecraft_goal_tasks`: list built-in tasks, required capabilities, and success contracts.
+- `minecraft_goal_benchmark`: run matched script/realtime cases and compare correctness before elapsed time.
+
+Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Arbitrary shell, JavaScript, or Python is never executed by a plan.
+
+Script mode runs segments in declared order. Realtime mode asks the selected provider for one candidate step, invokes it, performs a fresh `minecraft.player.state.read` after action steps marked `observeAfter`, and continues. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
+
+Goal success is stricter than MCP invocation success. A native `ok` result only means that one capability completed. The goal reports `SUCCEEDED` only after its assertions pass and the plan explicitly declares `metadata.completionPredicateReady=true`. Other terminal states are `FAILED`, `UNSUPPORTED`, `CANCELLED`, `TIMED_OUT`, and `INDETERMINATE`.
+
+## Built-in coverage
+
+The task catalog includes survival gathering and crafting, creative placement/removal, navigation, combat, commands, bounded observations, and stale-state failure checks. Each task declares its required capabilities and fixture assumptions. `survival.wooden-axe-mine-tree` is intentionally `UNSUPPORTED` until a native crafting actor is added; it cannot silently use commands to fake survival progress.
+
+## Realtime model selection
+
+Realtime provider selection is environment-driven:
+
+1. load `GoalModelProvider` implementations through Java `ServiceLoader`;
+2. add the optional OpenAI-compatible provider when `LODESTONE_GOAL_MODEL_URL` is configured;
+3. choose the lowest configured measured p95 latency;
+4. use deterministic plan order if no provider is available.
+
+Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, and `LODESTONE_GOAL_MODEL_TIMEOUT_MS`. Credentials are never included in reports. The provider should return JSON with `candidateIndex` and `rationale`.
+
+## KeepFocus profile
+
+KeepFocus is a separate client-only NeoForge 1.21.1 mod. The Lodestone host stages the artifact only for `runKeepFocusClient`; it is not shaded into the Lodestone mod and is not a server dependency.
+
+```text
+cd ..\KeepFocus
+gradlew.bat build --no-daemon
+cd ..\Lodestone
+gradlew.bat :hosts:neoforge:mc1_21_1:stageKeepFocusClient --no-daemon
+```
+
+Set `LODESTONE_TOKEN` and run `verification\run-neoforge-keepfocus-client.bat` to launch the focused client. Override the artifact with `KEEPFOCUS_ARTIFACT` or `-DkeepFocusArtifact=...` when using a different build location.
+
+## Verification
+
+Run `Run-Lodestone-Goal-Checks.bat` for goal-engine/gateway tests and the NeoForge 1.21.1 build. Use `minecraft_goal_benchmark` only against an isolated world; `dryRun=true` is safe only for capabilities whose own contract documents dry-run support. Benchmark output records both status and elapsed time so a faster false success cannot win.

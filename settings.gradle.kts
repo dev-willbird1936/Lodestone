@@ -45,6 +45,7 @@ include(
     ":common:adapter-api",
     ":common:legacy-java8",
     ":common:runtime-core",
+    ":common:goal-engine",
     ":gateway:mcp-server",
     ":gateway:rcon-launcher",
     ":gateway:legacy-bridge-launcher",
@@ -101,6 +102,7 @@ if (includeFabric262 && includeModern) {
 project(":adapters:rcon:java").projectDir = file("adapters/rcon/java")
 project(":adapters:legacy-bridge:java").projectDir = file("adapters/legacy-bridge/java")
 project(":gateway:legacy-bridge-launcher").projectDir = file("gateway/legacy-bridge-launcher")
+project(":common:goal-engine").projectDir = file("common/goal-engine")
 
 if (includeModern) {
     project(":adapters:neoforge:mc1_21_1").projectDir = file("adapters/neoforge/1.21.1")

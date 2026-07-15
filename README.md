@@ -44,6 +44,13 @@ contracts; they never become available merely because another adapter supports a
 RCON is intentionally command-only (`minecraft.command.rcon.execute`). It does not claim native
 player, inventory, UI, event, or structured-world semantics.
 
+## Minecraft goals
+
+NeoForge 1.21.1 also exposes bounded `minecraft_goal`, `minecraft_goal_tasks`, and
+`minecraft_goal_benchmark` MCP tools. Script mode executes segmented capability plans with
+structured state handoff; realtime mode selects one action at a time, observes fresh state, and
+continues with the same verification kernel. See [Minecraft goals](docs/minecraft-goals.md).
+
 ## Safety model
 
 - The MCP gateway is loader-neutral and binds loopback only.

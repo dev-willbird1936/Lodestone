@@ -7,7 +7,7 @@ param(
     [string] $Stage = 'main-menu',
     [string] $BaselinePath,
     [string] $EvidenceDirectory = (Join-Path $PSScriptRoot 'evidence'),
-    [string] $LodestoneArtifact = (Join-Path $PSScriptRoot '..\hosts\neoforge\1.21.1\build\libs\lodestone-1.0.0.jar'),
+    [string] $LodestoneArtifact = '',
     [string] $KeepFocusArtifact = (Join-Path $PSScriptRoot '..\..\KeepFocus\build\libs\keep_focus-1.0.0+1.21.1.jar'),
     [string] $ClientRunDirectory = (Join-Path $PSScriptRoot 'neoforge-artifact-client\run'),
     [string] $BenchmarkName = 'neoforge-1.21.1-keepfocus-flow',
@@ -43,6 +43,13 @@ $report = [ordered]@{
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if ([string]::IsNullOrWhiteSpace($LodestoneArtifact)) {
+    $lodestoneBuild = Join-Path $repoRoot 'hosts\neoforge\1.21.1\build\libs'
+    $candidate = Get-ChildItem -LiteralPath $lodestoneBuild -Filter 'lodestone-*.jar' -File |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $candidate) { throw "No NeoForge 1.21.1 Lodestone artifact found in $lodestoneBuild" }
+    $LodestoneArtifact = $candidate.FullName
+}
 $artifactPaths = @($LodestoneArtifact)
 if (-not [string]::IsNullOrWhiteSpace($KeepFocusArtifact)) { $artifactPaths += $KeepFocusArtifact }
 $artifactRows = @(foreach ($artifactPath in $artifactPaths) {

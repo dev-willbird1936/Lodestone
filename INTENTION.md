@@ -38,6 +38,11 @@ every Minecraft environment.
   reverified across all three packaged rows.
 - Bounded no-chunk-load overworld region scans implemented with loaded/unloaded cell counts and
   block-frequency output across all three packaged rows.
+- Loader-neutral bounded Minecraft goal engine added with declarative segmented script execution,
+  realtime observe-after-action execution, strict terminal predicates, model-provider selection,
+  task catalog, matched benchmark reporting, and MCP gateway tools for NeoForge 1.21.1.
+- KeepFocus remains a separate opt-in client mod and is staged by the NeoForge 1.21.1 automation
+  profile after rebuilding against the exact Lodestone NeoForge patch.
 - Quilt Loader 0.29.2 compatibility is verified on Minecraft 1.20.1 and 1.21.1 using the exact
   Fabric-compatible host bytes embedded in each final CurseForge profile; no metadata-rewritten
   surrogate is used for the release rows. This remains compatibility, not a separate Quilt-native
@@ -308,6 +313,9 @@ every Minecraft environment.
 
 ## INTENTION NOT MATCHED
 
+- Live end-to-end goal completion benchmarks across fresh survival/creative fixtures have not yet
+  been executed; the engine, fake-transport tests, task contracts, and MCP benchmark harness are
+  present, while crafting remains an explicit unsupported capability.
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
   Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and broader entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,

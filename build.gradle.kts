@@ -17,6 +17,7 @@ val java17Projects = setOf(
     ":common:protocol-model",
     ":common:adapter-api",
     ":common:runtime-core",
+    ":common:goal-engine",
     ":gateway:mcp-server",
     ":hosts:fabric:mc1_20_1",
     ":adapters:fabric:mc1_20_1",

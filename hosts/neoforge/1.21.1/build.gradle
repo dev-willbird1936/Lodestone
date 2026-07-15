@@ -7,7 +7,9 @@ group = mod_group_id
 version = mod_version
 
 def adapterProject = project(':adapters:neoforge:mc1_21_1')
-def keepFocusArtifact = rootProject.file('../KeepFocus/build/libs/keep_focus-1.0.0+1.21.1.jar')
+def keepFocusArtifactPath = System.getProperty('keepFocusArtifact',
+        System.getenv('KEEPFOCUS_ARTIFACT') ?: '../KeepFocus/build/libs/keep_focus-1.0.0+1.21.1.jar')
+def keepFocusArtifact = rootProject.file(keepFocusArtifactPath)
 
 base {
     archivesName = mod_id

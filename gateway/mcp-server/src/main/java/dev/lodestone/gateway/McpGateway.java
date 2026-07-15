@@ -7,6 +7,7 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import dev.lodestone.goal.GoalMode;
 import dev.lodestone.protocol.JsonSupport;
 import dev.lodestone.protocol.PermissionClass;
 import dev.lodestone.protocol.ProtocolVersion;
@@ -18,6 +19,7 @@ import dev.lodestone.runtime.LodestoneRuntime;
 import dev.lodestone.runtime.ResourceContent;
 
 import java.util.EnumSet;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -65,6 +67,7 @@ public final class McpGateway {
             new CapabilityAlias("place_building_pattern", "lodestone.building.pattern.place", "1.0"),
             new CapabilityAlias("capture_screenshot", "minecraft.client.screenshot.capture", "1.0"));
     private final LodestoneRuntime runtime;
+    private final GoalService goalService;
     private final StaticCatalogTools staticCatalogTools;
     private final CallerGrantResolver callerGrantResolver;
     private final Map<String, GatewaySession> sessions = new ConcurrentHashMap<>();
@@ -84,6 +87,7 @@ public final class McpGateway {
     /** Create a gateway whose immutable session grants are resolved once at session admission. */
     public McpGateway(LodestoneRuntime runtime, CallerGrantResolver callerGrantResolver) {
         this.runtime = runtime;
+        this.goalService = new GoalService(runtime);
         this.staticCatalogTools = new StaticCatalogTools(runtime);
         this.callerGrantResolver = callerGrantResolver;
     }
@@ -263,7 +267,9 @@ public final class McpGateway {
                     "tools", object(Map.of("listChanged", false)),
                     "resources", object(Map.of("subscribe", false, "listChanged", false)))));
             result.add("serverInfo", object(Map.of("name", "lodestone", "version", "1.0.0")));
-            result.addProperty("instructions", "Use lodestone_capability_invoke for typed access; inspect availability before mutation.");
+            result.addProperty("instructions", supportsNeoForgeGoals()
+                    ? "Use minecraft_goal for bounded multi-action goals; use minecraft_goal_tasks to inspect contracts. Use lodestone_capability_invoke for individual typed access and inspect availability before mutation."
+                    : "Use lodestone_capability_invoke for individual typed access and inspect availability before mutation.");
             return result;
         }
         if ("notifications/initialized".equals(method)) {
@@ -299,6 +305,21 @@ public final class McpGateway {
                 "deadlineEpochMs", Map.of("type", "integer"),
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
+        if (supportsNeoForgeGoals()) {
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode. Script mode executes validated segments; realtime mode selects one bounded step, observes fresh state, and repeats.", schema(Map.of(
+                    "goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096),
+                    "mode", Map.of("type", "string", "enum", List.of("script", "realtime")),
+                    "taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128),
+                    "maxSteps", Map.of("type", "integer", "minimum", 1, "maximum", 1000),
+                    "maxDurationMs", Map.of("type", "integer", "minimum", 100, "maximum", 600000),
+                    "dryRun", Map.of("type", "boolean"),
+                    "plan", Map.of("type", "object"))), List.of("goal")));
+            tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
+                    "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
+            tools.add(tool("minecraft_goal_benchmark", "Run matched script and realtime task cases and compare correctness before elapsed time. Use dryRun only where the capability documents dry-run support; otherwise use an isolated fixture.", schema(Map.of(
+                    "taskIds", Map.of("type", "array", "maxItems", 32, "items", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
+                    "dryRun", Map.of("type", "boolean")))));
+        }
         tools.add(tool("lodestone_events_subscribe", "Subscribe to a bounded event stream; sensitive raw input events are redacted.", schema(Map.of(
                 "eventPrefix", Map.of("type", "string", "maxLength", 256),
                 "bufferLimit", Map.of("type", "integer", "minimum", 1, "maximum", 10_000)))));
@@ -580,6 +601,9 @@ public final class McpGateway {
             case "lodestone_capability_search" -> systemCapability("lodestone.system.capabilities.search",
                     Map.of("query", requiredText(args, "query")));
             case "lodestone_capability_invoke" -> invoke(args);
+            case "minecraft_goal" -> { requireNeoForgeGoals(); yield goalRun(args); }
+            case "minecraft_goal_tasks" -> { requireNeoForgeGoals(); yield goalTasks(args); }
+            case "minecraft_goal_benchmark" -> { requireNeoForgeGoals(); yield goalBenchmark(args); }
             case "lodestone_events_subscribe" -> subscribe(args);
             case "lodestone_events_poll" -> poll(args);
             case "lodestone_events_unsubscribe" -> unsubscribe(args);
@@ -923,6 +947,81 @@ public final class McpGateway {
         requireStagedArtifacts(capability);
         var session = session();
         return toolResult(runtime.invoke(request, session.id, session.authorization).join());
+    }
+
+    private JsonElement goalRun(JsonObject args) {
+        var goal = requiredText(args, "goal");
+        var modeName = text(args, "mode", "script").replace('-', '_').toUpperCase(java.util.Locale.ROOT);
+        final GoalMode mode;
+        try {
+            mode = GoalMode.valueOf(modeName);
+        } catch (IllegalArgumentException invalid) {
+            throw new GatewayException(-32602, "mode must be script or realtime");
+        }
+        var maxSteps = boundedArgument(args, "maxSteps", 256, 1, 1000);
+        var maxDurationMs = boundedLongArgument(args, "maxDurationMs", 120_000L, 100L, 600_000L);
+        try {
+            var customPlan = GoalService.parsePlan(args.get("plan"));
+            var report = goalService.run(goal, mode, text(args, "taskId", null), maxSteps, maxDurationMs,
+                    bool(args, "dryRun", false), customPlan, session().id, session().authorization);
+            return toolResult(report);
+        } catch (IllegalArgumentException invalid) {
+            throw new GatewayException(-32602, invalid.getMessage());
+        }
+    }
+
+    private JsonElement goalTasks(JsonObject args) {
+        var descriptor = runtime.handshake().adapter();
+        return toolResult(Map.of("tasks", goalService.tasks(text(args, "category", "")),
+                "modelProviders", goalService.modelProviders(), "minecraftVersion", descriptor.gameVersion(),
+                "loader", descriptor.loader()));
+    }
+
+    private JsonElement goalBenchmark(JsonObject args) {
+        var taskIds = new ArrayList<String>();
+        var taskIdNode = args.get("taskIds");
+        if (taskIdNode != null && !taskIdNode.isJsonNull()) {
+            if (!taskIdNode.isJsonArray() || taskIdNode.getAsJsonArray().size() > 32) {
+                throw new GatewayException(-32602, "taskIds must be an array with at most 32 entries");
+            }
+            taskIdNode.getAsJsonArray().forEach(value -> taskIds.add(value.getAsString()));
+        }
+        var descriptor = runtime.handshake().adapter();
+        return toolResult(Map.of("minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader(), "results",
+                goalService.benchmark(taskIds, bool(args, "dryRun", false), session().id, session().authorization)));
+    }
+
+    private boolean supportsNeoForgeGoals() {
+        var descriptor = runtime.handshake().adapter();
+        return "neoforge".equalsIgnoreCase(descriptor.loader()) && "1.21.1".equals(descriptor.gameVersion());
+    }
+
+    private void requireNeoForgeGoals() {
+        if (!supportsNeoForgeGoals()) {
+            throw new GatewayException(-32601, "minecraft goals are enabled only for NeoForge 1.21.1");
+        }
+    }
+
+    private static int boundedArgument(JsonObject args, String name, int defaultValue, int minimum, int maximum) {
+        if (!args.has(name) || args.get(name).isJsonNull()) return defaultValue;
+        if (!args.get(name).isJsonPrimitive() || !args.get(name).getAsJsonPrimitive().isNumber()) {
+            throw new GatewayException(-32602, name + " must be an integer");
+        }
+        var value = args.get(name).getAsInt();
+        if (value < minimum || value > maximum) throw new GatewayException(-32602,
+                name + " must be between " + minimum + " and " + maximum);
+        return value;
+    }
+
+    private static long boundedLongArgument(JsonObject args, String name, long defaultValue, long minimum, long maximum) {
+        if (!args.has(name) || args.get(name).isJsonNull()) return defaultValue;
+        if (!args.get(name).isJsonPrimitive() || !args.get(name).getAsJsonPrimitive().isNumber()) {
+            throw new GatewayException(-32602, name + " must be an integer");
+        }
+        var value = args.get(name).getAsLong();
+        if (value < minimum || value > maximum) throw new GatewayException(-32602,
+                name + " must be between " + minimum + " and " + maximum);
+        return value;
     }
 
     private boolean supportsStagedArtifacts() {
