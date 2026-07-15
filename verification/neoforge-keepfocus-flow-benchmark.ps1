@@ -423,9 +423,13 @@ switch ($Stage) {
                 $furnitureRestored = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $furnitureX; y = $furnitureY; z = $furnitureZ; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'furniture restoration readback'
                 if ($furnitureRestored.result.blocks[0].block -ne 'minecraft:air') { throw 'Furniture restoration readback invariant failed.' }
             }
-            Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw + 1; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
-            Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'rotation readback' | Out-Null
+            $lookYaw = [double] $playerBefore.rotation.yaw + 1
+            Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = $lookYaw; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
+            $lookReadback = Invoke-Capability 'minecraft.player.context.read' '1.0' @{ reach = 4 } $false 'client rotation readback'
+            if ([math]::Abs([double] $lookReadback.result.rotation.yaw - $lookYaw) -gt 0.01) { throw 'Client rotation readback invariant failed.' }
             Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
+            $restoreReadback = Invoke-Capability 'minecraft.player.context.read' '1.0' @{ reach = 4 } $false 'restored client rotation readback'
+            if ([math]::Abs([double] $restoreReadback.result.rotation.yaw - [double] $playerBefore.rotation.yaw) -gt 0.01) { throw 'Restored client rotation readback invariant failed.' }
             Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = $ChatMarker } $false 'chat mutation marker' | Out-Null
             Get-UiState | Out-Null
             if ($IncludeContainer) { Invoke-ContainerMenuFlow }
@@ -502,9 +506,13 @@ switch ($Stage) {
         $furnitureRestored = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $furnitureX; y = $furnitureY; z = $furnitureZ; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'furniture restoration readback'
         if ($furnitureRestored.result.blocks[0].block -ne 'minecraft:air') { throw 'Furniture restoration readback invariant failed.' }
 
-        Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw + 1; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
-        Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'rotation readback' | Out-Null
+        $lookYaw = [double] $playerBefore.rotation.yaw + 1
+        Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = $lookYaw; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
+        $lookReadback = Invoke-Capability 'minecraft.player.context.read' '1.0' @{ reach = 4 } $false 'client rotation readback'
+        if ([math]::Abs([double] $lookReadback.result.rotation.yaw - $lookYaw) -gt 0.01) { throw 'Client rotation readback invariant failed.' }
         Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
+        $restoreReadback = Invoke-Capability 'minecraft.player.context.read' '1.0' @{ reach = 4 } $false 'restored client rotation readback'
+        if ([math]::Abs([double] $restoreReadback.result.rotation.yaw - [double] $playerBefore.rotation.yaw) -gt 0.01) { throw 'Restored client rotation readback invariant failed.' }
         $moveExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.player.move') { @('CAPABILITY_UNAVAILABLE') } else { @() }
         $slotExpectedCodes = if ($ExpectedWorldUnavailableCapabilities -contains 'minecraft.inventory.slot.select') { @('CAPABILITY_UNAVAILABLE') } else { @() }
         Invoke-Capability 'minecraft.player.move' '2.0' @{ forward = 0; strafe = 0; jump = $false; sprint = $false; sneak = $false; durationMs = 1 } $false 'zero-motion control path' $moveExpectedCodes | Out-Null

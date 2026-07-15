@@ -13,7 +13,7 @@ Lodestone includes the following third-party data and build dependencies:
   Minecraft 1.21.1 Fabric development/runtime toolchain.
 - Fabric Loader `0.15.11` and Fabric API `0.92.2+1.20.1`, used as the Minecraft 1.20.1 Fabric
   compatibility toolchain.
-- Fabric Loader `0.19.3`, Fabric API `0.154.2+26.2`, Fabric Loom `1.17.1`, and Gradle `9.5.1`,
+- Fabric Loader `0.19.3`, Fabric API `0.154.2+26.2`, Fabric Loom `1.17.1`, and Gradle `9.6.1`,
   used as the Minecraft 26.2 non-remapping development/runtime toolchain with Java 25.
 - Gson `2.10.1`, used by the shared Lodestone protocol/runtime and supplied by the Minecraft
   runtime in native host distributions.

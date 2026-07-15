@@ -12,7 +12,7 @@
    live evidence across Fabric and NeoForge.
 10. Add Quilt Loader compatibility coverage through the proven Fabric 1.20.1 host path; keep
     Quilt-native APIs separate if a later capability requires them.
-11. Completed: Fabric 26.2 non-remapping support with Java 25, an isolated Gradle 9.5.1 build
+11. Completed: Fabric 26.2 non-remapping support with Java 25, an isolated Gradle 9.6.1 build
     path, and the documented client-only Vulkan acceptance boundary.
 12. Completed: Forge 1.21.1 and 1.20.1 native adapter/hosts plus Java 8 Forge 1.12.2, 1.7.10,
     and 1.8.9 native bridges, with RCON fallback coverage retained across all three legacy rows.

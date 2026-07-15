@@ -133,7 +133,7 @@ every Minecraft environment.
 - Final advisor hardening adds caller-isolated runtime ordering/rate limits, fail-fast quarantine
   for timed-out non-cooperative handlers, bounded HTTP body reads, atomic owner-restricted token
   creation on modern hosts, legacy bridge game-version verification, chunk-batched Folia reads,
-  and a Gradle 9.5.1 isolation path for Fabric 26.2.
+  and a Gradle 9.6.1 isolation path for Fabric 26.2.
 - Final adversarial follow-up closes failed-initialize session-capacity leaks, refreshes installed
   launcher distributions and CurseForge profile binaries from current hardened artifacts, rebuilds
   the Java 8 legacy bridge artifacts with version identity health data, and makes the native legacy
@@ -218,7 +218,8 @@ every Minecraft environment.
   unavailable text/legacy input states remain explicit. The final artifact hash is
   `1b6aaa36a40841c0cb92fe7213e3b25b89f728cf9efed8288a3971fda8757096`.
 - Fabric 26.2 now has a rebuilt exact Java 25/Loom 1.17.1 client profile: 100 main-menu records,
-  24 minimal-world records including reversible block mutation/readback, player-look readback,
+  26 minimal-world records including reversible block mutation/readback, client-context player-look
+  mutation/readback/restore,
   revision/46-slot container read, guarded empty-slot click/readback/close, and 6 clean-shutdown
   records. Heightmap/light/move/slot/chat-read and bundled furniture remain explicit unsupported
   states. The tested artifact hash is
@@ -298,7 +299,8 @@ every Minecraft environment.
   Its bundled furniture capability remains unsupported on this exact adapter. The tested artifact
   SHA-256 is `69f199842d6fcbdfab75d8f4edc3fd5370d7138795ef7935f34ebd0a31617a18`.
 - Fabric 26.2 now has retained Java 25 minimal-world/container evidence: 100 main-menu records,
-  24 minimal-world records, inventory key dispatch into `InventoryScreen`, revision/46-slot
+  26 minimal-world records, reversible block mutation/readback, client-context player-look
+  mutation/readback/restore, inventory key dispatch into `InventoryScreen`, revision/46-slot
   container read, revision-guarded empty-slot click and readback, close dispatch, and clean
   shutdown. Its bundled furniture capability remains unsupported on this exact adapter. The
   tested artifact SHA-256 is

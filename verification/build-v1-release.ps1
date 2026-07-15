@@ -73,7 +73,7 @@ $Java25 = Resolve-Executable $Java25 'Java 25'
 $Gradle2 = Resolve-Executable $Gradle2 'Gradle 2.7'
 $Gradle4 = Resolve-Executable $Gradle4 'Gradle 4.10.3'
 $Gradle7 = Resolve-Executable $Gradle7 'Gradle 7.6.4'
-$Gradle9 = Resolve-Executable $Gradle9 'Gradle 9.5.1'
+$Gradle9 = Resolve-Executable $Gradle9 'Gradle 9.6.1'
 $Gradle8 = Resolve-Executable (Join-Path $ProjectRoot 'gradlew.bat') 'Pinned Gradle wrapper'
 
 Invoke-Gradle 'Forge 1.8.9 host (Java 8 / Gradle 2.7)' $Java8 $Gradle2 @('-p', "$ProjectRoot/hosts/forge/1.8.9", 'build', '--no-daemon')
@@ -92,7 +92,7 @@ $modernTasks = @(
     ':gateway:legacy-bridge-launcher:distZip', ':gateway:rcon-launcher:distZip', '--no-daemon'
 )
 Invoke-Gradle 'Modern hosts, plugins, and launchers (Java 21 / pinned Gradle wrapper)' $Java21 $Gradle8 $modernTasks
-Invoke-Gradle 'Fabric 26.2 host (Java 25 / Gradle 9.5.1)' $Java25 $Gradle9 @(
+Invoke-Gradle 'Fabric 26.2 host (Java 25 / Gradle 9.6.1)' $Java25 $Gradle9 @(
     '-p', $ProjectRoot, ':hosts:fabric:mc1_26_2:build', '-PincludeFabric262=true',
     '-PincludeForge=false', '-PincludeForge121=false', '-PincludeForge192=false', '-PincludeForge182=false', '--no-daemon'
 )
