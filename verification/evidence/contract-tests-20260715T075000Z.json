@@ -1,0 +1,17 @@
+{
+  "formatVersion": 1,
+  "testedAtUtc": "2026-07-15T07:50:00Z",
+  "sourceCommit": "584e3ae",
+  "command": ".\\gradlew.bat :verification:contract-tests:test -PincludeFabric262=false --no-daemon --console=plain",
+  "result": "PASS",
+  "tests": 28,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "suites": {
+    "ProtocolContractTest": 9,
+    "ReleaseAssemblyContractTest": 18,
+    "ScreenshotProtocolContractTest": 1
+  },
+  "scope": "Protocol, release-assembly, and screenshot contract tests after the Gradle 9.6.1 workflow correction and clean-source Fabric 26.2 evidence commit."
+}
