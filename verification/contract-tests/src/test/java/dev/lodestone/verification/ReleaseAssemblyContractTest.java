@@ -127,7 +127,7 @@ class ReleaseAssemblyContractTest {
                 "the immutable-tag recovery must explicitly limit its portability overlay to the affected stager");
         assertFalse(workflow.contains("origin/main"),
                 "release-tool overlays must not resolve a mutable branch during an immutable release retry");
-        assertTrue(workflow.contains("$expectedAssemblerBlob = '764580ef61e014c59f8a345162d6e483f7ee5242'"));
+        assertTrue(workflow.contains("$expectedAssemblerBlob = 'e95f0f53853e1251057a0307fd51e8bfe14a1a00'"));
         assertTrue(workflow.contains("$expectedStagerBlob = '21cdd0ed344d23b68a4e3e385fa077b5a9e5752c'"));
         assertTrue(workflow.contains("-ReleaseToolCommit $controlCommit"),
                 "release sidecars must record the pinned control snapshot");
