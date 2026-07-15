@@ -149,9 +149,11 @@ public final class FabricClientController implements ClientModInitializer {
                         "minecraft.ui.state.read", "minecraft.client.screenshot.capture" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" ->
                         worldAvailability.available();
-                case "minecraft.ui.key", "minecraft.ui.click", "minecraft.ui.text.insert",
+                case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read",
                         "minecraft.inventory.container.click" -> client.screen != null;
+                case "minecraft.ui.key" -> client.screen != null
+                        || (client.level != null && client.player != null);
                 default -> client.level != null && client.player != null;
             };
         }

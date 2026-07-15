@@ -133,9 +133,13 @@ public final class FabricClientController implements ClientModInitializer {
                 case "minecraft.player.context.read", "minecraft.entity.nearby.read" -> wasInWorld;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" ->
                         worldAvailability.available();
-                case "minecraft.ui.key", "minecraft.ui.click", "minecraft.ui.text.insert",
+                case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read",
                         "minecraft.inventory.container.click" -> Minecraft.getInstance().screen != null;
+                case "minecraft.ui.key" -> {
+                    var client = Minecraft.getInstance();
+                    yield client.screen != null || (client.level != null && client.player != null);
+                }
                 default -> {
                     var client = Minecraft.getInstance();
                     yield client.level != null && client.player != null;
