@@ -218,12 +218,12 @@ every Minecraft environment.
   unavailable text/legacy input states remain explicit. The final artifact hash is
   `1b6aaa36a40841c0cb92fe7213e3b25b89f728cf9efed8288a3971fda8757096`.
 - Fabric 26.2 now has a rebuilt exact Java 25/Loom 1.17.1 client profile: 100 main-menu records,
-  26 minimal-world records including reversible block mutation/readback, client-context player-look
+  25 minimal-world records including reversible block mutation/readback, client-context player-look
   mutation/readback/restore,
   revision/46-slot container read, guarded empty-slot click/readback/close, and 6 clean-shutdown
   records. Heightmap/light/move/slot/chat-read and bundled furniture remain explicit unsupported
   states. The tested artifact hash is
-  `136e91eb6b5c59deb359d68c8faba23398b502c59942e465436500dec4956d97`.
+  `b299bfcb8036b23a954abed67f7801e99646eb500ed35863a04c9c346ee9c526`.
 - The final Forge 1.20.1 and Fabric 26.2 client-flow JSON reports are retained in
   `verification/evidence/` and bound to their exact source commits and artifact SHA-256 values;
   these are post-v1 evidence and do not rewrite the immutable v1.0.0 certificate.
@@ -299,12 +299,12 @@ every Minecraft environment.
   Its bundled furniture capability remains unsupported on this exact adapter. The tested artifact
   SHA-256 is `69f199842d6fcbdfab75d8f4edc3fd5370d7138795ef7935f34ebd0a31617a18`.
 - Fabric 26.2 now has retained Java 25 minimal-world/container evidence: 100 main-menu records,
-  26 minimal-world records, reversible block mutation/readback, client-context player-look
+  25 minimal-world records, reversible block mutation/readback, client-context player-look
   mutation/readback/restore, inventory key dispatch into `InventoryScreen`, revision/46-slot
   container read, revision-guarded empty-slot click and readback, close dispatch, and clean
   shutdown. Its bundled furniture capability remains unsupported on this exact adapter. The
   tested artifact SHA-256 is
-  `136e91eb6b5c59deb359d68c8faba23398b502c59942e465436500dec4956d97`.
+  `b299bfcb8036b23a954abed67f7801e99646eb500ed35863a04c9c346ee9c526`.
 
 ## INTENTION NOT MATCHED
 
