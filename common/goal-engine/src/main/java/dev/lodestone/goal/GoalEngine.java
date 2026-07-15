@@ -2,6 +2,7 @@
 package dev.lodestone.goal;
 
 import dev.lodestone.protocol.ResultEnvelope;
+import dev.lodestone.protocol.StructuredError;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,6 +11,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class GoalEngine {
+    private static final long[] RATE_LIMIT_RETRY_DELAYS_MS = {100, 250, 500, 1_000};
+
     private final GoalPlanner planner;
     private final GoalModelProvider modelProvider;
 
@@ -65,8 +68,8 @@ public final class GoalEngine {
                         result = ResultEnvelope.ok(selected.id(), Map.of("asserted", true));
                     } else {
                         var input = resolve(selected.input(), state);
-                        result = invoker.invoke(selected.capability(), selected.capabilityVersion(), input, spec.dryRun(),
-                                Math.max(1, spec.maxDurationMs() - elapsedMs(started)));
+                        result = invokeWithTransientRetry(invoker, selected.capability(), selected.capabilityVersion(),
+                                input, spec.dryRun(), spec, started);
                         actionCount++;
                     }
                     if (result.status() != ResultEnvelope.Status.OK) {
@@ -92,8 +95,8 @@ public final class GoalEngine {
                             pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "no budget for realtime post-action observation");
                             break;
                         }
-                        var observed = invoker.invoke("minecraft.player.state.read", "1.0", Map.of(), spec.dryRun(),
-                                Math.max(1, spec.maxDurationMs() - elapsedMs(started)));
+                        var observed = invokeWithTransientRetry(invoker, "minecraft.player.state.read", "1.0", Map.of(),
+                                spec.dryRun(), spec, started);
                         actionCount++;
                         if (observed.status() != ResultEnvelope.Status.OK) {
                             pendingFailure = failureFor(observed);
@@ -162,6 +165,35 @@ public final class GoalEngine {
             throw new IllegalArgumentException("realtime model selected an invalid candidate index");
         }
         return pending.get(decision.candidateIndex());
+    }
+
+    private static ResultEnvelope invokeWithTransientRetry(GoalInvoker invoker, String capability,
+                                                           String capabilityVersion, Map<String, Object> input,
+                                                           boolean dryRun, GoalSpec spec, long started) {
+        for (var attempt = 0; ; attempt++) {
+            var remainingMs = spec.maxDurationMs() - elapsedMs(started);
+            if (remainingMs <= 0) {
+                return ResultEnvelope.error(capability, ResultEnvelope.Status.TIMED_OUT,
+                        StructuredError.of("DEADLINE_EXCEEDED", "goal duration budget exhausted before invocation", true));
+            }
+            var result = invoker.invoke(capability, capabilityVersion, input, dryRun, Math.max(1, remainingMs));
+            if (!isRateLimited(result) || attempt >= RATE_LIMIT_RETRY_DELAYS_MS.length) return result;
+
+            var delayMs = RATE_LIMIT_RETRY_DELAYS_MS[attempt];
+            if (delayMs >= remainingMs) return result;
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return ResultEnvelope.error(capability, ResultEnvelope.Status.CANCELLED,
+                        StructuredError.of("INTERRUPTED", "goal retry was interrupted", true));
+            }
+        }
+    }
+
+    private static boolean isRateLimited(ResultEnvelope result) {
+        return result.status() == ResultEnvelope.Status.ERROR && result.error() != null
+                && "RATE_LIMIT_EXCEEDED".equals(result.error().code());
     }
 
     private static boolean assertionsPass(List<GoalAssertion> assertions, Map<String, Object> state) {

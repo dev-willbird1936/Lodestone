@@ -4,7 +4,8 @@ description = "MCP gateway over Lodestone runtime services."
 
 dependencies {
     implementation(project(":common:runtime-core"))
-    implementation(project(":common:goal-engine"))
+    compileOnly(project(":common:goal-engine"))
+    testImplementation(project(":common:goal-engine"))
     implementation("com.google.code.gson:gson:2.10.1")
 }
 

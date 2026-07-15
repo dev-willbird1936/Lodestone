@@ -143,4 +143,28 @@ class GoalEngineTest {
         assertEquals(GoalStatus.INDETERMINATE, report.status());
         assertTrue(report.message().contains("cleanup failed"));
     }
+
+    @Test
+    void retriesTransientRateLimitWithinGoalBudget() {
+        var calls = new ArrayList<String>();
+        var plan = new GoalPlan("rate-limit", "rate-limit", List.of(new GoalSegment("run", "run", List.of(
+                new GoalStep("probe", GoalStepKind.OBSERVE, "test.observe", "1.0", Map.of(),
+                        List.of(new GoalAssertion("steps.probe.ready", "equals", true)), false)), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) -> {
+            calls.add(capability);
+            if (calls.size() == 1) {
+                return ResultEnvelope.error(capability, ResultEnvelope.Status.ERROR,
+                        dev.lodestone.protocol.StructuredError.of("RATE_LIMIT_EXCEEDED", "try again", true));
+            }
+            return ResultEnvelope.ok(capability, Map.of("ready", true));
+        };
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
+                request -> java.util.Optional.of(new GoalDecision(0, "test")))
+                .run(new GoalSpec("rate-limit", GoalMode.SCRIPT, null, 10, 5_000, false, plan), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals(List.of("test.observe", "test.observe"), calls);
+    }
 }
