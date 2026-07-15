@@ -41,7 +41,14 @@ param(
     # may overlay this exact verifier from an audited control commit; the release
     # source identity still comes from the immutable tag and no release input may
     # be dirty.
-    [switch]$AllowReleaseToolOverlay
+    [switch]$AllowReleaseToolOverlay,
+
+    # When the workflow overlays a portability fix from a reviewed control
+    # commit, record the exact tool commit and raw Git blob IDs in the sidecars.
+    [string]$ReleaseToolCommit,
+    [string]$ReleaseToolTree,
+    [string]$ReleaseToolAssemblerBlob,
+    [string]$ReleaseToolStagerBlob
 )
 
 $ErrorActionPreference = 'Stop'
@@ -756,7 +763,7 @@ function ConvertTo-CompactJson([object]$Value) {
 }
 
 function New-Provenance([object[]]$ArtifactRows, [hashtable]$Source, [hashtable]$Certification,
-                        [string]$GeneratedAtUtc) {
+                        [string]$GeneratedAtUtc, [hashtable]$ReleaseTool) {
     $subjects = @($ArtifactRows | Sort-Object uploadFilename | ForEach-Object {
             [ordered]@{
                 name = $_.uploadFilename
@@ -780,6 +787,7 @@ function New-Provenance([object[]]$ArtifactRows, [hashtable]$Source, [hashtable]
                     assemblySourceCommit = $Source.commit
                     assemblySourceTree = $Source.tree
                     dirtyTreeAllowedForTests = [bool]$Source.testBypass
+                    releaseTool = $ReleaseTool
                 }
                 resolvedDependencies = @([ordered]@{
                         uri = "git+$Repository"
@@ -926,8 +934,22 @@ function Invoke-Assemble([object]$Inventory, [hashtable]$Source, [hashtable]$Cer
             }
             $artifactRows += $artifactRow
         }
-        $generatedAtUtc = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffffffZ',
-            [Globalization.CultureInfo]::InvariantCulture)
+        # The certification snapshot is immutable for v1.0.0. Deriving all
+        # sidecar metadata from it makes repeated assembly byte-identical.
+        $generatedAtUtc = [string]$Certification.certifiedAtUtc
+        if ([string]::IsNullOrWhiteSpace($generatedAtUtc)) {
+            throw 'Release certification is missing its deterministic certifiedAtUtc value.'
+        }
+        $releaseTool = [ordered]@{
+            commit = if ([string]::IsNullOrWhiteSpace($ReleaseToolCommit)) { $Source.commit } else { $ReleaseToolCommit.ToLowerInvariant() }
+            tree = if ([string]::IsNullOrWhiteSpace($ReleaseToolTree)) { $Source.tree } else { $ReleaseToolTree.ToLowerInvariant() }
+            assemblerBlob = if ([string]::IsNullOrWhiteSpace($ReleaseToolAssemblerBlob)) {
+                (Invoke-Git @('rev-parse', 'HEAD:verification/assemble-v1-release.ps1')).ToLowerInvariant()
+            } else { $ReleaseToolAssemblerBlob.ToLowerInvariant() }
+            stagerBlob = if ([string]::IsNullOrWhiteSpace($ReleaseToolStagerBlob)) {
+                (Invoke-Git @('rev-parse', 'HEAD:verification/curseforge-profiles/stage-fabric-1182-profile.ps1')).ToLowerInvariant()
+            } else { $ReleaseToolStagerBlob.ToLowerInvariant() }
+        }
         $manifest = [ordered]@{
             formatVersion = 2
             productVersion = '1.0.0'
@@ -938,6 +960,7 @@ function Invoke-Assemble([object]$Inventory, [hashtable]$Source, [hashtable]$Cer
                 commit = $Source.commit
                 tree = $Source.tree
                 testBypass = [bool]$Source.testBypass
+                releaseTool = $releaseTool
             }
             certification = $Certification.binding
             integrity = [ordered]@{
@@ -948,7 +971,7 @@ function Invoke-Assemble([object]$Inventory, [hashtable]$Source, [hashtable]$Cer
             artifacts = $artifactRows
         }
         Write-AtomicText (Join-Path $temporaryDirectory $ManifestName) (ConvertTo-CanonicalJson $manifest)
-        $provenance = New-Provenance $artifactRows $Source $Certification $generatedAtUtc
+        $provenance = New-Provenance $artifactRows $Source $Certification $generatedAtUtc $releaseTool
         Write-AtomicText (Join-Path $temporaryDirectory $ProvenanceName) (ConvertTo-CanonicalJson $provenance)
         $sbom = New-SpdxSbom $artifactRows $Source $generatedAtUtc
         Write-AtomicText (Join-Path $temporaryDirectory $SbomName) (ConvertTo-CanonicalJson $sbom)

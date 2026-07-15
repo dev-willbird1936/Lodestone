@@ -157,6 +157,7 @@ class ReleaseAssemblyContractTest {
         var fixture = temporary.resolve("fixture-project");
         createArtifactFixture(fixture);
         var staging = temporary.resolve("release");
+        var repeatStaging = temporary.resolve("release-repeat");
 
         var assembled = runReleaseTool("Assemble", fixture, staging, SOURCE_COMMIT, SOURCE_TREE, true);
         assertEquals(0, assembled.exitCode(), assembled.output());
@@ -179,6 +180,11 @@ class ReleaseAssemblyContractTest {
         Instant.parse(manifest.get("generatedAtUtc").getAsString());
         assertEquals(SOURCE_COMMIT, manifest.getAsJsonObject("source").get("commit").getAsString());
         assertEquals(SOURCE_TREE, manifest.getAsJsonObject("source").get("tree").getAsString());
+        var releaseTool = manifest.getAsJsonObject("source").getAsJsonObject("releaseTool");
+        assertEquals(SOURCE_COMMIT, releaseTool.get("commit").getAsString());
+        assertEquals(SOURCE_TREE, releaseTool.get("tree").getAsString());
+        assertTrue(releaseTool.get("assemblerBlob").getAsString().matches("[0-9a-f]{40}"));
+        assertTrue(releaseTool.get("stagerBlob").getAsString().matches("[0-9a-f]{40}"));
         var certification = manifest.getAsJsonObject("certification");
         assertEquals("verification/evidence/release-conformance-v1.0.0.json",
                 certification.get("evidencePath").getAsString());
@@ -257,6 +263,11 @@ class ReleaseAssemblyContractTest {
         assertEquals(0, verified.exitCode(), verified.output());
         assertTrue(verified.output().contains("VERIFIED artifacts=32"), verified.output());
         assertEquals(beforeVerify, stagedHashes(staging), "verify mode changed staged bytes");
+
+        var repeated = runReleaseTool("Assemble", fixture, repeatStaging, SOURCE_COMMIT, SOURCE_TREE, true);
+        assertEquals(0, repeated.exitCode(), repeated.output());
+        assertEquals(stagedHashes(staging), stagedHashes(repeatStaging),
+                "repeated assembly must produce byte-identical 36-file payloads");
     }
 
     @Test
@@ -593,6 +604,7 @@ class ReleaseAssemblyContractTest {
         evidence.addProperty("formatVersion", 2);
         evidence.addProperty("productVersion", "1.0.0");
         evidence.addProperty("tag", "v1.0.0");
+        evidence.addProperty("certifiedAtUtc", "2026-07-14T05:18:24Z");
         var buildSource = new JsonObject();
         buildSource.addProperty("commit", SOURCE_COMMIT);
         buildSource.addProperty("tree", SOURCE_TREE);
