@@ -1,22 +1,21 @@
-# Lodestone v1.0.0 compatibility matrix
+# Lodestone compatibility matrix
 
 > [!IMPORTANT]
-> A green row is an exact release artifact, not a nearby build. It loaded a fresh world,
+> A green row is an exact tested artifact, not a nearby build. It loaded a fresh world,
 > accepted an authenticated MCP session, exercised its supported control slice, performed a real
 > mutation with readback where that slice permits it, and shut down cleanly.
 
-`verification/evidence/release-conformance-v1.0.0.json` binds every matrix row below to the
-exact byte length and SHA-256 of its release upload, a source input snapshot, and checksummed
-retained acceptance logs. The release assembler rejects an artifact whose source bytes no longer
-match that evidence.
+The immutable v1.0.0 rows are bound by `verification/evidence/release-conformance-v1.0.0.json`
+to their exact upload bytes, source snapshot, and retained acceptance logs. Rows marked
+“post-v1 source” are newer compatibility evidence and do not rewrite or certify v1.0.0 bytes.
 
 | Status | Meaning |
 | --- | --- |
-| ✅ | Release-certified exact artifact and fresh-world evidence |
+| ✅ | Exact tested artifact and fresh-world evidence; release-certified only where explicitly marked |
 | 🔄 | Planned or partial capability; not a release compatibility claim |
 | ❌ | Intentionally unsupported for this release |
 
-## Release-certified rows
+## v1.0.0 release-certified rows
 
 | Status | Platform | Exact version / loader | Deployment | Scope |
 | --- | --- | --- | --- | --- |
@@ -24,7 +23,7 @@ match that evidence.
 | ✅ | Fabric | 1.19.2 / Loader 0.14.25 | Mod + CurseForge profile | Native server MCP slice |
 | ✅ | Fabric | 1.20.1 / Loader 0.15.11 | Mod + CurseForge profile | Native server MCP slice |
 | ✅ | Fabric | 1.21.1 / Loader 0.16.10 | Mod + CurseForge profile | Native server MCP slice |
-| ✅ | Fabric | 26.2 / Loader 0.19.3 / Java 25 | Mod + CurseForge profile | Ordered client flow plus bounded server/MCP slice; Vulkan client rendering is not tested |
+| ✅ | Fabric | 26.2 / Loader 0.19.3 / Java 25 | Mod + CurseForge profile | Frozen v1.0.0 artifact: bounded server/MCP slice; newer client/furniture evidence is listed below as post-v1 source |
 | ✅ | Quilt | 1.20.1 / Loader 0.29.2 | Fabric-compatibility profile | Fabric compatibility host, not a Quilt-native adapter |
 | ✅ | Quilt | 1.21.1 / Loader 0.29.2 | Fabric-compatibility profile | Fabric compatibility host, not a Quilt-native adapter |
 | ✅ | NeoForge | 1.21.1 / 21.1.211 | Mod + CurseForge profile | Native server MCP slice |
@@ -43,7 +42,7 @@ match that evidence.
 | ✅ | Spigot | 1.21.1 / BuildTools `4344-Spigot-a759b62` | Server plugin | Bukkit-compatible server slice |
 | ✅ | Folia | 1.21.4 / build 6 | Server plugin | Scheduler-aware global/region slice |
 
-## Fresh container/menu evidence
+## Post-v1 fresh container/menu evidence
 
 | Status | Flow | Evidence |
 | --- | --- | --- |
@@ -51,7 +50,7 @@ match that evidence.
 | ✅ | Fabric 1.21.1 container/menu control slice | Fresh exact artifact passed 100 main-menu records and 33 world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `df29dd3a20ed595f977f6b93c8ad6856c887a383aec0c515e2fac497d8b89905`. |
 | ✅ | Fabric 26.2 Java 25 minimal-world container/menu/furniture control slice | Fresh exact artifact passed 100 main-menu records, 31 minimal-world records, bundled `simple_chair` dry-run/placement/readback/restoration, raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, client-context look mutation/readback/restore, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `ec6761e07ef9ad564044d32c5cfdb421f4314cebd301242184d5ce40b869e972`. |
 
-## Forge fresh container/menu evidence
+## Post-v1 Forge fresh container/menu evidence
 
 | Status | Flow | Evidence |
 | --- | --- | --- |
@@ -61,7 +60,7 @@ match that evidence.
 Forge 1.20.1 and 1.21.1 now join the bounded live client/container set; this remains a tested
 inventory/menu slice, not universal widget, NBT, or connected-player automation parity.
 
-## Legacy Fabric fresh container/menu evidence
+## Post-v1 legacy Fabric fresh container/menu evidence
 
 | Status | Flow | Evidence |
 | --- | --- | --- |
