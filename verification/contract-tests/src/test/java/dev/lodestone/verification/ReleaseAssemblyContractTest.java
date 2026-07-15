@@ -125,6 +125,12 @@ class ReleaseAssemblyContractTest {
                 "immutable v1.0.0 profile staging must use its compatible Windows PowerShell runtime");
         assertTrue(workflow.contains("$relativeStager = 'verification/curseforge-profiles/stage-fabric-1182-profile.ps1'"),
                 "the immutable-tag recovery must explicitly limit its portability overlay to the affected stager");
+        assertFalse(workflow.contains("origin/main"),
+                "release-tool overlays must not resolve a mutable branch during an immutable release retry");
+        assertTrue(workflow.contains("$expectedAssemblerBlob = '6904080b0b287daa3c95b51c7b03f1164f99fa45'"));
+        assertTrue(workflow.contains("$expectedStagerBlob = '21cdd0ed344d23b68a4e3e385fa077b5a9e5752c'"));
+        assertTrue(workflow.contains("-ReleaseToolCommit $controlCommit"),
+                "release sidecars must record the pinned control snapshot");
         assertTrue(workflow.contains("git restore --source=HEAD --worktree -- $relativeStager"),
                 "the immutable tag source must be restored before release assembly");
         assertTrue(workflow.contains("cat-file blob `\"HEAD:$relativeStager`\""),
@@ -231,6 +237,9 @@ class ReleaseAssemblyContractTest {
         var buildDefinition = provenance.getAsJsonObject("predicate").getAsJsonObject("buildDefinition");
         assertEquals(SOURCE_TREE, buildDefinition.getAsJsonObject("internalParameters")
                 .get("assemblySourceTree").getAsString());
+        var releaseToolProvenance = buildDefinition.getAsJsonObject("internalParameters")
+                .getAsJsonObject("releaseTool");
+        assertEquals(SOURCE_COMMIT, releaseToolProvenance.get("commit").getAsString());
         assertEquals(SOURCE_COMMIT, buildDefinition.getAsJsonObject("externalParameters")
                 .getAsJsonObject("certifiedArtifactBuildSource").get("commit").getAsString());
 

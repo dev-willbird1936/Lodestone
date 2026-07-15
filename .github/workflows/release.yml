@@ -141,11 +141,17 @@ jobs:
           # portability-only stager for this rebuild, then restore the exact tag
           # before clean-tree assembly. The final profile ZIP must still match C0.
           $relativeStager = 'verification/curseforge-profiles/stage-fabric-1182-profile.ps1'
-          $controlCommit = (git rev-parse 'origin/main').Trim()
-          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($controlCommit)) {
-            throw 'Cannot resolve audited release-tool control commit from origin/main.'
-          }
+          # Pinned to the reviewed control snapshot, never a mutable branch.
+          $controlCommit = '1966227c7e7c9cc3e990afc4f00ac2e0bde6ce8e'
+          $controlTree = 'fb59cd459067cdeef2f26a024b559b28730e569a'
+          $expectedStagerBlob = '21cdd0ed344d23b68a4e3e385fa077b5a9e5752c'
           git fetch --no-tags origin $controlCommit
+          if ((git rev-parse "$controlCommit`^{tree}").Trim() -cne $controlTree) {
+            throw "Pinned release control tree does not match expected value: $controlCommit"
+          }
+          if ((git rev-parse "$controlCommit`:$relativeStager").Trim() -cne $expectedStagerBlob) {
+            throw "Pinned release stager blob does not match expected value: $expectedStagerBlob"
+          }
           $stager = @(git show "$controlCommit`:$relativeStager")
           if ($LASTEXITCODE -ne 0 -or $stager.Count -eq 0) { throw "Cannot read audited portability stager from $controlCommit." }
           $stagerPath = Join-Path $env:GITHUB_WORKSPACE $relativeStager
@@ -198,11 +204,18 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $relativeAssembler = 'verification/assemble-v1-release.ps1'
-          $controlCommit = (git rev-parse 'origin/main').Trim()
-          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($controlCommit)) {
-            throw 'Cannot resolve audited release-tool control commit from origin/main.'
-          }
+          # Keep the release procedure reproducible across retries of v1.0.0.
+          $controlCommit = '1966227c7e7c9cc3e990afc4f00ac2e0bde6ce8e'
+          $controlTree = 'fb59cd459067cdeef2f26a024b559b28730e569a'
+          $expectedAssemblerBlob = '6904080b0b287daa3c95b51c7b03f1164f99fa45'
+          $expectedStagerBlob = '21cdd0ed344d23b68a4e3e385fa077b5a9e5752c'
           git fetch --no-tags origin $controlCommit
+          if ((git rev-parse "$controlCommit`^{tree}").Trim() -cne $controlTree) {
+            throw "Pinned release control tree does not match expected value: $controlCommit"
+          }
+          if ((git rev-parse "$controlCommit`:$relativeAssembler").Trim() -cne $expectedAssemblerBlob) {
+            throw "Pinned release assembler blob does not match expected value: $expectedAssemblerBlob"
+          }
           $assembler = @(git show "$controlCommit`:$relativeAssembler")
           if ($LASTEXITCODE -ne 0 -or $assembler.Count -eq 0) {
             throw "Cannot read audited release assembler from $controlCommit."
@@ -212,7 +225,11 @@ jobs:
           try {
             & .\verification\assemble-v1-release.ps1 -Mode Assemble `
               -StagingDirectory "$env:RUNNER_TEMP\lodestone-v1.0.0-release" `
-              -AllowReleaseToolOverlay
+              -AllowReleaseToolOverlay `
+              -ReleaseToolCommit $controlCommit `
+              -ReleaseToolTree $controlTree `
+              -ReleaseToolAssemblerBlob $expectedAssemblerBlob `
+              -ReleaseToolStagerBlob $expectedStagerBlob
             if ($LASTEXITCODE -ne 0) { throw "Release assembly failed with exit $LASTEXITCODE." }
           } finally {
             git restore --source=HEAD --worktree -- $relativeAssembler

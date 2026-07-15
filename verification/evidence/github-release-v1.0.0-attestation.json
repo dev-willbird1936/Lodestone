@@ -1,0 +1,230 @@
+{
+  "formatVersion": 1,
+  "release": {
+    "repository": "https://github.com/dev-willbird1936/Lodestone",
+    "tag": "v1.0.0",
+    "url": "https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0",
+    "isDraft": false,
+    "publishedAt": "2026-07-14T12:53:12Z"
+  },
+  "verifiedAtUtc": "2026-07-15T01:17:15Z",
+  "assetCount": 36,
+  "assets": [
+    {
+      "name": "lodestone-1.0.0-launcher-legacy-bridge-legacy-forge.zip",
+      "bytes": 594616,
+      "sha256": "b2799790fc9d9b24fcbc4dd2be2b6ba11e535eb55e002085925a3d4ac9eb8c86",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-launcher-legacy-bridge-legacy-forge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-launcher-rcon-legacy-any.zip",
+      "bytes": 599906,
+      "sha256": "65085d400440c20722c7b2bdba775e77c386ebc23b8b485fdf950be50c3c2b64",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-launcher-rcon-legacy-any.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-fabric-mc-1.18.2.jar",
+      "bytes": 435720,
+      "sha256": "b812ab58004400496208ce3ef98daec96331f1168723c3f93897a4985881696d",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-fabric-mc-1.18.2.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-fabric-mc-1.19.2.jar",
+      "bytes": 430988,
+      "sha256": "feb89faa03c9c3f582d5e8226504d201d06a1166f135f8f78eaf36a557cf8c00",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-fabric-mc-1.19.2.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-fabric-mc-1.20.1.jar",
+      "bytes": 431012,
+      "sha256": "d219f06ee33fa8cd9fea3a232b8bc44c38946513037cbc615352816ed8a246c0",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-fabric-mc-1.20.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-fabric-mc-1.21.1.jar",
+      "bytes": 435408,
+      "sha256": "2b2cf967f72fe526be36d7a4b6bcfe4dfc329a69a9d8b36762f4f6c56b0db632",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-fabric-mc-1.21.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-fabric-mc-26.2.jar",
+      "bytes": 399244,
+      "sha256": "d2bfdc0d6dcdd93c08c23ce8d539008faa741197b641018085deeb32392ee867",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-fabric-mc-26.2.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.12.2.jar",
+      "bytes": 28175,
+      "sha256": "47e54aa1262819f90c7b87a2bb0bfe035faf361a8dd111a15efa142aa4411e8c",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.12.2.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.16.5.jar",
+      "bytes": 362787,
+      "sha256": "433c374de07fb1e83e791d1a2ba079bbbcf6657bd3b5fe5bc1b2ea48c6295879",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.16.5.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.18.2.jar",
+      "bytes": 362830,
+      "sha256": "30cbc6bf12027eabacc380fb3215e9f6f26092003e3ec196359cfa5a2126bb99",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.18.2.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.19.2.jar",
+      "bytes": 362773,
+      "sha256": "7591950df2f9b542d1fb733209f6e4f0b2d4e0a6dcf3b24b782050614845f376",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.19.2.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.20.1.jar",
+      "bytes": 363207,
+      "sha256": "fd74b4c93cb1543fb363b2f37cf9ed145cecadee06bc9f88e18351a9c195b0f8",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.20.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.21.1.jar",
+      "bytes": 361743,
+      "sha256": "5329439eeb11c2588b7b3a3e601875d1d46a327fb6228a88dbab450e8d29ed1f",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.21.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.7.10.jar",
+      "bytes": 29106,
+      "sha256": "13c3797980b57338dc621583a136aa6e647283cb64d69be8276dcf976d8343fc",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.7.10.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-forge-mc-1.8.9.jar",
+      "bytes": 28516,
+      "sha256": "8b52873dfd90417845908d076485fa9b2340d2a5489ef84d89b4768ae4b193b6",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-forge-mc-1.8.9.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-mod-neoforge-mc-1.21.1.jar",
+      "bytes": 431267,
+      "sha256": "a7ca6dbb864a03832c6455e27461191540ba7d1c7e13081014436eadb80c6a40",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-mod-neoforge-mc-1.21.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-plugin-folia-mc-1.21.4.jar",
+      "bytes": 372215,
+      "sha256": "e74663c7ad8cf6a630f370a64aa88fc3519ed2fc5dff65a852c39194bf03be92",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-plugin-folia-mc-1.21.4.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-plugin-paper-mc-1.21.1.jar",
+      "bytes": 366667,
+      "sha256": "23ab463b0a1e24c136c853f459cb0c5c0247c72ffaa57de22afc77f4de31465d",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-plugin-paper-mc-1.21.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-plugin-spigot-mc-1.21.1.jar",
+      "bytes": 369277,
+      "sha256": "cb77310ac7d024286cbaf8096b27bc758d64b089443a54b3d513c2e8dd2cab83",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-plugin-spigot-mc-1.21.1.jar"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-fabric-mc-1.18.2-curseforge.zip",
+      "bytes": 1902809,
+      "sha256": "30f63479d4a8651fe4a09922d4767d8ffc82a23110d676f0e4cbb74bbd79d3dc",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-fabric-mc-1.18.2-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-fabric-mc-1.19.2-curseforge.zip",
+      "bytes": 2286808,
+      "sha256": "21868a57398a2cfe7392b0698fe8bb163abeb528d0bdc97173e854e3ed0572e4",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-fabric-mc-1.19.2-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-fabric-mc-1.20.1-curseforge.zip",
+      "bytes": 2512238,
+      "sha256": "b4c357ab9220049211a43d5a9bc78c5a7cf09fdee3d1b0277bc04a31ced14d27",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-fabric-mc-1.20.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-fabric-mc-1.21.1-curseforge.zip",
+      "bytes": 2834977,
+      "sha256": "5fc7fce39471ba8b51a6cf61472830b4126674e2479427993f1bf731eb66e90d",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-fabric-mc-1.21.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-fabric-mc-26.2-curseforge.zip",
+      "bytes": 2897460,
+      "sha256": "7e2b9e317d73564271fd017956f4a0c05e78e9aa89002651082327bd2cb461ba",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-fabric-mc-26.2-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-forge-mc-1.16.5-curseforge.zip",
+      "bytes": 345757,
+      "sha256": "5fe6c3beca4d711977bb65ea297c66808c486297e9d254d934fb171dbf4bdd38",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-forge-mc-1.16.5-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-forge-mc-1.18.2-curseforge.zip",
+      "bytes": 345866,
+      "sha256": "7d2d2aa3a4e4550d7b339a0f39a226b017a1716db5ee4a21a20f3874a8916e77",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-forge-mc-1.18.2-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-forge-mc-1.19.2-curseforge.zip",
+      "bytes": 345810,
+      "sha256": "7a8275f9191afbf8a1bd915c6c5a21163ded4e1c9683f026b975c0519a749dce",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-forge-mc-1.19.2-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-forge-mc-1.20.1-curseforge.zip",
+      "bytes": 346258,
+      "sha256": "259cde2332b2fd040e7ec3c5def68ed6f18e87e0292dc11fe01fa19ee1b97345",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-forge-mc-1.20.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-forge-mc-1.21.1-curseforge.zip",
+      "bytes": 346969,
+      "sha256": "14ccfa0e3d6deefc96705105b536e395857901af6adb9ae6dcd5d356ebd90b19",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-forge-mc-1.21.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-neoforge-mc-1.21.1-curseforge.zip",
+      "bytes": 412367,
+      "sha256": "bf03b7011b3d6b71b86d9d38ff1db9d97560694a8594720b92f508ff6a4bea61",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-neoforge-mc-1.21.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-quilt-mc-1.20.1-curseforge.zip",
+      "bytes": 2512237,
+      "sha256": "03b8f555950afadaa8b8b92eb87892070962576e3a4ce5a850c9db96766bc7f8",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-quilt-mc-1.20.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-profile-quilt-mc-1.21.1-curseforge.zip",
+      "bytes": 2834977,
+      "sha256": "4ea65bb2013c2672cf7d262ce28d3503041d054ed36906afa09ba1698757a525",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-profile-quilt-mc-1.21.1-curseforge.zip"
+    },
+    {
+      "name": "lodestone-1.0.0-provenance.json",
+      "bytes": 14868,
+      "sha256": "8d101d829262d61aa265ffc4dacadb27c36d746bf1eff0b8510c6a7c245442c5",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-provenance.json"
+    },
+    {
+      "name": "lodestone-1.0.0-sbom.spdx.json",
+      "bytes": 31880,
+      "sha256": "e97ceaa93cbfeee398582f08ee9b4ab0fd8ddaf6541e91a9807ebcc599d7942c",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/lodestone-1.0.0-sbom.spdx.json"
+    },
+    {
+      "name": "release-manifest.json",
+      "bytes": 95060,
+      "sha256": "a29042788b6e6871fc53bfb0162d6ae8b080e791d28720ec0e9c8fe7d20ad1dd",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/release-manifest.json"
+    },
+    {
+      "name": "SHA256SUMS",
+      "bytes": 3912,
+      "sha256": "31c1fd2ffe6966f2f778d0c023eb084bd40c20019ec0962a6ac71ac4240f2a10",
+      "url": "https://github.com/dev-willbird1936/Lodestone/releases/download/v1.0.0/SHA256SUMS"
+    }
+  ]
+}

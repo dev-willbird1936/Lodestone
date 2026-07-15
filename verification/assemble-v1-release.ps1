@@ -469,6 +469,7 @@ function Get-ReleaseCertification([object]$Inventory, [hashtable]$Source) {
                 sha256 = [string]$snapshot.sha256
             }
         }
+        certifiedAtUtc = [string]$evidence.certifiedAtUtc
         binding = [ordered]@{
             evidencePath = $CertificationRelativePath
             formatVersion = [int]$evidence.formatVersion
@@ -944,10 +945,14 @@ function Invoke-Assemble([object]$Inventory, [hashtable]$Source, [hashtable]$Cer
             commit = if ([string]::IsNullOrWhiteSpace($ReleaseToolCommit)) { $Source.commit } else { $ReleaseToolCommit.ToLowerInvariant() }
             tree = if ([string]::IsNullOrWhiteSpace($ReleaseToolTree)) { $Source.tree } else { $ReleaseToolTree.ToLowerInvariant() }
             assemblerBlob = if ([string]::IsNullOrWhiteSpace($ReleaseToolAssemblerBlob)) {
-                (Invoke-Git @('rev-parse', 'HEAD:verification/assemble-v1-release.ps1')).ToLowerInvariant()
+                if ([bool]$Source.testBypass) { $Source.commit } else {
+                    (Invoke-Git @('rev-parse', 'HEAD:verification/assemble-v1-release.ps1')).ToLowerInvariant()
+                }
             } else { $ReleaseToolAssemblerBlob.ToLowerInvariant() }
             stagerBlob = if ([string]::IsNullOrWhiteSpace($ReleaseToolStagerBlob)) {
-                (Invoke-Git @('rev-parse', 'HEAD:verification/curseforge-profiles/stage-fabric-1182-profile.ps1')).ToLowerInvariant()
+                if ([bool]$Source.testBypass) { $Source.commit } else {
+                    (Invoke-Git @('rev-parse', 'HEAD:verification/curseforge-profiles/stage-fabric-1182-profile.ps1')).ToLowerInvariant()
+                }
             } else { $ReleaseToolStagerBlob.ToLowerInvariant() }
         }
         $manifest = [ordered]@{
