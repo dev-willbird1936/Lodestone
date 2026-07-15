@@ -241,6 +241,10 @@ every Minecraft environment.
   loader, version, block entity, or menu path is supported. The benchmark report records the source
   overlay honestly and the shutdown report records `stoppingMarker=true`, `fatalMarker=false`, and
   `javaProcessCount=0`.
+- Fabric 1.20.1 now has the same state-aware native writer and fresh-client furniture evidence: 100
+  main-menu precondition records, 33/33 world records, bundled `simple_chair` preview and placement,
+  block readback/restoration, and clean shutdown with zero Java client processes. This remains a tested
+  exact-version slice rather than a cross-loader parity claim.
 
 ## INTENTION NOT MATCHED
 
