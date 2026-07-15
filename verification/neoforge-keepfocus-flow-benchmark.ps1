@@ -19,7 +19,8 @@ param(
     [string[]] $ExpectedMenuUnavailableCapabilities = @(),
     [string[]] $ExpectedMenuUnavailableTools = @(),
     [switch] $MinimalWorld,
-    [switch] $IncludeFurniture
+    [switch] $IncludeFurniture,
+    [switch] $IncludeContainer
 )
 
 $ErrorActionPreference = 'Stop'
@@ -197,6 +198,45 @@ function Invoke-UiClick {
     }
     foreach ($entry in $Selector.GetEnumerator()) { $input[$entry.Key] = $entry.Value }
     return Invoke-Capability 'minecraft.ui.click' '2.0' $input $false $Expectation
+}
+
+function Invoke-ContainerMenuFlow {
+    # Open the vanilla player inventory through the native key-mapping path. The click is
+    # deliberately a guarded no-op on a known-empty slot: it exercises real revision-checked
+    # dispatch without creating or destroying an item in the fresh-world fixture.
+    Invoke-Capability 'minecraft.ui.key' '1.0' @{ key = 69; scanCode = 0; modifiers = 0 } $false 'open player inventory key dispatch' | Out-Null
+    Wait-For 'screen_open' 5000 | Out-Null
+    $state = Get-UiState
+    if ([string] $state.screenClass -notmatch 'InventoryScreen') {
+        throw "Inventory key did not open a player inventory screen: $($state.screenClass)"
+    }
+    $read = Invoke-Capability 'minecraft.inventory.container.read' '1.0' @{} $false 'read active container revision and slots'
+    if (-not $read.result.open -or $null -eq $read.result.containerId -or $null -eq $read.result.revision) {
+        throw 'Container read invariant failed: open/containerId/revision missing.'
+    }
+    $empty = @($read.result.slots | Where-Object { $_.empty -eq $true }) | Select-Object -First 1
+    if (-not $empty) { throw 'Fresh player inventory unexpectedly had no known-empty slot.' }
+    $slot = [int] $empty.slot
+    $revision = [int] $read.result.revision
+    $click = Invoke-Capability 'minecraft.inventory.container.click' '1.0' @{ slot = $slot; revision = $revision; button = 0; clickType = 'PICKUP' } $false 'revision-guarded empty-slot container click'
+    if ([int] $click.result.slot -ne $slot -or [string] $click.result.clickType -ne 'PICKUP') {
+        throw 'Container click invariant failed: dispatch metadata did not echo the guarded request.'
+    }
+    Start-Sleep -Milliseconds 300
+    $after = Invoke-Capability 'minecraft.inventory.container.read' '1.0' @{} $false 'read container after guarded click'
+    $afterSlot = @($after.result.slots | Where-Object { [int] $_.slot -eq $slot }) | Select-Object -First 1
+    if (-not $afterSlot -or -not $afterSlot.empty) {
+        throw "Empty-slot container click changed slot $slot unexpectedly."
+    }
+    Invoke-Capability 'minecraft.ui.key' '1.0' @{ key = 69; scanCode = 0; modifiers = 0 } $false 'close player inventory key dispatch' | Out-Null
+    # ui_wait is intentionally rate-limited to two calls per minute. The open wait above
+    # already consumed the bounded workflow allowance, so use the ordinary typed snapshot
+    # channel for the close assertion instead of manufacturing a rate-limit failure.
+    Start-Sleep -Milliseconds 350
+    $closed = Get-UiState
+    if ($closed.open -or [string] $closed.screenClass) {
+        throw "Inventory close invariant failed: screen=$($closed.screenClass), open=$($closed.open)"
+    }
 }
 
 function Expected-CapabilityErrors {
@@ -377,6 +417,7 @@ switch ($Stage) {
             Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
             Invoke-Capability 'minecraft.chat.send' '1.0' @{ message = $ChatMarker } $false 'chat mutation marker' | Out-Null
             Get-UiState | Out-Null
+            if ($IncludeContainer) { Invoke-ContainerMenuFlow }
             break
         }
         $playerBefore = (Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'player-state baseline').result

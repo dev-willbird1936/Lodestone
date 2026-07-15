@@ -257,6 +257,10 @@ every Minecraft environment.
   with `stoppingMarker=true`, `fatalMarker=false`, and `javaProcessCount=0`. Its ForgeGradle client
   evidence uses mapped userdev test bytes; the separately built production reobf artifact is retained
   and hashed independently so the evidence does not conflate the two artifact roles.
+- NeoForge 1.21.1 now has retained live menu/container evidence on the exact artifact: 108 main-menu
+  records, 23 world records, inventory key dispatch into `InventoryScreen`, revision/46-slot container
+  read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. The tested
+  artifact SHA-256 is `b5a23cd9bc1127f8679fb10fa3f186a565e525aed4767bed59595db630688bcc`.
 
 ## INTENTION NOT MATCHED
 
