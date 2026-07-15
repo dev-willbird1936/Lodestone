@@ -24,4 +24,5 @@ $ErrorActionPreference = 'Stop'
     -ChatMarker '[Lodestone] Fabric 1.20.1 flow benchmark marker' `
     -MenuTargets @('options', 'language', 'accessibility') `
     -DirectCreateWorld `
-    -ExpectedWorldUnavailableCapabilities @('minecraft.chat.read')
+    -ExpectedWorldUnavailableCapabilities @('minecraft.chat.read') `
+    -IncludeContainer

@@ -43,6 +43,13 @@ match that evidence.
 | ✅ | Spigot | 1.21.1 / BuildTools `4344-Spigot-a759b62` | Server plugin | Bukkit-compatible server slice |
 | ✅ | Folia | 1.21.4 / build 6 | Server plugin | Scheduler-aware global/region slice |
 
+## Fresh container/menu evidence
+
+| Status | Flow | Evidence |
+| --- | --- | --- |
+| ✅ | Fabric 1.20.1 container/menu control slice | Fresh exact artifact passed 100 main-menu records and 33 world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `e341cd8244621ca9a07829f4b6d735e9edc7545d95015efb67f1ea00e6e81f85`. |
+| ✅ | Fabric 1.21.1 container/menu control slice | Fresh exact artifact passed 100 main-menu records and 33 world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `df29dd3a20ed595f977f6b93c8ad6856c887a383aec0c515e2fac497d8b89905`. |
+
 ## Honest limits and next rows
 
 | Status | Target | Reason |

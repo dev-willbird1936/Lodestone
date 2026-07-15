@@ -262,6 +262,17 @@ every Minecraft environment.
   read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. The tested
   artifact SHA-256 is `b5a23cd9bc1127f8679fb10fa3f186a565e525aed4767bed59595db630688bcc`.
 
+## Container/menu evidence added 2026-07-15
+
+- Fabric 1.20.1 now has retained live menu/container evidence on the exact artifact: 100 main-menu
+  records, 33 world records, inventory key dispatch into `InventoryScreen`, revision/46-slot container
+  read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. The tested
+  artifact SHA-256 is `e341cd8244621ca9a07829f4b6d735e9edc7545d95015efb67f1ea00e6e81f85`.
+- Fabric 1.21.1 now has the same retained live menu/container evidence: 100 main-menu records, 33
+  world records, inventory key dispatch into `InventoryScreen`, revision/46-slot container read,
+  revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. The tested
+  artifact SHA-256 is `df29dd3a20ed595f977f6b93c8ad6856c887a383aec0c515e2fac497d8b89905`.
+
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
