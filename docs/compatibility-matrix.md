@@ -50,6 +50,8 @@ match that evidence.
 | ✅ | NeoForge 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow with KeepFocus: 106/106 main-menu assertions, 27/27 world assertions, focus-loss readback, and 6/6 clean-shutdown assertions. This evidence does not alter v1.0.0. |
 | ✅ | Fabric 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 97/97 main-menu assertions, 27/27 world assertions, and 6/6 clean-shutdown assertions. The fresh no-save route uses the direct `CreateWorldScreen` path; chat-read remains explicitly unavailable. This evidence does not alter v1.0.0. |
 | ✅ | Fabric 1.20.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 97/97 main-menu assertions, 27/27 world assertions, and 6/6 clean-shutdown assertions. The exact direct `singleplayer` → `CreateWorldScreen` route and unavailable chat-read state are asserted. This evidence does not alter v1.0.0. |
+| ✅ | Fabric 1.19.2 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 104/104 main-menu assertions, 27/27 world assertions including reversible mutation/readback, and 6/6 clean-shutdown assertions. The adapter uses Java 17, Loader 0.14.25, and detects whether vanilla opens `SelectWorldScreen` or `CreateWorldScreen`; chat-read remains explicitly unavailable. This evidence does not alter v1.0.0. |
+| ✅ | Fabric 1.18.2 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 104/104 main-menu assertions, 27/27 world assertions including reversible mutation/readback, and 6/6 clean-shutdown assertions. The adapter uses Java 17, Loader 0.14.25, and explicit legacy UI routing; chat-read remains explicitly unavailable. This evidence does not alter v1.0.0. |
 | ✅ | Forge 1.21.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 100/100 main-menu assertions, 15/15 minimal-world assertions including reversible block mutation/readback, and 6/6 clean-shutdown assertions. The first-run Forge loading-warning screen and exact unavailable registry/screenshot/input states are explicit evidence. This evidence does not alter v1.0.0. |
 | ✅ | Forge 1.20.1 client flow (post-v1 source) | Exact artifact passed the ordered fresh-client flow: 100/100 main-menu assertions, 15/15 minimal-world assertions including reversible block mutation/readback, and 6/6 clean-shutdown assertions. The exact Forge 1.20.1 UI press/release path and unsupported text/legacy input states are explicit evidence. This evidence does not alter v1.0.0. |
 | ✅ | Fabric 26.2 client flow (post-v1 source) | Exact Java 25 artifact passed the ordered fresh-client flow: 99 main-menu assertions, 27 world assertions including reversible block mutation/readback and look readback, and clean MCP shutdown with no fatal marker and zero Minecraft client processes. Heightmap/light/move/slot/chat-read remain explicit unsupported states. This evidence does not alter v1.0.0. |
@@ -63,7 +65,7 @@ RCON deliberately exposes only `minecraft.command.rcon.execute`; it is not a nat
 inventory, UI, event, or structured-world adapter. CurseForge ZIPs are local, hash-validated
 profiles. They are not claims of a manual CurseForge GUI import or public CurseForge distribution.
 
-## Periodic client-flow benchmark snapshot — 2026-07-14
+## Periodic client-flow benchmark snapshot — 2026-07-15
 
 These rows record post-v1 source evidence for exact local artifacts. The NeoForge profile has
 KeepFocus installed alongside Lodestone; the Fabric profile is Lodestone-only. They do not rewrite
@@ -91,4 +93,8 @@ the immutable v1.0.0 release certificate; each report binds its exact artifact h
 | ✅ | Fabric 26.2 main menu → fresh world → authenticated MCP | 99 asserted records; Java 25/Loom 1.17.1 exact client, typed discovery, UI selectors, key/mouse cleanup, explicit world creation, and expected unsupported states |
 | ✅ | Fabric 26.2 real world control | 27/27 asserted records; reversible gold-block mutation/readback, player look readback/restore, screenshot, and explicit heightmap/light/move/slot/chat-read unsupported states |
 | ✅ | Fabric 26.2 MCP clean shutdown | 6/6 asserted records; MCP quit-game path, `Stopping!`, no fatal/crash marker, and zero Minecraft client processes |
+| ✅ | Fabric 1.19.2 main menu → fresh world → authenticated MCP | 104/104 asserted records; Java 17 client runtime, screen-aware world creation, typed discovery, UI selectors, reversible mutation/readback, and expected unavailable states |
+| ✅ | Fabric 1.19.2 MCP clean shutdown | 6/6 asserted records; MCP Escape/Pause, Save & Quit, MCP quit; Java 0 and no fatal/crash markers |
+| ✅ | Fabric 1.18.2 main menu → fresh world → authenticated MCP | 104/104 asserted records; Java 17 client runtime, legacy SelectWorld/CreateWorld routing, typed discovery, UI selectors, reversible mutation/readback, and expected unavailable states |
+| ✅ | Fabric 1.18.2 MCP clean shutdown | 6/6 asserted records; MCP Escape/Pause, Save & Quit, MCP quit; Java 0 and no fatal/crash markers |
 | 🔄 | Other client loaders/versions | Requires the same ordered fresh-install flow and exact-version artifact evidence per row |

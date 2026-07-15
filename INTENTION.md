@@ -57,6 +57,11 @@ every Minecraft environment.
 - Fabric 1.18.2, 1.19.2, and 1.20.1 hosts now include compiled client bridges for bounded
   key/mouse input, movement, look, interaction, hotbar selection, UI-state, and UI-key control;
   their refreshed server artifacts still pass fresh-world acceptance.
+- Fabric 1.18.2 and 1.19.2 now have committed, exact client-flow evidence on Java 17: each passed
+  104 main-menu assertions, 27 fresh-world assertions with reversible block mutation/readback,
+  and 6 clean-shutdown assertions. The shared benchmark detects whether that exact vanilla build
+  opens SelectWorldScreen or CreateWorldScreen, and both legacy adapters can open PauseScreen from
+  active gameplay through authenticated MCP Escape.
 - Fabric 1.20.1 now has a manual post-v1 client-menu/control slice: Java 17 Loom launch,
   authenticated typed menu navigation, fresh-world creation, player-look readback, and clean
   client shutdown. The three bounded UI-transition defaults are 120 seconds, preventing a normal
@@ -214,11 +219,16 @@ every Minecraft environment.
 - The final Forge 1.20.1 and Fabric 26.2 client-flow JSON reports are retained in
   `verification/evidence/` and bound to their exact source commits and artifact SHA-256 values;
   these are post-v1 evidence and do not rewrite the immutable v1.0.0 certificate.
+- Fabric 1.18.2 final client artifact `41bbf58f69d6e613946df565d60ea4610a991734e23d2576dfc5d7c550b916a5`
+  is bound to source commit `17f2bab`: 104 main-menu, 27 world, and 6 shutdown records, all asserted.
+- Fabric 1.19.2 final client artifact `61dd917922393c3e8eb367cfc601407b4216496b72ee0af0fe0709bb4fcea9c2`
+  passed 104 main-menu, 27 world, and 6 shutdown records. The run was built from the same committed
+  source change set but its report also records the pre-commit working-tree overlay honestly.
 
 ## INTENTION NOT MATCHED
 
-- Full manual acceptance beyond the tested NeoForge/Fabric 1.21.1, Fabric 1.20.1, Fabric 26.2,
-  Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and
+- Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
+  Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and
   broader client container/entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
