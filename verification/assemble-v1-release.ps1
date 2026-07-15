@@ -801,7 +801,7 @@ function New-Provenance([object[]]$ArtifactRows, [hashtable]$Source, [hashtable]
             runDetails = [ordered]@{
                 builder = [ordered]@{ id = 'urn:lodestone:release-assembly:powershell:v1' }
                 metadata = [ordered]@{
-                    invocationId = "urn:uuid:$([Guid]::NewGuid())"
+                    invocationId = "urn:lodestone:release-assembly:v1.0.0:$($Source.commit)"
                     startedOn = $GeneratedAtUtc
                     finishedOn = $GeneratedAtUtc
                 }

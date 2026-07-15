@@ -805,6 +805,13 @@ class ReleaseAssemblyContractTest {
         if (allowTestBypass) {
             command.addAll(List.of("-AllowDirtyTreeForTests", "-SourceCommit", sourceCommit,
                     "-SourceTree", sourceTree));
+        } else {
+            // The fixture intentionally contains only release inputs, not the
+            // verifier's own tracked Git paths. Supply deterministic metadata
+            // so the test exercises source-freeze identity rather than a real
+            // repository's tool-blob layout.
+            command.addAll(List.of("-ReleaseToolCommit", sourceCommit, "-ReleaseToolTree", sourceTree,
+                    "-ReleaseToolAssemblerBlob", sourceCommit, "-ReleaseToolStagerBlob", sourceCommit));
         }
         var process = new ProcessBuilder(command).redirectErrorStream(true).start();
         var output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
