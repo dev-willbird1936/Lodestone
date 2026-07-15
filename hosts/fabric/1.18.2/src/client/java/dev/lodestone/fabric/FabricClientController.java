@@ -14,6 +14,7 @@ import dev.lodestone.adapter.UiLimits;
 import dev.lodestone.adapter.UiNode;
 import dev.lodestone.adapter.UiSelector;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.KeyMapping;
@@ -70,6 +71,7 @@ public final class FabricClientController implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> LodestoneFabricMod.clientStopping());
         ClientTickEvents.END_CLIENT_TICK.register(FabricClientController::tick);
     }
 

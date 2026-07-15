@@ -22,12 +22,14 @@ import java.util.Base64;
 public final class LodestoneFabricMod implements ModInitializer {
     public static final String MOD_ID = "lodestone";
     private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    private static volatile LodestoneFabricMod active;
     private LodestoneRuntime runtime;
     private FabricAdapter adapter;
     private LoopbackHttpServer httpServer;
 
     @Override
     public void onInitialize() {
+        active = this;
         runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv(
                 System.getProperty("lodestone.permissions", System.getenv("LODESTONE_PERMISSIONS"))));
         adapter = new FabricAdapter();
@@ -64,6 +66,17 @@ public final class LodestoneFabricMod implements ModInitializer {
             }
             if (runtime != null) {
                 runtime.close();
+            }
+        }
+    }
+
+    public static void clientStopping() {
+        var current = active;
+        if (current != null && current.httpServer != null) {
+            current.httpServer.close();
+            current.httpServer = null;
+            if (current.runtime != null) {
+                current.runtime.close();
             }
         }
     }
