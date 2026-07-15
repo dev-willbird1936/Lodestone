@@ -68,7 +68,7 @@ gradlew.bat :gateway:rcon-launcher:installDist
 On Windows, [`Run-Lodestone-Checks.bat`](Run-Lodestone-Checks.bat) starts the core Java 8,
 legacy-bridge, and release-contract checks from the repository root.
 
-Fabric 26.2 is isolated to Java 25 and Gradle 9.5.1. Forge 1.16.5 and Java 8 legacy hosts use
+Fabric 26.2 is isolated to Java 25 and Gradle 9.6.1. Forge 1.16.5 and Java 8 legacy hosts use
 their documented isolated toolchains. See [Compatibility](docs/compatibility.md) for exact build
 and runtime requirements.
 

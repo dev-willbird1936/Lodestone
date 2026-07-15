@@ -218,12 +218,12 @@ every Minecraft environment.
   unavailable text/legacy input states remain explicit. The final artifact hash is
   `1b6aaa36a40841c0cb92fe7213e3b25b89f728cf9efed8288a3971fda8757096`.
 - Fabric 26.2 now has a rebuilt exact Java 25/Loom 1.17.1 client profile: 100 main-menu records,
-  25 minimal-world records including reversible block mutation/readback, client-context player-look
-  mutation/readback/restore,
-  revision/46-slot container read, guarded empty-slot click/readback/close, and 6 clean-shutdown
-  records. Heightmap/light/move/slot/chat-read and bundled furniture remain explicit unsupported
+  31 minimal-world records including reversible block mutation/readback, bundled `simple_chair`
+  stateful furniture placement/readback/restoration, client-context player-look
+  mutation/readback/restore, revision/46-slot container read, guarded empty-slot click/readback/close,
+  and 6 clean-shutdown records. Heightmap/light/move/slot/chat-read remain explicit unsupported
   states. The tested artifact hash is
-  `b299bfcb8036b23a954abed67f7801e99646eb500ed35863a04c9c346ee9c526`.
+  `ec6761e07ef9ad564044d32c5cfdb421f4314cebd301242184d5ce40b869e972`.
 - The final Forge 1.20.1 and Fabric 26.2 client-flow JSON reports are retained in
   `verification/evidence/` and bound to their exact source commits and artifact SHA-256 values;
   these are post-v1 evidence and do not rewrite the immutable v1.0.0 certificate.
@@ -298,18 +298,18 @@ every Minecraft environment.
   container read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown.
   Its bundled furniture capability remains unsupported on this exact adapter. The tested artifact
   SHA-256 is `69f199842d6fcbdfab75d8f4edc3fd5370d7138795ef7935f34ebd0a31617a18`.
-- Fabric 26.2 now has retained Java 25 minimal-world/container evidence: 100 main-menu records,
-  25 minimal-world records, reversible block mutation/readback, client-context player-look
-  mutation/readback/restore, inventory key dispatch into `InventoryScreen`, revision/46-slot
-  container read, revision-guarded empty-slot click and readback, close dispatch, and clean
-  shutdown. Its bundled furniture capability remains unsupported on this exact adapter. The
-  tested artifact SHA-256 is
-  `b299bfcb8036b23a954abed67f7801e99646eb500ed35863a04c9c346ee9c526`.
+- Fabric 26.2 now has retained Java 25 minimal-world/container/furniture evidence: 100 main-menu
+  records, 31 minimal-world records, reversible block mutation/readback, bundled `simple_chair`
+  stateful placement/readback/restoration, client-context player-look mutation/readback/restore,
+  inventory key dispatch into `InventoryScreen`, revision/46-slot container read,
+  revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. The tested
+  artifact SHA-256 is
+  `ec6761e07ef9ad564044d32c5cfdb421f4314cebd301242184d5ce40b869e972`.
 
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
-  Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read/furniture and broader entity interaction remain unsupported.
+  Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and broader entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
   entities are intentionally rejected rather than overwritten without NBT restoration; Fabric,

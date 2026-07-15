@@ -20,6 +20,7 @@ import dev.lodestone.runtime.CoreCatalog;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.api.EnvType;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -407,13 +408,13 @@ public final class FabricAdapter implements LodestoneAdapter {
                 if (world.getBlockEntity(position) != null) {
                     throw new IllegalArgumentException("block-entity writes require NBT-safe mutation support: " + change.position());
                 }
-                var id = Identifier.tryParse(change.block());
-                if (id == null) {
-                    throw new IllegalArgumentException("invalid block id: " + change.block());
+                BlockState state;
+                try {
+                    state = BlockStateParser.parseForBlock(
+                            BuiltInRegistries.BLOCK, change.block(), false).blockState();
+                } catch (Exception failure) {
+                    throw new IllegalArgumentException("invalid block state: " + change.block(), failure);
                 }
-                var state = BuiltInRegistries.BLOCK.getOptional(id)
-                        .orElseThrow(() -> new IllegalArgumentException("unknown block id: " + change.block()))
-                        .defaultBlockState();
                 prepared.add(new PreparedChange(change, position, state, chunk.getBlockState(position)));
             }
             var results = new ArrayList<Map<String, Object>>(prepared.size());

@@ -25,4 +25,5 @@ $ErrorActionPreference = 'Stop'
     -MenuTargets @('options', 'language', 'accessibility') `
     -ExpectedWorldUnavailableCapabilities @('minecraft.chat.read', 'minecraft.world.heightmap.read', 'minecraft.world.light.analyze', 'minecraft.player.move', 'minecraft.inventory.slot.select') `
     -MinimalWorld `
-    -IncludeContainer
+    -IncludeContainer `
+    -IncludeFurniture

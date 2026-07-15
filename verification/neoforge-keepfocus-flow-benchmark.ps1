@@ -129,9 +129,10 @@ function Add-Record {
     $envelope = Get-Envelope $Rpc
     $errorCode = if ($envelope.error) { [string] $envelope.error.code } else { $null }
     $asserted = ($ExpectedStatuses -contains [string] $envelope.status) -or ($errorCode -and $ExpectedErrorCodes -contains $errorCode)
+    $inputSnapshot = $InvocationInput | ConvertTo-Json -Depth 64 -Compress | ConvertFrom-Json
     $null = $report.records += [ordered]@{
         operation = $Operation
-        input = $InvocationInput
+        input = $inputSnapshot
         expectation = $Expectation
         expectedStatuses = @($ExpectedStatuses)
         expectedErrorCodes = @($ExpectedErrorCodes)
