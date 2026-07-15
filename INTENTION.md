@@ -245,6 +245,9 @@ every Minecraft environment.
   main-menu precondition records, 33/33 world records, bundled `simple_chair` preview and placement,
   block readback/restoration, and clean shutdown with zero Java client processes. This remains a tested
   exact-version slice rather than a cross-loader parity claim.
+- Fabric 1.21.1 now passes the same exact-version furniture benchmark: 100 main-menu precondition
+  records, 33/33 world records, state-aware `simple_chair` placement/readback/restoration, and clean
+  shutdown with `stoppingMarker=true`, `fatalMarker=false`, and `javaProcessCount=0`.
 
 ## INTENTION NOT MATCHED
 
