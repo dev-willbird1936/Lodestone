@@ -59,6 +59,8 @@ public final class FabricAdapter implements LodestoneAdapter {
             "minecraft.world.blocks.write",
             "minecraft.entity.list",
             "minecraft.inventory.read",
+            "minecraft.inventory.container.read",
+            "minecraft.inventory.container.click",
             "minecraft.chat.send",
             "minecraft.input.key.set",
             "minecraft.input.mouse.set",
@@ -78,6 +80,8 @@ public final class FabricAdapter implements LodestoneAdapter {
             "minecraft.input.mouse.set",
             "minecraft.input.release-all",
             "minecraft.player.look",
+            "minecraft.inventory.container.read",
+            "minecraft.inventory.container.click",
             "minecraft.ui.state.read",
             "minecraft.ui.click",
             "minecraft.ui.key",
@@ -129,6 +133,8 @@ public final class FabricAdapter implements LodestoneAdapter {
         handlers.put("minecraft.input.mouse.set", this::clientCall);
         handlers.put("minecraft.input.release-all", this::clientCall);
         handlers.put("minecraft.player.look", this::clientCall);
+        handlers.put("minecraft.inventory.container.read", this::clientCall);
+        handlers.put("minecraft.inventory.container.click", this::clientCall);
         handlers.put("minecraft.ui.state.read", this::clientCall);
         handlers.put("minecraft.ui.click", this::clientCall);
         handlers.put("minecraft.ui.key", this::clientCall);

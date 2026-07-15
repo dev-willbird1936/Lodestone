@@ -217,10 +217,12 @@ every Minecraft environment.
   client controller handles the older tick event and fresh-world button press/release behavior;
   unavailable text/legacy input states remain explicit. The final artifact hash is
   `1b6aaa36a40841c0cb92fe7213e3b25b89f728cf9efed8288a3971fda8757096`.
-- Fabric 26.2 now has an exact Java 25/Loom 1.17.1 client profile: 99 main-menu records, 27
-  world records including reversible block mutation/readback and player-look readback, and clean
-  MCP shutdown. The final artifact hash is
-  `8872c45706e5d019d8eec4ed62a66bf1d26e8dce5fcbdef320c88d46bdea9127`.
+- Fabric 26.2 now has a rebuilt exact Java 25/Loom 1.17.1 client profile: 100 main-menu records,
+  24 minimal-world records including reversible block mutation/readback, player-look readback,
+  revision/46-slot container read, guarded empty-slot click/readback/close, and 6 clean-shutdown
+  records. Heightmap/light/move/slot/chat-read and bundled furniture remain explicit unsupported
+  states. The tested artifact hash is
+  `136e91eb6b5c59deb359d68c8faba23398b502c59942e465436500dec4956d97`.
 - The final Forge 1.20.1 and Fabric 26.2 client-flow JSON reports are retained in
   `verification/evidence/` and bound to their exact source commits and artifact SHA-256 values;
   these are post-v1 evidence and do not rewrite the immutable v1.0.0 certificate.
@@ -295,12 +297,17 @@ every Minecraft environment.
   container read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown.
   Its bundled furniture capability remains unsupported on this exact adapter. The tested artifact
   SHA-256 is `69f199842d6fcbdfab75d8f4edc3fd5370d7138795ef7935f34ebd0a31617a18`.
+- Fabric 26.2 now has retained Java 25 minimal-world/container evidence: 100 main-menu records,
+  24 minimal-world records, inventory key dispatch into `InventoryScreen`, revision/46-slot
+  container read, revision-guarded empty-slot click and readback, close dispatch, and clean
+  shutdown. Its bundled furniture capability remains unsupported on this exact adapter. The
+  tested artifact SHA-256 is
+  `136e91eb6b5c59deb359d68c8faba23398b502c59942e465436500dec4956d97`.
 
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
-  Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and
-  broader client container/entity interaction remain unsupported.
+  Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read/furniture and broader entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
   entities are intentionally rejected rather than overwritten without NBT restoration; Fabric,
