@@ -57,29 +57,34 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("target", "create_new_world"), false);
         var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_world"), false);
-        var player = GoalStep.observe("player", "minecraft.player.state.read", Map.of());
-        var scan = GoalStep.observe("tree-scan", "minecraft.world.region.scan", Map.of(
-                "dimension", "minecraft:overworld", "x", 0, "y", 60, "z", 0,
-                "sizeX", 32, "sizeY", 32, "sizeZ", 32));
-        var craft = GoalStep.invoke("craft-wooden-axe", "minecraft.inventory.craft", "1.0",
-                Map.of("recipe", "minecraft:wooden_axe", "count", 1), false);
-        var inventory = new GoalStep("inventory", GoalStepKind.OBSERVE, "minecraft.inventory.read", "1.0", Map.of(),
-                List.of(new GoalAssertion("steps.inventory.slots", "contains", "minecraft:wooden_axe")), false);
-        var approach = GoalStep.invoke("approach-tree", "minecraft.player.move", "2.0",
-                Map.of("forward", 1.0, "durationMs", 750), true);
-        var mine = GoalStep.invoke("mine-tree", "minecraft.player.interact", "1.0",
-                Map.of("action", "attack"), true);
-        var verify = new GoalStep("verify", GoalStepKind.ASSERT, null, "1.0", Map.of(), List.of(
-                new GoalAssertion("steps.inventory", "exists", null)), false);
+        var workflow = GoalStep.invoke("survival-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                Map.of(), true,
+                new GoalAssertion("steps.survival-workflow.survival", "equals", true),
+                new GoalAssertion("steps.survival-workflow.freshWorld", "equals", true),
+                new GoalAssertion("steps.survival-workflow.handMinedLogs", "gte", 3),
+                new GoalAssertion("steps.survival-workflow.planksCrafted", "gte", 12),
+                new GoalAssertion("steps.survival-workflow.sticksCrafted", "gte", 4),
+                new GoalAssertion("steps.survival-workflow.craftingTableCrafted", "equals", true),
+                new GoalAssertion("steps.survival-workflow.woodenAxeCrafted", "equals", true),
+                new GoalAssertion("steps.survival-workflow.woodenAxeEquipped", "equals", true),
+                new GoalAssertion("steps.survival-workflow.targetTreeInitialLogs", "gte", 3),
+                new GoalAssertion("steps.survival-workflow.targetTreeRemainingLogs", "equals", 0),
+                new GoalAssertion("steps.survival-workflow.fullTreeMined", "equals", true),
+                new GoalAssertion("steps.survival-workflow.allTargetLogsMinedWithWoodenAxe", "equals", true),
+                new GoalAssertion("steps.survival-workflow.commandsUsed", "equals", false),
+                new GoalAssertion("steps.survival-workflow.directMutationUsed", "equals", false));
         return new GoalPlan("survival.wooden-axe-mine-tree", goal, List.of(
-                new GoalSegment("bootstrap", "Open Minecraft singleplayer and create a fresh default survival world.",
-                        List.of(open, createScreen, createWorld, player), List.of()),
-                new GoalSegment("gather-and-craft", "Scan nearby state, then craft the required wooden axe.",
-                        List.of(scan, craft, inventory, verify), List.of()),
-                new GoalSegment("mine", "Approach the selected tree and repeat bounded mining actions with fresh observations.",
-                        List.of(approach, mine), List.of())),
+                new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
+                        List.of(open), List.of()),
+                new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
+                        List.of(createScreen), List.of()),
+                new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
+                        List.of(createWorld), List.of()),
+                new GoalSegment("survival-gameplay", "Use normal look, movement, attack, inventory, and crafting-table input until the full predicate is proven.",
+                        List.of(workflow), List.of())),
                 Map.of("taskId", "survival.wooden-axe-mine-tree", "craftingRequired", true,
-                        "adaptiveTreeTraversalRequired", true, "completionPredicateReady", false));
+                        "adaptiveTreeTraversalRequired", true, "authenticPlayerInputRequired", true,
+                        "completionPredicateReady", true));
     }
 
     private static GoalPlan blockPlan(String id, String goal, String block, String description) {

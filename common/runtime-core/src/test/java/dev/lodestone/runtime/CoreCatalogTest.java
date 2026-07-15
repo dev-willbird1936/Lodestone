@@ -15,7 +15,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(49, CoreCatalog.load().size());
+        assertEquals(50, CoreCatalog.load().size());
+    }
+
+    @Test
+    void survivalTreeGoalRequiresAuthenticClientInputAndTerminalProof() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.wooden-axe-tree"))
+                .findFirst().orElseThrow();
+
+        assertTrue(capability.featureFlags().contains("authentic-input-only"));
+        assertTrue(capability.featureFlags().contains("no-commands"));
+        assertTrue(capability.featureFlags().contains("no-direct-world-mutation"));
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.ofEntries(
+                Map.entry("survival", true), Map.entry("freshWorld", true), Map.entry("worldName", "New World"),
+                Map.entry("worldGameTimeAtStart", 20), Map.entry("handMinedLogs", 3),
+                Map.entry("planksCrafted", 12), Map.entry("sticksCrafted", 4),
+                Map.entry("craftingTableCrafted", true), Map.entry("woodenAxeCrafted", true),
+                Map.entry("woodenAxeEquipped", true), Map.entry("targetTreeInitialLogs", 5),
+                Map.entry("targetTreeMinedLogs", 5), Map.entry("targetTreeRemainingLogs", 0),
+                Map.entry("fullTreeMined", true), Map.entry("allTargetLogsMinedWithWoodenAxe", true),
+                Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
+                Map.entry("navigationDiagnostics", java.util.List.of("planned resource tree route")),
+                Map.entry("inputActions", java.util.List.of("move", "attack", "container-click")))).isEmpty());
     }
 
     @Test

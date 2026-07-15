@@ -61,25 +61,32 @@ class GoalEngineTest {
     }
 
     @Test
-    void knownCraftingGoalIsHonestAboutMissingNativeCapability() {
+    void knownCraftingGoalRequiresAuthenticWorkflowAndHardTerminalPredicates() {
         var planned = new BuiltinGoalPlanner().plan(GoalSpec.of("get a wooden axe and mine an entire tree",
                 GoalMode.SCRIPT, null, false));
         assertTrue(planned.supported());
+        assertTrue(planned.plan().completionPredicateReady());
         assertTrue(planned.plan().segments().stream().flatMap(segment -> segment.steps().stream())
-                .anyMatch(step -> "minecraft.inventory.craft".equals(step.capability())));
+                .anyMatch(step -> "minecraft.goal.survival.wooden-axe-tree".equals(step.capability())));
         var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
                 request -> java.util.Optional.of(new GoalDecision(0, "test")))
                 .run(new GoalSpec("get a wooden axe and mine an entire tree", GoalMode.SCRIPT, null, 20,
                         10_000, false, planned.plan()), (capability, version, input, dryRun) -> {
-                    if ("minecraft.inventory.craft".equals(capability)) {
-                        return ResultEnvelope.error("craft", ResultEnvelope.Status.ERROR,
-                                dev.lodestone.protocol.StructuredError.of("CAPABILITY_UNAVAILABLE",
-                                        "minecraft.inventory.craft is unavailable", false));
+                    if ("minecraft.goal.survival.wooden-axe-tree".equals(capability)) {
+                        return ResultEnvelope.ok("workflow", Map.ofEntries(
+                                Map.entry("survival", true), Map.entry("freshWorld", true),
+                                Map.entry("handMinedLogs", 3), Map.entry("planksCrafted", 12),
+                                Map.entry("sticksCrafted", 4), Map.entry("craftingTableCrafted", true),
+                                Map.entry("woodenAxeCrafted", true), Map.entry("woodenAxeEquipped", true),
+                                Map.entry("targetTreeInitialLogs", 5), Map.entry("targetTreeRemainingLogs", 0),
+                                Map.entry("fullTreeMined", true),
+                                Map.entry("allTargetLogsMinedWithWoodenAxe", true),
+                                Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false)));
                     }
                     return ResultEnvelope.ok(capability, Map.of("ok", true));
                 });
-        assertEquals(GoalStatus.UNSUPPORTED, report.status());
-        assertTrue(report.message().contains("minecraft.inventory.craft"));
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals("all goal predicates passed", report.message());
     }
 
     @Test

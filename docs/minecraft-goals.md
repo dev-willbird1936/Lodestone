@@ -17,7 +17,7 @@ Goal success is stricter than MCP invocation success. A native `ok` result only 
 
 ## Built-in coverage
 
-The task catalog includes survival gathering and crafting, creative placement/removal, navigation, combat, commands, bounded observations, and stale-state failure checks. Each task declares its required capabilities and fixture assumptions. `survival.wooden-axe-mine-tree` is intentionally `UNSUPPORTED` until a native crafting actor is added; it cannot silently use commands to fake survival progress.
+The task catalog includes survival gathering and crafting, creative placement/removal, navigation, combat, commands, bounded observations, and stale-state failure checks. Each task declares its required capabilities and fixture assumptions. On NeoForge 1.21.1, `survival.wooden-axe-mine-tree` uses a bounded physical-client input workflow: visible walking/look/attack input, dropped-item pickup, visible inventory and crafting-table clicks, wooden-axe equip, and terminal readback of every initially observed target-tree log. Commands, teleportation, direct inventory edits, and direct block mutation are forbidden by the capability contract.
 
 ## Realtime model selection
 

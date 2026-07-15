@@ -80,7 +80,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.ui.click",
             "minecraft.ui.key",
             "minecraft.ui.text.insert",
-            "minecraft.chat.read");
+            "minecraft.chat.read",
+            "minecraft.goal.survival.wooden-axe-tree");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search", "minecraft.server.info.read",
             "minecraft.client.screenshot.capture",
@@ -90,7 +91,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact",
             "minecraft.inventory.slot.select", "minecraft.inventory.container.read", "minecraft.inventory.container.click",
             "minecraft.entity.interact", "minecraft.ui.state.read", "minecraft.ui.click",
-            "minecraft.ui.key", "minecraft.ui.text.insert", "minecraft.chat.read");
+            "minecraft.ui.key", "minecraft.ui.text.insert", "minecraft.chat.read",
+            "minecraft.goal.survival.wooden-axe-tree");
     private static volatile NeoForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -159,6 +161,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.ui.key", this::clientCall);
         handlers.put("minecraft.ui.text.insert", this::clientCall);
         handlers.put("minecraft.chat.read", this::clientCall);
+        handlers.put("minecraft.goal.survival.wooden-axe-tree", this::clientCall);
         return Map.copyOf(handlers);
     }
 

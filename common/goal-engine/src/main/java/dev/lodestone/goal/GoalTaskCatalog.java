@@ -8,8 +8,8 @@ import java.util.Optional;
 public final class GoalTaskCatalog {
     private static final List<TaskDefinition> TASKS = List.of(
             task("survival.wooden-axe-mine-tree", "survival", "Load a fresh survival world, craft a wooden axe, and mine one whole tree.",
-                    "survival", List.of("minecraft.player.state.read", "minecraft.world.region.scan", "minecraft.inventory.craft"),
-                    "UNSUPPORTED until a native crafting capability is available; no command shortcut is used."),
+                    "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.wooden-axe-tree"),
+                    "A fresh empty survival world is loaded through Minecraft UI. Normal player input must hand-mine at least three logs, craft planks/sticks/table/wooden axe through visible inventory menus, equip the axe, and remove every initially observed log in a second tree."),
             task("survival.collect-wood", "survival", "Find a nearby tree and collect logs with player input.", "survival",
                     List.of("minecraft.player.state.read", "minecraft.world.region.scan", "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact"),
                     "Fresh player state and a loaded tree in scan radius."),

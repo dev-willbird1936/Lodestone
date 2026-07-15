@@ -114,7 +114,7 @@ class ProtocolContractTest {
         var catalog = JsonParser.parseReader(Files.newBufferedReader(root.resolve("protocol/catalog/core-capabilities.json"), StandardCharsets.UTF_8)).getAsJsonObject();
         var ids = new HashSet<String>();
         assertEquals("0.3.0", catalog.get("catalogVersion").getAsString());
-        assertEquals(49, catalog.getAsJsonArray("capabilities").size());
+        assertEquals(50, catalog.getAsJsonArray("capabilities").size());
         for (var capability : catalog.getAsJsonArray("capabilities")) {
             var id = capability.getAsJsonObject().get("id").getAsString();
             assertTrue(ids.add(id), "duplicate capability: " + id);

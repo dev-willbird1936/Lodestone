@@ -41,6 +41,9 @@ every Minecraft environment.
 - Loader-neutral bounded Minecraft goal engine added with declarative segmented script execution,
   realtime observe-after-action execution, strict terminal predicates, model-provider selection,
   task catalog, matched benchmark reporting, and MCP gateway tools for NeoForge 1.21.1.
+- NeoForge 1.21.1 now proves the survival wooden-axe tree goal in both script and realtime modes
+  through visible normal player input: hand gathering, inventory/container crafting, table placement,
+  axe equipping, navigation, and full-tree mining, with commands and direct mutation prohibited.
 - KeepFocus remains a separate opt-in client mod and is staged by the NeoForge 1.21.1 automation
   profile after rebuilding against the exact Lodestone NeoForge patch.
 - Quilt Loader 0.29.2 compatibility is verified on Minecraft 1.20.1 and 1.21.1 using the exact
