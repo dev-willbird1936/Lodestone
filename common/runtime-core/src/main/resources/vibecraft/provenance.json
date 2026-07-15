@@ -13,7 +13,7 @@
     "building_templates.json"
   ],
   "semantics": {
-    "furnitureLayouts": "Executable source layouts; Lodestone placement remains unavailable until state-aware transactional compilation is implemented.",
+    "furnitureLayouts": "Executable source layouts; Lodestone placement is available only where the negotiated native writer accepts the compiled block-state specs and remains bounded, permission-gated, and rollback-safe.",
     "buildingPatterns": "Metadata and construction guidance only; Vibecraft's referenced structured placement file is absent.",
     "terrainPatterns": "Metadata and manual guidance only; no structured placement representation is present.",
     "buildingTemplates": "Prompt and command-sequence guidance; not an executable compiler."

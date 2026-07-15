@@ -230,6 +230,18 @@ every Minecraft environment.
   passed 104 main-menu, 27 world, and 6 shutdown records. The run was built from the same committed
   source change set but its report also records the pre-commit working-tree overlay honestly.
 
+## Benchmark evidence added 2026-07-15
+
+- NeoForge 1.21.1 now has a rebuilt exact artifact with state-aware native block parsing. The fresh
+  KeepFocus run passed 108 main-menu precondition records and 33/33 world records, including bounded
+  Vibecraft `simple_chair` preview, real placement with `facing=north,half=bottom`, block readback,
+  restoration, and clean shutdown. The artifact SHA-256 is
+  `7caf8200c6d5a22cec7bcc702a7cbdbc1f31674101a07c8c8d59a7634e1d0fbd`.
+- The furniture evidence remains an exact tested NeoForge slice, not a claim that every bundled layout,
+  loader, version, block entity, or menu path is supported. The benchmark report records the source
+  overlay honestly and the shutdown report records `stoppingMarker=true`, `fatalMarker=false`, and
+  `javaProcessCount=0`.
+
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
@@ -253,6 +265,7 @@ every Minecraft environment.
   not claims of support. The client benchmark evidence now covers separate exact rows for NeoForge
   1.21.1, Fabric 1.20.1, Fabric 1.21.1, Forge 1.20.1, and Forge 1.21.1; other client loaders and versions remain
   separate rows.
-- Vibecraft parity is not yet established: the pinned comparison inventory is catalog-level only,
-  with 16 implemented, 50 partial, and 17 missing rows, and no retained live parity suite. Lodestone
-  must not claim behavioral parity until those rows are independently exercised on clean pinned trees.
+- Vibecraft parity is not yet established: the pinned comparison inventory still has 16 implemented,
+  50 partial, and 17 missing rows, and no full retained live parity suite. One bounded furniture layout
+  is now live-tested on NeoForge 1.21.1; Lodestone must not claim parity for the remaining rows until
+  they are independently exercised on clean pinned trees.

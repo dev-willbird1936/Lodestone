@@ -75,6 +75,7 @@ the immutable v1.0.0 release certificate; each report binds its exact artifact h
 | --- | --- | --- |
 | ✅ | NeoForge 1.21.1 main menu → fresh world → authenticated MCP | 106 asserted records (56 OK plus expected unavailable/dry-run/route-guard states); Credits absence is asserted; dedicated event subscribe/poll/unsubscribe lifecycle |
 | ✅ | NeoForge 1.21.1 real world control | 27/27 successful records; bounded gold-block write, readback, restore, readback; chat, screenshot, entity/player/world reads, key/mouse cleanup |
+| ✅ | NeoForge 1.21.1 Vibecraft furniture slice | Fresh artifact benchmark passed 108 main-menu precondition records and 33/33 world records: bundled `simple_chair` dry-run, state-aware placement (`oak_stairs[facing=north,half=bottom]`), readback, restoration, and clean shutdown. Artifact SHA-256: `7caf8200c6d5a22cec7bcc702a7cbdbc1f31674101a07c8c8d59a7634e1d0fbd`. |
 | ✅ | NeoForge 1.21.1 KeepFocus focus-loss readback | Tick advanced while Minecraft lost focus; remained in-world and did not pause |
 | ✅ | NeoForge 1.21.1 MCP clean shutdown | MCP Escape opened PauseScreen, UI click saved/quitted to title, MCP quit game; Java count 0; no crash markers |
 | ✅ | NeoForge 1.21.1 MCP typed coverage sweep | 32 tools, 49 capabilities, 315 typed/schema cases; schema-generated inputs are classified and unsupported states remained explicit |
