@@ -19,6 +19,7 @@ import dev.lodestone.protocol.Environment;
 import dev.lodestone.runtime.CoreCatalog;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -334,11 +335,13 @@ public final class ForgeAdapter implements LodestoneAdapter {
                 if (world.getBlockEntity(position) != null) {
                     throw new IllegalArgumentException("block-entity writes require NBT-safe mutation support: " + change.position());
                 }
-                var id = ResourceLocation.tryParse(change.block());
-                if (id == null) throw new IllegalArgumentException("invalid block id: " + change.block());
-                var state = BuiltInRegistries.BLOCK.getOptional(id)
-                        .orElseThrow(() -> new IllegalArgumentException("unknown block id: " + change.block()))
-                        .defaultBlockState();
+                BlockState state;
+                try {
+                    state = BlockStateParser.parseForBlock(
+                            BuiltInRegistries.BLOCK.asLookup(), change.block(), false).blockState();
+                } catch (Exception failure) {
+                    throw new IllegalArgumentException("invalid block state: " + change.block(), failure);
+                }
                 prepared.add(new PreparedChange(change, position, state, chunk.getBlockState(position)));
             }
             var results = new ArrayList<Map<String, Object>>();

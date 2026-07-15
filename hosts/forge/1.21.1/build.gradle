@@ -53,20 +53,21 @@ minecraft {
     }
 }
 
-def artifactClientJar = layout.buildDirectory.file("libs/${project.mod_id}-${project.mod_version}.jar")
 def artifactClientBundledRoots = [
     rootProject.file('common').toPath().toAbsolutePath().normalize(),
     rootProject.file('gateway').toPath().toAbsolutePath().normalize()
 ]
 tasks.register('stageArtifactClient', Copy) {
-    from artifactClientJar
+    // runArtifactClient uses ForgeGradle's mapped userdev runtime. Stage the
+    // mapped jar task output here; the reobfuscated jar is for installed Forge
+    // profiles and references production names unavailable in userdev.
+    dependsOn tasks.named('jar')
+    from tasks.named('jar').flatMap { it.archiveFile }
     into layout.projectDirectory.dir('run-artifact-client/mods')
-    doFirst {
-        if (!artifactClientJar.get().asFile.isFile()) {
-            throw new GradleException("Final Lodestone artifact is required before runArtifactClient: ${artifactClientJar.get().asFile}")
-        }
-    }
+    outputs.upToDateWhen { false }
+    doFirst { if (!tasks.named('jar').get().archiveFile.get().asFile.isFile()) { throw new GradleException("Mapped Lodestone artifact is required before runArtifactClient") } }
 }
+tasks.named('jar') { outputs.upToDateWhen { false } }
 tasks.matching { it.name == 'runArtifactClient' }.configureEach {
     dependsOn tasks.named('stageArtifactClient')
     doFirst {

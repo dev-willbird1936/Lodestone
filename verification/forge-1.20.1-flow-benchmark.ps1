@@ -24,4 +24,5 @@ $ErrorActionPreference = 'Stop'
     -DirectCreateWorld `
     -ExpectedMenuUnavailableTools @('search_minecraft_item', 'capture_screenshot') `
     -ExpectedMenuUnavailableCapabilities @('minecraft.ui.text.insert', 'minecraft.input.key.set', 'minecraft.input.mouse.set', 'minecraft.input.release-all') `
-    -MinimalWorld
+    -MinimalWorld `
+    -IncludeFurniture

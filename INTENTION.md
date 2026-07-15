@@ -248,6 +248,15 @@ every Minecraft environment.
 - Fabric 1.21.1 now passes the same exact-version furniture benchmark: 100 main-menu precondition
   records, 33/33 world records, state-aware `simple_chair` placement/readback/restoration, and clean
   shutdown with `stoppingMarker=true`, `fatalMarker=false`, and `javaProcessCount=0`.
+- Forge 1.21.1 now passes the same bounded furniture benchmark: 102 main-menu precondition records,
+  21/21 world records, state-aware `simple_chair` placement/readback/restoration, and clean shutdown
+  with `stoppingMarker=true`, `fatalMarker=false`, and `javaProcessCount=0`. The final artifact hash is
+  `929a6a770d3da33ceb73c65e6536af07028dbf2a1fabca45e075779a7643e2f9`.
+- Forge 1.20.1 now passes the same bounded furniture benchmark: 102 main-menu precondition records,
+  21/21 world records, state-aware `simple_chair` placement/readback/restoration, and clean shutdown
+  with `stoppingMarker=true`, `fatalMarker=false`, and `javaProcessCount=0`. Its ForgeGradle client
+  evidence uses mapped userdev test bytes; the separately built production reobf artifact is retained
+  and hashed independently so the evidence does not conflate the two artifact roles.
 
 ## INTENTION NOT MATCHED
 

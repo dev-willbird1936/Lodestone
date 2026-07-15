@@ -18,7 +18,8 @@ param(
     [string[]] $ExpectedWorldUnavailableCapabilities = @(),
     [string[]] $ExpectedMenuUnavailableCapabilities = @(),
     [string[]] $ExpectedMenuUnavailableTools = @(),
-    [switch] $MinimalWorld
+    [switch] $MinimalWorld,
+    [switch] $IncludeFurniture
 )
 
 $ErrorActionPreference = 'Stop'
@@ -353,6 +354,24 @@ switch ($Stage) {
             if (-not $restore.result.validated -or [int] $restore.result.changedCount -ne 1) { throw 'Block restoration invariant failed.' }
             $restored = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $x; y = $mutationY; z = $z; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'restoration readback'
             if ($restored.result.blocks[0].block -ne 'minecraft:air') { throw 'Air restoration readback invariant failed.' }
+            if ($IncludeFurniture) {
+                $furnitureX = $x + 2
+                $furnitureY = $mutationY
+                $furnitureZ = $z
+                $furnitureBaseline = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $furnitureX; y = $furnitureY; z = $furnitureZ; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'furniture target baseline read'
+                if ($furnitureBaseline.status -ne 'ok' -or $furnitureBaseline.result.blocks[0].block -ne 'minecraft:air') { throw "Refusing furniture mutation: target ($furnitureX,$furnitureY,$furnitureZ) baseline is not known air." }
+                $furniture = @{ furniture_id = 'simple_chair'; origin_x = $furnitureX; origin_y = $furnitureY; origin_z = $furnitureZ; facing = 'north'; place_on_surface = $false; preview_only = $true; dimension = 'minecraft:overworld' }
+                $furnitureDryRun = Invoke-Capability 'lodestone.furniture.place' '1.0' $furniture $true 'preview bundled furniture placement'
+                if (-not $furnitureDryRun.result.dryRun -or -not $furnitureDryRun.result.validated -or [int] $furnitureDryRun.result.requestedCount -ne 1) { throw 'Furniture dry-run invariant failed.' }
+                $furniture.preview_only = $false
+                $furnitureWrite = Invoke-Capability 'lodestone.furniture.place' '1.0' $furniture $false 'place bundled simple chair'
+                if ($furnitureWrite.result.dryRun -or -not $furnitureWrite.result.validated -or [int] $furnitureWrite.result.changedCount -ne 1) { throw 'Furniture placement invariant failed.' }
+                $furnitureRead = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $furnitureX; y = $furnitureY; z = $furnitureZ; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'furniture placement readback'
+                if ($furnitureRead.result.blocks[0].block -ne 'minecraft:oak_stairs') { throw 'Furniture placement readback invariant failed.' }
+                Invoke-Capability 'minecraft.world.blocks.write' '1.0' @{ dimension = 'minecraft:overworld'; changes = @(@{ x = $furnitureX; y = $furnitureY; z = $furnitureZ; block = 'minecraft:air' }); dryRun = $false } $false 'restore furniture target' | Out-Null
+                $furnitureRestored = Invoke-Capability 'minecraft.world.blocks.read' '1.0' @{ dimension = 'minecraft:overworld'; x = $furnitureX; y = $furnitureY; z = $furnitureZ; sizeX = 1; sizeY = 1; sizeZ = 1 } $false 'furniture restoration readback'
+                if ($furnitureRestored.result.blocks[0].block -ne 'minecraft:air') { throw 'Furniture restoration readback invariant failed.' }
+            }
             Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw + 1; pitch = [double] $playerBefore.rotation.pitch } $false 'rotate one degree' | Out-Null
             Invoke-Capability 'minecraft.player.state.read' '1.0' @{} $false 'rotation readback' | Out-Null
             Invoke-Capability 'minecraft.player.look' '1.0' @{ yaw = [double] $playerBefore.rotation.yaw; pitch = [double] $playerBefore.rotation.pitch } $false 'restore rotation' | Out-Null
