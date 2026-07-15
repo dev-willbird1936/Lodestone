@@ -25,6 +25,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -906,13 +907,20 @@ public final class FabricClientController implements ClientModInitializer {
         }
 
         private static Map<String, Object> uiKey(InvocationContext invocation) {
-            var screen = Minecraft.getInstance().screen;
+            var client = Minecraft.getInstance();
+            var screen = client.screen;
+            var input = invocation.request().input();
+            var key = number(input, "key");
             if (screen == null) {
+                if (key == 256 && client.level != null) {
+                    invocation.cancellation().commitMutation();
+                    client.setScreen(new PauseScreen(true));
+                    return Map.of("handled", true, "openedPause", true);
+                }
                 throw new IllegalStateException("no screen is open");
             }
-            var input = invocation.request().input();
             invocation.cancellation().commitMutation();
-            var handled = screen.keyPressed(number(input, "key"), numberOrDefault(input, "scanCode", 0),
+            var handled = screen.keyPressed(key, numberOrDefault(input, "scanCode", 0),
                     numberOrDefault(input, "modifiers", 0));
             return Map.of("handled", handled, "openedPause", false);
         }

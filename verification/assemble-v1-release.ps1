@@ -119,7 +119,9 @@ function Get-SourceIdentity {
     if (-not [string]::IsNullOrWhiteSpace($dirty)) {
         $dirtyEntries = @($dirty -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         if (-not $AllowReleaseToolOverlay -or @($dirtyEntries | Where-Object {
-                    $_.Length -lt 4 -or $_.Substring(3) -cne 'verification/assemble-v1-release.ps1'
+                    $entry = $_.TrimEnd("`r")
+                    $path = if ($entry.Length -ge 4) { $entry.Substring(3) } else { '' }
+                    -not $path.Equals('verification/assemble-v1-release.ps1', [StringComparison]::OrdinalIgnoreCase)
                 }).Count -ne 0) {
             throw "Final release freeze requires a clean Git tree. Dirty entries: $($dirty -replace "`n", '; ')"
         }

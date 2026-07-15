@@ -310,9 +310,16 @@ switch ($Stage) {
         # Fresh-world path: singleplayer -> creation screen -> text insertion -> actual Create New World.
         Invoke-Tool 'ui_navigate' @{ target = 'singleplayer' } 'open singleplayer' | Out-Null
         Start-Sleep -Milliseconds 400
-        if (-not $DirectCreateWorld) {
+        # Vanilla differs by version and by whether a saved world already exists:
+        # Singleplayer can land on either SelectWorldScreen or CreateWorldScreen.
+        # Inspect the actual screen so the flow remains exact without relying on
+        # a brittle version-specific shortcut.
+        $singleplayerState = Get-UiState
+        if ([string] $singleplayerState.screenClass -match 'SelectWorldScreen') {
             Invoke-Tool 'ui_navigate' @{ target = 'create_new_world' } 'open new-world screen' | Out-Null
             Start-Sleep -Milliseconds 400
+        } elseif ([string] $singleplayerState.screenClass -notmatch 'CreateWorldScreen') {
+            throw "singleplayer did not open a supported world-creation screen: $($singleplayerState.screenClass)"
         }
         Get-UiState | Out-Null
         Invoke-Capability 'minecraft.ui.text.insert' '1.0' @{ text = 'Lodestone KeepFocus Flow' } $false 'insert fresh-world name text' (Expected-CapabilityErrors 'minecraft.ui.text.insert' $ExpectedMenuUnavailableCapabilities) | Out-Null
