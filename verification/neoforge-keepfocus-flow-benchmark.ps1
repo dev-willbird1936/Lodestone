@@ -204,6 +204,17 @@ function Invoke-ContainerMenuFlow {
     # Open the vanilla player inventory through the native key-mapping path. The click is
     # deliberately a guarded no-op on a known-empty slot: it exercises real revision-checked
     # dispatch without creating or destroying an item in the fresh-world fixture.
+    $beforeInventory = Get-UiState
+    if ([string] $beforeInventory.screenClass -match 'PauseScreen') {
+        $backToGame = @($beforeInventory.widgets | Where-Object { $_.label -eq 'Back to Game' -and $_.actions -contains 'click' }) | Select-Object -First 1
+        if (-not $backToGame) { throw 'Residual PauseScreen has no guarded Back to Game control.' }
+        Invoke-UiClick $beforeInventory @{ nodeId = [string] $backToGame.nodeId } 'close residual pause screen before container flow' | Out-Null
+        Start-Sleep -Milliseconds 350
+        $beforeInventory = Get-UiState
+    }
+    if ($beforeInventory.open) {
+        throw "Container flow requires gameplay focus, but screen=$($beforeInventory.screenClass) remains open."
+    }
     Invoke-Capability 'minecraft.ui.key' '1.0' @{ key = 69; scanCode = 0; modifiers = 0 } $false 'open player inventory key dispatch' | Out-Null
     Wait-For 'screen_open' 5000 | Out-Null
     $state = Get-UiState
@@ -531,6 +542,11 @@ switch ($Stage) {
     }
     'shutdown' {
         $state = Get-UiState
+        if ($state.inWorld -and $state.open -and [string] $state.screenClass -match 'InventoryScreen') {
+            Invoke-Capability 'minecraft.ui.key' '1.0' @{ key = 69; scanCode = 0; modifiers = 0 } $false 'close open inventory before shutdown' | Out-Null
+            Start-Sleep -Milliseconds 350
+            $state = Get-UiState
+        }
         if ($state.inWorld -and -not $state.open) {
             Press-Escape
             Start-Sleep -Milliseconds 500

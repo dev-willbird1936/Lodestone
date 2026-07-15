@@ -52,12 +52,14 @@ public final class ForgeAdapter implements LodestoneAdapter {
             "minecraft.command.discover", "minecraft.command.execute",
             "minecraft.player.state.read", "minecraft.player.look",
             "minecraft.ui.state.read", "minecraft.ui.click", "minecraft.ui.key",
+            "minecraft.inventory.container.read", "minecraft.inventory.container.click",
             "minecraft.world.block.read", "minecraft.world.blocks.read",
             "minecraft.world.region.scan", "minecraft.world.blocks.write",
             "minecraft.entity.list", "minecraft.inventory.read", "minecraft.chat.send");
     private static final Set<String> CLIENT_ONLY = Set.of(
             "minecraft.player.look", "minecraft.ui.state.read",
-            "minecraft.ui.click", "minecraft.ui.key");
+            "minecraft.ui.click", "minecraft.ui.key",
+            "minecraft.inventory.container.read", "minecraft.inventory.container.click");
     private static volatile ForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -101,6 +103,8 @@ public final class ForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.ui.state.read", this::clientCall);
         handlers.put("minecraft.ui.click", this::clientCall);
         handlers.put("minecraft.ui.key", this::clientCall);
+        handlers.put("minecraft.inventory.container.read", this::clientCall);
+        handlers.put("minecraft.inventory.container.click", this::clientCall);
         handlers.put("minecraft.world.block.read", this::readBlock);
         handlers.put("minecraft.world.blocks.read", this::readBlocks);
         handlers.put("minecraft.world.region.scan", this::scanRegion);

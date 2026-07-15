@@ -50,6 +50,16 @@ match that evidence.
 | ✅ | Fabric 1.20.1 container/menu control slice | Fresh exact artifact passed 100 main-menu records and 33 world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `e341cd8244621ca9a07829f4b6d735e9edc7545d95015efb67f1ea00e6e81f85`. |
 | ✅ | Fabric 1.21.1 container/menu control slice | Fresh exact artifact passed 100 main-menu records and 33 world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `df29dd3a20ed595f977f6b93c8ad6856c887a383aec0c515e2fac497d8b89905`. |
 
+## Forge fresh container/menu evidence
+
+| Status | Flow | Evidence |
+| --- | --- | --- |
+| ✅ | Forge 1.20.1 container/menu control slice | Fresh exact artifact passed 102 main-menu records and 30 world records: residual pause-screen recovery, raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `36652b426bedcf554937f848b8c28793a01633032f82ead5f6d057df0c3df0c7`. |
+| ✅ | Forge 1.21.1 container/menu control slice | Fresh exact artifact passed 102 main-menu records and 30 world records: residual pause-screen recovery, raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. Artifact SHA-256: `c86777d97800dc4bad57f50af818c80d0db0832312e05028f4d389ac83d5c194`. |
+
+Forge 1.20.1 and 1.21.1 now join the bounded live client/container set; this remains a tested
+inventory/menu slice, not universal widget, NBT, or connected-player automation parity.
+
 ## Honest limits and next rows
 
 | Status | Target | Reason |

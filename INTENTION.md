@@ -273,6 +273,19 @@ every Minecraft environment.
   revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. The tested
   artifact SHA-256 is `df29dd3a20ed595f977f6b93c8ad6856c887a383aec0c515e2fac497d8b89905`.
 
+## Forge container/menu evidence added 2026-07-15
+
+- Forge 1.20.1 now has retained live menu/container evidence on the exact artifact: 102 main-menu
+  records, 30 world records, residual pause-screen recovery, inventory key dispatch into
+  `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click and readback,
+  close dispatch, and clean shutdown. The tested artifact SHA-256 is
+  `36652b426bedcf554937f848b8c28793a01633032f82ead5f6d057df0c3df0c7`.
+- Forge 1.21.1 now has the same retained live menu/container evidence: 102 main-menu records, 30
+  world records, residual pause-screen recovery, inventory key dispatch into `InventoryScreen`,
+  revision/46-slot container read, revision-guarded empty-slot click and readback, close dispatch,
+  and clean shutdown. The tested artifact SHA-256 is
+  `c86777d97800dc4bad57f50af818c80d0db0832312e05028f4d389ac83d5c194`.
+
 ## INTENTION NOT MATCHED
 
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
@@ -280,8 +293,9 @@ every Minecraft environment.
   broader client container/entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
   and broad cross-loader chat/event coverage remain cataloged but not implemented. Existing block
-  entities are intentionally rejected rather than overwritten without NBT restoration; Fabric
-  client container clicks have bounded revision/slot validation but are not manually client-tested.
+  entities are intentionally rejected rather than overwritten without NBT restoration; Fabric,
+  NeoForge, and Forge client container clicks have bounded revision/slot validation and are now
+  manually client-tested only on the retained modern rows above.
 - Bedrock remains unimplemented; Paper and Spigot are covered only by their tested 1.21.1
   Bukkit-compatible server slices, and Folia by its tested 1.21.4 scheduler-aware slice. Quilt has
   compatibility evidence but no separate native adapter.

@@ -55,9 +55,11 @@ public final class ForgeAdapter implements LodestoneAdapter {
             "minecraft.world.blocks.write", "minecraft.entity.list",
             "minecraft.inventory.read", "minecraft.chat.send",
             "minecraft.player.look", "minecraft.ui.state.read",
-            "minecraft.ui.click", "minecraft.ui.key");
+            "minecraft.ui.click", "minecraft.ui.key",
+            "minecraft.inventory.container.read", "minecraft.inventory.container.click");
     private static final Set<String> CLIENT_ONLY = Set.of(
-            "minecraft.player.look", "minecraft.ui.state.read", "minecraft.ui.click", "minecraft.ui.key");
+            "minecraft.player.look", "minecraft.ui.state.read", "minecraft.ui.click", "minecraft.ui.key",
+            "minecraft.inventory.container.read", "minecraft.inventory.container.click");
     private static volatile ForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -103,6 +105,8 @@ public final class ForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.ui.state.read", this::clientCall);
         handlers.put("minecraft.ui.click", this::clientCall);
         handlers.put("minecraft.ui.key", this::clientCall);
+        handlers.put("minecraft.inventory.container.read", this::clientCall);
+        handlers.put("minecraft.inventory.container.click", this::clientCall);
         return Map.copyOf(handlers);
     }
 

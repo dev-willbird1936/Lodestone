@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.forge;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.lodestone.adapter.InputNumbers;
 import dev.lodestone.adapter.UiBounds;
 import dev.lodestone.adapter.UiContracts;
 import dev.lodestone.adapter.UiLimits;
 import dev.lodestone.adapter.UiNode;
 import dev.lodestone.adapter.UiSelector;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
@@ -14,7 +16,11 @@ import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 
@@ -76,6 +82,10 @@ public final class ForgeClientController {
                 case "minecraft.ui.state.read" -> true;
                 case "minecraft.ui.key" -> client.screen != null || client.level != null;
                 case "minecraft.ui.click" -> client.screen != null;
+                case "minecraft.inventory.container.read" -> client.screen instanceof AbstractContainerScreen<?>
+                        && client.level != null && client.player != null;
+                case "minecraft.inventory.container.click" -> client.screen instanceof AbstractContainerScreen<?>
+                        && client.level != null && client.player != null && client.gameMode != null;
                 default -> client.level != null && client.player != null;
             };
         }
@@ -88,6 +98,8 @@ public final class ForgeClientController {
                 return switch (capability) {
                     case "minecraft.player.state.read" -> playerState();
                     case "minecraft.player.look" -> look(invocation);
+                    case "minecraft.inventory.container.read" -> containerRead();
+                    case "minecraft.inventory.container.click" -> containerClick(invocation);
                     case "minecraft.ui.state.read" -> uiState();
                     case "minecraft.ui.click" -> uiClick(invocation);
                     case "minecraft.ui.key" -> uiKey(invocation);
@@ -129,6 +141,51 @@ public final class ForgeClientController {
             return captureUi().toMap();
         }
 
+        private Map<String, Object> containerRead() {
+            var client = Minecraft.getInstance();
+            requirePlayer();
+            if (!(client.screen instanceof AbstractContainerScreen<?> screen)) {
+                throw new IllegalStateException("no active container screen is available");
+            }
+            var menu = screen.getMenu();
+            var slots = new ArrayList<Map<String, Object>>(menu.slots.size());
+            for (var index = 0; index < menu.slots.size(); index++) {
+                var stack = menu.slots.get(index).getItem();
+                slots.add(Map.of("slot", index, "item", itemId(stack),
+                        "count", stack.getCount(), "maxCount", stack.getMaxStackSize(), "empty", stack.isEmpty()));
+            }
+            return Map.of("open", true, "containerId", menu.containerId,
+                    "revision", menu.getStateId(), "slots", slots);
+        }
+
+        private Map<String, Object> containerClick(dev.lodestone.adapter.InvocationContext invocation) {
+            var client = Minecraft.getInstance();
+            var player = requirePlayer();
+            if (!(client.screen instanceof AbstractContainerScreen<?> screen) || client.gameMode == null) {
+                throw new IllegalStateException("no active container screen is available");
+            }
+            var input = invocation.request().input();
+            var slot = number(input, "slot");
+            var button = numberOrDefault(input, "button", 0);
+            var revision = number(input, "revision");
+            var currentRevision = screen.getMenu().getStateId();
+            if (revision != currentRevision) {
+                throw new IllegalStateException("container revision is stale; expected " + currentRevision + " but received " + revision);
+            }
+            if (slot < 0 || slot >= screen.getMenu().slots.size()) {
+                throw new IllegalArgumentException("slot is outside the active container");
+            }
+            if (button < 0 || button > 8) {
+                throw new IllegalArgumentException("button must be between 0 and 8");
+            }
+            var clickTypeName = input.get("clickType") == null ? "PICKUP" : text(input, "clickType");
+            var clickType = ClickType.valueOf(clickTypeName.toUpperCase(java.util.Locale.ROOT));
+            invocation.cancellation().commitMutation();
+            client.gameMode.handleInventoryMouseClick(screen.getMenu().containerId, slot, button, clickType, player);
+            return Map.of("containerId", screen.getMenu().containerId, "slot", slot,
+                    "button", button, "clickType", clickType.toString());
+        }
+
         private Map<String, Object> uiClick(dev.lodestone.adapter.InvocationContext invocation) {
             var input = invocation.request().input();
             var expectedToken = text(input, "screenToken");
@@ -148,8 +205,9 @@ public final class ForgeClientController {
             }
             invocation.cancellation().commitMutation();
             var handled = snapshot.screen().mouseClicked(x, y, button);
+            var released = snapshot.screen().mouseReleased(x, y, button);
             var result = new LinkedHashMap<String, Object>();
-            result.put("handled", handled);
+            result.put("handled", handled || released);
             result.put("x", x);
             result.put("y", y);
             result.put("screenToken", snapshot.screenToken());
@@ -163,18 +221,28 @@ public final class ForgeClientController {
             var screen = client.screen;
             var input = invocation.request().input();
             var key = number(input, "key");
+            var scanCode = numberOrDefault(input, "scanCode", 0);
+            var modifiers = numberOrDefault(input, "modifiers", 0);
             if (screen == null) {
                 if (key == 256 && client.level != null) {
                     invocation.cancellation().commitMutation();
                     client.setScreen(new PauseScreen(true));
                     return Map.of("handled", true, "openedPause", true);
                 }
+                if (client.level != null && client.player != null) {
+                    invocation.cancellation().commitMutation();
+                    KeyMapping.click(InputConstants.getKey(key, scanCode));
+                    return Map.of("handled", true, "openedPause", false);
+                }
                 throw new IllegalStateException("no screen is open");
             }
             invocation.cancellation().commitMutation();
-            var handled = screen.keyPressed(key, numberOrDefault(input, "scanCode", 0),
-                    numberOrDefault(input, "modifiers", 0));
+            var handled = screen.keyPressed(key, scanCode, modifiers);
             return Map.of("handled", handled, "openedPause", false);
+        }
+
+        private static String itemId(ItemStack stack) {
+            return stack.isEmpty() ? "minecraft:air" : BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         }
 
         private UiSnapshot captureUi() {
