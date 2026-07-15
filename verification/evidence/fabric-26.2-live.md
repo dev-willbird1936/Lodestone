@@ -9,7 +9,7 @@ Date: 2026-07-11
 - Fabric Loader 0.19.3
 - Fabric API 0.154.2+26.2
 - Fabric Loom 1.17.1
-- Gradle 9.5.1
+- Historical server run: Gradle 9.5.1 (current 26.2 client/release toolchain uses Gradle 9.6.1)
 - Windows 11
 - External server directory under the disposable temp matrix root
 

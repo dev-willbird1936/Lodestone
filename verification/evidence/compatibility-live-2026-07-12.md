@@ -4,13 +4,13 @@
 
 - `.\gradlew.bat check -PincludeFabric262=false --no-daemon`: PASS after the final hardening build.
 - `:hosts:fabric:mc1_19_2:build -PincludeFabric262=false --no-daemon`: PASS with Java 17 after the record-compatible catalog loader fix.
-- `gradle-9.5.1/bin/gradle.bat :hosts:fabric:mc1_26_2:build -PincludeFabric262=true -PincludeForge=false -PincludeForge121=false --no-daemon`: PASS with Java 25.
+- Historical 26.2 build: `gradle-9.5.1/bin/gradle.bat :hosts:fabric:mc1_26_2:build -PincludeFabric262=true -PincludeForge=false -PincludeForge121=false --no-daemon`: PASS with Java 25; current release/client toolchain is Gradle 9.6.1.
 - Production packaging: Fabric 1.20.1/1.19.2/1.18.2 `remapJar`, Fabric 1.21.1 `remapJar`, Fabric 26.2 Java 25/non-remapping JAR, NeoForge 1.21.1 JAR, Forge 1.21.1 official-mappings JAR, Forge 1.20.1/1.19.2/1.18.2/1.16.5 `reobfJar`, Forge 1.12.2/1.7.10/1.8.9 Java 8-native bridge JARs, Paper 1.21.1, Spigot 1.21.1, Folia 1.21.4, and the RCON/legacy launchers: PASS.
 - Fabric 1.18.2/1.19.2/1.20.1 client source sets compile and package the bounded client-control bridge; all refreshed Fabric rows were rerun through fresh-world acceptance: PASS.
 - `minecraft.inventory.container.read` is cataloged and implemented on Fabric 1.18.2/1.19.2/1.20.1/1.21.1 and NeoForge 1.21.1 with stable slot projections and revisions; Fabric click paths enforce revision/slot/button bounds: PASS.
 - Post-change shared regression gate: `:common:protocol-model:test :common:adapter-api:test :common:legacy-java8:test :common:runtime-core:test :gateway:mcp-server:test :verification:contract-tests:test --no-daemon`: PASS. Wire serialization, rollback cancellation/failure, final-write commit races, Java 8 transaction/token ownership, and gateway schema regressions pass; the catalog contains 34 unique capability IDs, including exactly one `minecraft.inventory.container.read` entry.
 - Forge 1.16.5 packaging used ForgeGradle 5.1, Gradle 7.6.4, Java 17, and the official Forge 36.2.42 mapped dependency; its fresh-world launch uses one required `--add-exports` and one required `--add-opens` flag.
-- Fabric 26.2 packaging used Gradle 9.5.1 and Java 25. Other modern builds used Gradle 8.14 with Java 17/21 as required by their target. Standalone Fabric manifests are exact-pinned; Quilt uses `verification/prepare-quilt-host.ps1` to generate 1.20.1/1.21.1 variants with their tested Fabric Loader ranges.
+- Historical Fabric 26.2 packaging used Gradle 9.5.1 and Java 25. Current Fabric 26.2 release/client packaging uses Gradle 9.6.1 and Java 25. Other modern builds use Gradle 8.14 with Java 17/21 as required by their target. Standalone Fabric manifests are exact-pinned; Quilt uses `verification/prepare-quilt-host.ps1` to generate 1.20.1/1.21.1 variants with their tested Fabric Loader ranges.
 
 ## Fresh-world matrix
 

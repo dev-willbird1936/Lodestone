@@ -76,7 +76,7 @@ jobs:
           "gradle2=$(Get-Gradle '2.7' 'cde43b90945b5304c43ee36e58aab4cc6fb3a3d5f9bd9449bb1709a68371cb06')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "gradle4=$(Get-Gradle '4.10.3' '8626cbf206b4e201ade7b87779090690447054bc93f052954c78480fa6ed186e')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "gradle7=$(Get-Gradle '7.6.4' 'bed1da33cca0f557ab13691c77f38bb67388119e4794d113e051039b80af9bb1')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "gradle9=$(Get-Gradle '9.5.1' 'bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "gradle9=$(Get-Gradle '9.6.1' '9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Verify Windows PowerShell hash runtime for contract tests
         shell: pwsh
