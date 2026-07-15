@@ -17,14 +17,14 @@ and loader or server.
   Quilt-profile byte acceptance and Bukkit-family invalid-token checks. [v1.0.0 is published on
   GitHub](https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0) with 36 files. The
   published asset set was independently downloaded and compared by filename, byte length, and
-  SHA-256 before it was accepted as the release record. This is an asset-integrity statement, not a
-  claim that the hosted release workflow completed successfully.
+  SHA-256 before it was accepted as the release record; the complete 36-asset attestation is retained
+  at `verification/evidence/github-release-v1.0.0-attestation.json`.
 - The immutable tag workflow retains its full clean-tag rebuild and byte-verification gates for
   diagnostic retries. Its historical Fabric 1.18.2 profile stager runs under Windows PowerShell;
   the recovery overlay remains limited to its audited POM parser and is raw-blob checked before
-  assembly. Hosted rebuild attempts remain red: one failed on the Java/Gradle gate and a later retry
-  rejected a source-input snapshot mismatch. A new immutable tag is required after that workflow is
-  corrected; v1.0.0 is never moved or silently replaced.
+  assembly. The corrected retry pins the release-tool commit/tree and raw Git blobs, and generates
+  deterministic sidecars; run 29381863511 is the hosted verification of that corrected path.
+  v1.0.0 is never moved or silently replaced.
 
 ## Tags and promotion
 

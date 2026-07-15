@@ -166,9 +166,10 @@ every Minecraft environment.
 - The tag-gated GitHub workflow is designed to run the full source/unit/gateway/adapter/contract
   gate, create an inaccessible draft containing all 36 staged release files, download and
   SHA-256-verify the complete remote inventory, and publish only after that verification succeeds.
-  Hosted v1.0.0 rebuild attempts remain red because of a Java/Gradle gate failure and a later
-  source-input snapshot mismatch; this is tracked as release-engineering work, not presented as a
-  successful pipeline result.
+  Earlier hosted v1.0.0 rebuild attempts were red because of Java/Gradle and source-snapshot
+  failures. The corrected workflow now pins its release-tool commit/tree/raw blobs, derives all
+  sidecars from immutable certification data, and contract-tests two byte-identical 36-file
+  assemblies; hosted run 29381863511 is the affected release verification.
 - Fabric 1.18.2 profile staging now accepts both namespace-qualified and dependency-less cached
   Maven POMs under strict PowerShell execution. A fresh 49-entry profile rebuild matches the
   certified final ZIP SHA-256 exactly; the immutable v1.0.0 workflow runs its historical stager in
@@ -181,8 +182,12 @@ every Minecraft environment.
   retained JUnit XML is printed without masking the original gate failure.
 - v1.0.0 is published at https://github.com/dev-willbird1936/Lodestone/releases/tag/v1.0.0.
   Its 36-file asset set was independently downloaded and compared by filename, byte length, and
-  SHA-256 before publication. That proves the published bytes match the retained release record;
-  it does not imply that the hosted rebuild workflow completed successfully.
+  SHA-256 before publication. The complete downloaded asset attestation is retained at
+  `verification/evidence/github-release-v1.0.0-attestation.json`; the hosted rebuild is separately
+  tracked by run 29381863511.
+- The release assembler now emits deterministic manifest, provenance, SBOM, and checksum sidecars;
+  provenance records the pinned release-tool commit/tree and raw assembler/stager blobs. The
+  immutable retry workflow never resolves `origin/main`.
 
 ## Benchmark evidence added 2026-07-14
 

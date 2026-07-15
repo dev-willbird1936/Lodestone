@@ -5,8 +5,9 @@
 > artifacts are bound to 22 exact fresh-world rows, a source input snapshot, and checksummed
 > retained logs in [`verification/evidence/release-conformance-v1.0.0.json`](verification/evidence/release-conformance-v1.0.0.json).
 > The published release contains 36 uploaded files whose names, lengths, and SHA-256 values are bound
-> to the retained release record; untagged builds remain development snapshots. The hosted rebuild
-> workflow is still being hardened and is not itself a certification claim.
+> to the retained release record; the complete downloaded asset attestation is retained at
+> [`verification/evidence/github-release-v1.0.0-attestation.json`](verification/evidence/github-release-v1.0.0-attestation.json).
+> Untagged builds remain development snapshots.
 
 Lodestone is an independent, version-aware Minecraft MCP/control platform. Its durable product is
 a typed capability protocol: each loader, server, client, or fallback integration is a separate
