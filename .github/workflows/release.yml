@@ -142,8 +142,8 @@ jobs:
           # before clean-tree assembly. The final profile ZIP must still match C0.
           $relativeStager = 'verification/curseforge-profiles/stage-fabric-1182-profile.ps1'
           # Pinned to the reviewed control snapshot, never a mutable branch.
-          $controlCommit = '1966227c7e7c9cc3e990afc4f00ac2e0bde6ce8e'
-          $controlTree = 'fb59cd459067cdeef2f26a024b559b28730e569a'
+          $controlCommit = 'b2aafb2ddd7bf2c28e640e5778a5386456635343'
+          $controlTree = '43d559f37ce81aeb8947f03876f9baaf7ac30746'
           $expectedStagerBlob = '21cdd0ed344d23b68a4e3e385fa077b5a9e5752c'
           git fetch --no-tags origin $controlCommit
           if ((git rev-parse "$controlCommit`^{tree}").Trim() -cne $controlTree) {
@@ -205,9 +205,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $relativeAssembler = 'verification/assemble-v1-release.ps1'
           # Keep the release procedure reproducible across retries of v1.0.0.
-          $controlCommit = '1966227c7e7c9cc3e990afc4f00ac2e0bde6ce8e'
-          $controlTree = 'fb59cd459067cdeef2f26a024b559b28730e569a'
-          $expectedAssemblerBlob = '6904080b0b287daa3c95b51c7b03f1164f99fa45'
+          $controlCommit = 'b2aafb2ddd7bf2c28e640e5778a5386456635343'
+          $controlTree = '43d559f37ce81aeb8947f03876f9baaf7ac30746'
+          $expectedAssemblerBlob = '764580ef61e014c59f8a345162d6e483f7ee5242'
           $expectedStagerBlob = '21cdd0ed344d23b68a4e3e385fa077b5a9e5752c'
           git fetch --no-tags origin $controlCommit
           if ((git rev-parse "$controlCommit`^{tree}").Trim() -cne $controlTree) {
