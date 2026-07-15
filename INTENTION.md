@@ -285,6 +285,16 @@ every Minecraft environment.
   revision/46-slot container read, revision-guarded empty-slot click and readback, close dispatch,
   and clean shutdown. The tested artifact SHA-256 is
   `c86777d97800dc4bad57f50af818c80d0db0832312e05028f4d389ac83d5c194`.
+- Fabric 1.18.2 now has retained legacy minimal-world/container evidence: 104 main-menu records,
+  24 minimal-world records, inventory key dispatch into `InventoryScreen`, revision/46-slot container
+  read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown. Its
+  bundled furniture capability remains unsupported on this exact adapter. The tested artifact SHA-256
+  is `44fd87188eeb5e4f6718dc31c936a2d8305b615c3362b2cd2ea523537df3e988`.
+- Fabric 1.19.2 now has the same retained legacy minimal-world/container evidence: 104 main-menu
+  records, 24 minimal-world records, inventory key dispatch into `InventoryScreen`, revision/46-slot
+  container read, revision-guarded empty-slot click and readback, close dispatch, and clean shutdown.
+  Its bundled furniture capability remains unsupported on this exact adapter. The tested artifact
+  SHA-256 is `69f199842d6fcbdfab75d8f4edc3fd5370d7138795ef7935f34ebd0a31617a18`.
 
 ## INTENTION NOT MATCHED
 

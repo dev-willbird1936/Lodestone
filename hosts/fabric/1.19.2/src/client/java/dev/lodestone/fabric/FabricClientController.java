@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.fabric;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.lodestone.adapter.InputNumbers;
 import dev.lodestone.adapter.InputLease;
@@ -911,17 +912,23 @@ public final class FabricClientController implements ClientModInitializer {
             var screen = client.screen;
             var input = invocation.request().input();
             var key = number(input, "key");
+            var scanCode = numberOrDefault(input, "scanCode", 0);
+            var modifiers = numberOrDefault(input, "modifiers", 0);
             if (screen == null) {
                 if (key == 256 && client.level != null) {
                     invocation.cancellation().commitMutation();
                     client.setScreen(new PauseScreen(true));
                     return Map.of("handled", true, "openedPause", true);
                 }
+                if (client.level != null && client.player != null) {
+                    invocation.cancellation().commitMutation();
+                    KeyMapping.click(InputConstants.getKey(key, scanCode));
+                    return Map.of("handled", true, "openedPause", false);
+                }
                 throw new IllegalStateException("no screen is open");
             }
             invocation.cancellation().commitMutation();
-            var handled = screen.keyPressed(key, numberOrDefault(input, "scanCode", 0),
-                    numberOrDefault(input, "modifiers", 0));
+            var handled = screen.keyPressed(key, scanCode, modifiers);
             return Map.of("handled", handled, "openedPause", false);
         }
 

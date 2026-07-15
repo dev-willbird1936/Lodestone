@@ -60,6 +60,16 @@ match that evidence.
 Forge 1.20.1 and 1.21.1 now join the bounded live client/container set; this remains a tested
 inventory/menu slice, not universal widget, NBT, or connected-player automation parity.
 
+## Legacy Fabric fresh container/menu evidence
+
+| Status | Flow | Evidence |
+| --- | --- | --- |
+| ✅ | Fabric 1.18.2 minimal-world container/menu control slice | Fresh exact artifact passed 104 main-menu records and 24 minimal-world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. The bundled furniture path remains unsupported on this exact adapter. Artifact SHA-256: `44fd87188eeb5e4f6718dc31c936a2d8305b615c3362b2cd2ea523537df3e988`. |
+| ✅ | Fabric 1.19.2 minimal-world container/menu control slice | Fresh exact artifact passed 104 main-menu records and 24 minimal-world records: raw inventory key dispatch opened `InventoryScreen`, revision/46-slot container read, revision-guarded empty-slot click, readback with the slot unchanged, close dispatch, and clean shutdown. The bundled furniture path remains unsupported on this exact adapter. Artifact SHA-256: `69f199842d6fcbdfab75d8f4edc3fd5370d7138795ef7935f34ebd0a31617a18`. |
+
+These legacy rows deliberately claim the bounded minimal-world/container surface only; they do not
+upgrade the unsupported furniture capability into a cross-version claim.
+
 ## Honest limits and next rows
 
 | Status | Target | Reason |
