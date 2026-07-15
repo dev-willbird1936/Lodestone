@@ -1,0 +1,381 @@
+﻿{
+    "formatVersion":  1,
+    "benchmark":  "neoforge-1.21.1-keepfocus-goal-modes",
+    "startedAtUtc":  "2026-07-15T15:34:37.6932313Z",
+    "sourceCommit":  "eba1b5aa6e290a2a48f294e2486e684c25ca090e",
+    "minecraftVersion":  "1.21.1",
+    "loader":  "neoforge",
+    "mod":  "KeepFocus",
+    "taskId":  "tools.inspect-nearby",
+    "goal":  "inspect the nearby world and entities",
+    "clientStdoutLog":  "C:\\Users\\warcr\\AppData\\Local\\Temp\\lodestone-neoforge-goal-20260715T153437Z.stdout.log",
+    "clientStderrLog":  "C:\\Users\\warcr\\AppData\\Local\\Temp\\lodestone-neoforge-goal-20260715T153437Z.stderr.log",
+    "steps":  {
+                  "clientBoot":  {
+                                     "status":  "PASS",
+                                     "mode":  "existing",
+                                     "javaPid":  75456
+                                 },
+                  "mcpInitialize":  {
+                                        "status":  "PASS",
+                                        "httpStatus":  200
+                                    },
+                  "newWorld":  {
+                                   "status":  "PASS",
+                                   "screenClass":  "",
+                                   "inWorld":  true
+                               },
+                  "taskCatalog":  {
+                                      "status":  "PASS",
+                                      "taskCount":  1,
+                                      "taskId":  "tools.inspect-nearby"
+                                  },
+                  "script":  {
+                                 "runId":  "cf98395d-586b-4361-9520-6351808b38d3",
+                                 "planId":  "tools.inspect-nearby",
+                                 "goal":  "inspect the nearby world and entities",
+                                 "mode":  "SCRIPT",
+                                 "status":  "SUCCEEDED",
+                                 "message":  "all goal predicates passed",
+                                 "elapsedMs":  123,
+                                 "completedSteps":  3,
+                                 "completedSegments":  1,
+                                 "selectedModel":  "script-interpreter",
+                                 "trace":  [
+                                               {
+                                                   "step":  "region",
+                                                   "elapsedMs":  27,
+                                                   "kind":  "OBSERVE",
+                                                   "status":  "ok",
+                                                   "capability":  "minecraft.world.region.scan"
+                                               },
+                                               {
+                                                   "step":  "nearby",
+                                                   "elapsedMs":  16,
+                                                   "kind":  "OBSERVE",
+                                                   "status":  "ok",
+                                                   "capability":  "minecraft.entity.nearby.read"
+                                               },
+                                               {
+                                                   "elapsedMs":  0,
+                                                   "status":  "ok",
+                                                   "kind":  "ASSERT",
+                                                   "step":  "verify"
+                                               }
+                                           ],
+                                 "state":  {
+                                               "goal":  "inspect the nearby world and entities",
+                                               "steps":  {
+                                                             "region":  {
+                                                                            "dimension":  "minecraft:overworld",
+                                                                            "unloadedCells":  0.0,
+                                                                            "blockCounts":  {
+                                                                                                "minecraft:air":  3025.0,
+                                                                                                "minecraft:dirt":  251.0,
+                                                                                                "minecraft:grass_block":  86.0,
+                                                                                                "minecraft:gravel":  24.0,
+                                                                                                "minecraft:sand":  527.0,
+                                                                                                "minecraft:sandstone":  103.0,
+                                                                                                "minecraft:seagrass":  1.0,
+                                                                                                "minecraft:short_grass":  7.0,
+                                                                                                "minecraft:stone":  20.0,
+                                                                                                "minecraft:water":  52.0
+                                                                                            },
+                                                                            "origin":  {
+                                                                                           "x":  0.0,
+                                                                                           "y":  60.0,
+                                                                                           "z":  0.0
+                                                                                       },
+                                                                            "totalCells":  4096.0,
+                                                                            "size":  {
+                                                                                         "x":  16.0,
+                                                                                         "y":  16.0,
+                                                                                         "z":  16.0
+                                                                                     },
+                                                                            "loadedCells":  4096.0
+                                                                        },
+                                                             "nearby":  {
+                                                                            "limit":  64.0,
+                                                                            "entities":  [
+
+                                                                                         ],
+                                                                            "dimension":  "minecraft:overworld",
+                                                                            "truncated":  false,
+                                                                            "radius":  32.0
+                                                                        },
+                                                             "verify":  {
+                                                                            "asserted":  true
+                                                                        }
+                                                         },
+                                               "planId":  "tools.inspect-nearby",
+                                               "mode":  "SCRIPT"
+                                           }
+                             },
+                  "realtime":  {
+                                   "runId":  "6244cc4d-ce09-4a28-ba59-fc344e746d02",
+                                   "planId":  "tools.inspect-nearby",
+                                   "goal":  "inspect the nearby world and entities",
+                                   "mode":  "REALTIME",
+                                   "status":  "SUCCEEDED",
+                                   "message":  "all goal predicates passed",
+                                   "elapsedMs":  1939,
+                                   "completedSteps":  3,
+                                   "completedSegments":  1,
+                                   "selectedModel":  "deterministic-fallback",
+                                   "trace":  [
+                                                 {
+                                                     "step":  "region",
+                                                     "elapsedMs":  1896,
+                                                     "kind":  "OBSERVE",
+                                                     "status":  "ok",
+                                                     "capability":  "minecraft.world.region.scan"
+                                                 },
+                                                 {
+                                                     "step":  "nearby",
+                                                     "elapsedMs":  31,
+                                                     "kind":  "OBSERVE",
+                                                     "status":  "ok",
+                                                     "capability":  "minecraft.entity.nearby.read"
+                                                 },
+                                                 {
+                                                     "elapsedMs":  0,
+                                                     "status":  "ok",
+                                                     "kind":  "ASSERT",
+                                                     "step":  "verify"
+                                                 }
+                                             ],
+                                   "state":  {
+                                                 "goal":  "inspect the nearby world and entities",
+                                                 "steps":  {
+                                                               "region":  {
+                                                                              "dimension":  "minecraft:overworld",
+                                                                              "unloadedCells":  0.0,
+                                                                              "blockCounts":  {
+                                                                                                  "minecraft:air":  3025.0,
+                                                                                                  "minecraft:dirt":  251.0,
+                                                                                                  "minecraft:grass_block":  86.0,
+                                                                                                  "minecraft:gravel":  24.0,
+                                                                                                  "minecraft:sand":  527.0,
+                                                                                                  "minecraft:sandstone":  103.0,
+                                                                                                  "minecraft:seagrass":  1.0,
+                                                                                                  "minecraft:short_grass":  7.0,
+                                                                                                  "minecraft:stone":  20.0,
+                                                                                                  "minecraft:water":  52.0
+                                                                                              },
+                                                                              "origin":  {
+                                                                                             "x":  0.0,
+                                                                                             "y":  60.0,
+                                                                                             "z":  0.0
+                                                                                         },
+                                                                              "totalCells":  4096.0,
+                                                                              "size":  {
+                                                                                           "x":  16.0,
+                                                                                           "y":  16.0,
+                                                                                           "z":  16.0
+                                                                                       },
+                                                                              "loadedCells":  4096.0
+                                                                          },
+                                                               "nearby":  {
+                                                                              "limit":  64.0,
+                                                                              "entities":  [
+
+                                                                                           ],
+                                                                              "dimension":  "minecraft:overworld",
+                                                                              "truncated":  false,
+                                                                              "radius":  32.0
+                                                                          },
+                                                               "verify":  {
+                                                                              "asserted":  true
+                                                                          }
+                                                           },
+                                                 "planId":  "tools.inspect-nearby",
+                                                 "mode":  "REALTIME"
+                                             }
+                               },
+                  "benchmark":  {
+                                    "taskId":  "tools.inspect-nearby",
+                                    "script":  {
+                                                   "runId":  "300d6047-ab02-4918-a121-73f12faee2d6",
+                                                   "planId":  "tools.inspect-nearby",
+                                                   "goal":  "Scan a bounded region and nearby entities without mutation.",
+                                                   "mode":  "SCRIPT",
+                                                   "status":  "SUCCEEDED",
+                                                   "message":  "all goal predicates passed",
+                                                   "elapsedMs":  1873,
+                                                   "completedSteps":  3,
+                                                   "completedSegments":  1,
+                                                   "selectedModel":  "script-interpreter",
+                                                   "trace":  [
+                                                                 {
+                                                                     "step":  "region",
+                                                                     "elapsedMs":  1868,
+                                                                     "kind":  "OBSERVE",
+                                                                     "status":  "ok",
+                                                                     "capability":  "minecraft.world.region.scan"
+                                                                 },
+                                                                 {
+                                                                     "step":  "nearby",
+                                                                     "elapsedMs":  5,
+                                                                     "kind":  "OBSERVE",
+                                                                     "status":  "ok",
+                                                                     "capability":  "minecraft.entity.nearby.read"
+                                                                 },
+                                                                 {
+                                                                     "elapsedMs":  0,
+                                                                     "status":  "ok",
+                                                                     "kind":  "ASSERT",
+                                                                     "step":  "verify"
+                                                                 }
+                                                             ],
+                                                   "state":  {
+                                                                 "goal":  "Scan a bounded region and nearby entities without mutation.",
+                                                                 "steps":  {
+                                                                               "region":  {
+                                                                                              "dimension":  "minecraft:overworld",
+                                                                                              "unloadedCells":  0.0,
+                                                                                              "blockCounts":  {
+                                                                                                                  "minecraft:air":  3025.0,
+                                                                                                                  "minecraft:dirt":  251.0,
+                                                                                                                  "minecraft:grass_block":  86.0,
+                                                                                                                  "minecraft:gravel":  24.0,
+                                                                                                                  "minecraft:sand":  527.0,
+                                                                                                                  "minecraft:sandstone":  103.0,
+                                                                                                                  "minecraft:seagrass":  1.0,
+                                                                                                                  "minecraft:short_grass":  7.0,
+                                                                                                                  "minecraft:stone":  20.0,
+                                                                                                                  "minecraft:water":  52.0
+                                                                                                              },
+                                                                                              "origin":  {
+                                                                                                             "x":  0.0,
+                                                                                                             "y":  60.0,
+                                                                                                             "z":  0.0
+                                                                                                         },
+                                                                                              "totalCells":  4096.0,
+                                                                                              "size":  {
+                                                                                                           "x":  16.0,
+                                                                                                           "y":  16.0,
+                                                                                                           "z":  16.0
+                                                                                                       },
+                                                                                              "loadedCells":  4096.0
+                                                                                          },
+                                                                               "nearby":  {
+                                                                                              "limit":  64.0,
+                                                                                              "entities":  [
+
+                                                                                                           ],
+                                                                                              "dimension":  "minecraft:overworld",
+                                                                                              "truncated":  false,
+                                                                                              "radius":  32.0
+                                                                                          },
+                                                                               "verify":  {
+                                                                                              "asserted":  true
+                                                                                          }
+                                                                           },
+                                                                 "planId":  "tools.inspect-nearby",
+                                                                 "mode":  "SCRIPT"
+                                                             }
+                                               },
+                                    "realtime":  {
+                                                     "runId":  "2c6d41ae-826e-4925-8471-4e32f54d666b",
+                                                     "planId":  "tools.inspect-nearby",
+                                                     "goal":  "Scan a bounded region and nearby entities without mutation.",
+                                                     "mode":  "REALTIME",
+                                                     "status":  "SUCCEEDED",
+                                                     "message":  "all goal predicates passed",
+                                                     "elapsedMs":  1863,
+                                                     "completedSteps":  3,
+                                                     "completedSegments":  1,
+                                                     "selectedModel":  "deterministic-fallback",
+                                                     "trace":  [
+                                                                   {
+                                                                       "step":  "region",
+                                                                       "elapsedMs":  1861,
+                                                                       "kind":  "OBSERVE",
+                                                                       "status":  "ok",
+                                                                       "capability":  "minecraft.world.region.scan"
+                                                                   },
+                                                                   {
+                                                                       "step":  "nearby",
+                                                                       "elapsedMs":  2,
+                                                                       "kind":  "OBSERVE",
+                                                                       "status":  "ok",
+                                                                       "capability":  "minecraft.entity.nearby.read"
+                                                                   },
+                                                                   {
+                                                                       "elapsedMs":  0,
+                                                                       "status":  "ok",
+                                                                       "kind":  "ASSERT",
+                                                                       "step":  "verify"
+                                                                   }
+                                                               ],
+                                                     "state":  {
+                                                                   "goal":  "Scan a bounded region and nearby entities without mutation.",
+                                                                   "steps":  {
+                                                                                 "region":  {
+                                                                                                "dimension":  "minecraft:overworld",
+                                                                                                "unloadedCells":  0.0,
+                                                                                                "blockCounts":  {
+                                                                                                                    "minecraft:air":  3025.0,
+                                                                                                                    "minecraft:dirt":  251.0,
+                                                                                                                    "minecraft:grass_block":  86.0,
+                                                                                                                    "minecraft:gravel":  24.0,
+                                                                                                                    "minecraft:sand":  527.0,
+                                                                                                                    "minecraft:sandstone":  103.0,
+                                                                                                                    "minecraft:seagrass":  1.0,
+                                                                                                                    "minecraft:short_grass":  7.0,
+                                                                                                                    "minecraft:stone":  20.0,
+                                                                                                                    "minecraft:water":  52.0
+                                                                                                                },
+                                                                                                "origin":  {
+                                                                                                               "x":  0.0,
+                                                                                                               "y":  60.0,
+                                                                                                               "z":  0.0
+                                                                                                           },
+                                                                                                "totalCells":  4096.0,
+                                                                                                "size":  {
+                                                                                                             "x":  16.0,
+                                                                                                             "y":  16.0,
+                                                                                                             "z":  16.0
+                                                                                                         },
+                                                                                                "loadedCells":  4096.0
+                                                                                            },
+                                                                                 "nearby":  {
+                                                                                                "limit":  64.0,
+                                                                                                "entities":  [
+
+                                                                                                             ],
+                                                                                                "dimension":  "minecraft:overworld",
+                                                                                                "truncated":  false,
+                                                                                                "radius":  32.0
+                                                                                            },
+                                                                                 "verify":  {
+                                                                                                "asserted":  true
+                                                                                            }
+                                                                             },
+                                                                   "planId":  "tools.inspect-nearby",
+                                                                   "mode":  "REALTIME"
+                                                               }
+                                                 },
+                                    "comparison":  "realtime-faster",
+                                    "metrics":  {
+                                                    "speedMetric":  "elapsedMs",
+                                                    "correctnessPriority":  "status and false-success first",
+                                                    "sameTask":  true
+                                                }
+                                },
+                  "shutdown":  {
+                                   "status":  "REQUEST_FAILED",
+                                   "message":  "Cannot convert the \"System.Collections.ArrayList+ArrayListEnumeratorSimple\" value of type \"System.Collections.ArrayList+ArrayListEnumeratorSimple\" to type \"System.Collections.Hashtable\"."
+                               }
+              },
+    "summary":  {
+                    "scriptStatus":  "SUCCEEDED",
+                    "realtimeStatus":  "SUCCEEDED",
+                    "benchmarkStatus":  "ok",
+                    "benchmarkComparison":  "realtime-faster",
+                    "allGoalRunsSucceeded":  true
+                },
+    "status":  "PASS",
+    "clientListenerAfterCleanup":  true,
+    "completedAtUtc":  "2026-07-15T15:35:07.8821584Z"
+}

@@ -46,3 +46,8 @@ Set `LODESTONE_TOKEN` and run `verification\run-neoforge-keepfocus-client.bat` t
 ## Verification
 
 Run `Run-Lodestone-Goal-Checks.bat` for goal-engine/gateway tests and the NeoForge 1.21.1 build. Use `minecraft_goal_benchmark` only against an isolated world; `dryRun=true` is safe only for capabilities whose own contract documents dry-run support. Benchmark output records both status and elapsed time so a faster false success cannot win.
+
+To record a live NeoForge 1.21.1 KeepFocus goal run, launch the focused client and run
+`powershell -ExecutionPolicy Bypass -File verification\run-neoforge-goal-benchmark.ps1 -ExistingClient`.
+The script writes a timestamped JSON report under `verification/evidence/` and records script,
+realtime, and benchmark results without storing the MCP token.
