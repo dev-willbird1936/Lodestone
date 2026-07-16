@@ -372,9 +372,48 @@ final class NeoForgeNetherGoal {
             return;
         }
         lookAt(player, Vec3.atCenterOf(target));
+        var hit = player.pick(5.0F, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit) || !blockHit.getBlockPos().equals(target)) {
+            if (hit instanceof BlockHitResult blocker) {
+                var blockerState = client.level.getBlockState(blocker.getBlockPos());
+                if (blockerState.is(BlockTags.LEAVES) || blockerState.is(BlockTags.LOGS)) {
+                    lookAt(player, Vec3.atCenterOf(blocker.getBlockPos()));
+                    client.options.keyAttack.setDown(true);
+                    inputActions.add("attack:key.attack-held-clear-tree-foliage");
+                    if (stageTicks > 420) throw new IllegalStateException(
+                            "tree log remained occluded by natural foliage at " + target);
+                    return;
+                }
+            }
+            var vantage = findTreeMiningVantage(client, target);
+            if (vantage != null) {
+                stopAttack(client);
+                navigateTo(client, vantage, 1.8, "tree-log-vantage");
+                return;
+            }
+        }
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-by-hand");
         if (stageTicks > 420) throw new IllegalStateException("hand mining failed at observed log " + target);
+    }
+
+    private BlockPos findTreeMiningVantage(Minecraft client, BlockPos target) {
+        for (var direction : List.of(Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST)) {
+            for (int distance = 1; distance <= 3; distance++) {
+                for (int yOffset = -1; yOffset <= 2; yOffset++) {
+                    var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
+                    if (!standable(client, candidate)) continue;
+                    var eye = new Vec3(candidate.getX() + 0.5, candidate.getY() + 1.62,
+                            candidate.getZ() + 0.5);
+                    var clip = client.level.clip(new ClipContext(eye, Vec3.atCenterOf(target),
+                            ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, requirePlayer(client)));
+                    if (clip instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target)) {
+                        return candidate.immutable();
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private void collectTree(Minecraft client) {
