@@ -103,6 +103,8 @@ final class NeoForgeSafePathPlanner {
         var vertical = Math.abs(to.getY() - from.getY());
         var cost = 1.0 + vertical * (policy.highSafety() ? 4.0 : 1.5);
         if (policy.safety() == NeoForgeGoalPolicy.Safety.BALANCED && to.getY() < from.getY()) cost += 1.0;
+        if (policy.intelligence() == NeoForgeGoalPolicy.Intelligence.ADAPTIVE_V1
+                && to.getY() < from.getY()) cost += 12.0;
         return cost;
     }
 
