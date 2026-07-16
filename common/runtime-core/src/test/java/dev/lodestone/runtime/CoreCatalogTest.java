@@ -115,10 +115,10 @@ final class CoreCatalogTest {
         output.put("initialDimension", "minecraft:overworld");
         output.put("finalDimension", "minecraft:the_nether");
         output.put("portalBase", Map.of("x", 0, "y", 64, "z", 0));
-        output.put("teleportedToBuildSite", true);
-        output.put("setupCommandsUsed", true);
-        output.put("setupCommandCount", 4);
-        output.put("setupCommands", java.util.List.of("give @s minecraft:obsidian 10"));
+        output.put("teleportedToBuildSite", false);
+        output.put("setupCommandsUsed", false);
+        output.put("setupCommandCount", 0);
+        output.put("setupCommands", java.util.List.of());
         output.put("commandFeedbackSuppressed", true);
         output.put("manualPortalBuilt", true);
         output.put("portalFrameBlocksPlaced", 10);

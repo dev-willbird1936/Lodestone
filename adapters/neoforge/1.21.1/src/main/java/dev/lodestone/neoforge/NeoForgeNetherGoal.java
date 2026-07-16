@@ -38,10 +38,10 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Realtime-first survival Nether workflow.
  *
- * <p>The explicit setup phase only grants the bounded portal materials and suppresses command
- * feedback. The portal frame, ignition, movement, and dimension transition are all performed and
- * read back through ordinary client input. The setup command trace is returned so callers can see
- * exactly which parts were prepared.</p>
+ * <p>The actor starts from a fresh random-seed survival world and gathers or loots every required
+ * resource through ordinary player input. The portal frame, ignition, movement, and dimension
+ * transition are all performed and read back through ordinary client input. No command, teleport,
+ * direct inventory edit, or direct world mutation is available to this actor.</p>
  */
 final class NeoForgeNetherGoal {
     private static final int MAX_TOTAL_TICKS = 9_600;
@@ -57,7 +57,6 @@ final class NeoForgeNetherGoal {
     private final CompletableFuture<Map<String, Object>> result;
     private final boolean suppressInGameMessages;
     private final NeoForgeGoalPolicy policy;
-    private final List<String> setupCommands = new ArrayList<>();
     private final List<String> inputActions = new ArrayList<>();
     private final List<String> safetyDiagnostics = new ArrayList<>();
     private final NeoForgeGoalSupervisor supervisor;
@@ -1675,9 +1674,11 @@ final class NeoForgeNetherGoal {
                 Map.entry("finalDimension", finalDimension),
                 Map.entry("portalBase", position(site.base())),
                 Map.entry("teleportedToBuildSite", teleportedToBuildSite),
-                Map.entry("setupCommandsUsed", !setupCommands.isEmpty()),
-                Map.entry("setupCommandCount", setupCommands.size()),
-                Map.entry("setupCommands", List.copyOf(setupCommands)),
+                // Retain legacy output fields as an explicit empty no-command proof for clients
+                // that still consume the original schema.
+                Map.entry("setupCommandsUsed", false),
+                Map.entry("setupCommandCount", 0),
+                Map.entry("setupCommands", List.of()),
                 Map.entry("commandFeedbackSuppressed", true),
                 Map.entry("manualPortalBuilt", manualPortalBuilt),
                 Map.entry("portalFrameBlocksPlaced", frameBlocksPlaced),

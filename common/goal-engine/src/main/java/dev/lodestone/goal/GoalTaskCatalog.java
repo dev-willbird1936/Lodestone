@@ -17,7 +17,7 @@ public final class GoalTaskCatalog {
                     "A fresh empty survival world is loaded through Minecraft UI. Normal player input must hand-mine at least three logs, craft planks/sticks/table/wooden axe through visible inventory menus, equip the axe, and remove every initially observed log in a second tree."),
             task("survival.reach-nether", "survival", "Load a fresh survival world, assemble and light a Nether portal, and enter the Nether.",
                     "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.reach-nether"),
-                    "Fresh-world survival is proven before a bounded silent setup grants portal materials. Every frame block, ignition action, forward movement, and final Nether dimension transition is read back from normal client behavior; no direct world mutation is used."),
+                    "Fresh-world survival is proven, then wood, stone, iron, gravel, water, and lava are gathered or observed naturally. Every frame block, ignition action, forward movement, and final Nether dimension transition is read back from normal client behavior; commands, teleportation, setup grants, and direct world mutation are forbidden."),
             task("survival.collect-wood", "survival", "Find a nearby tree, acquire the required wooden tools, and collect logs with player input.", "survival",
                     List.of("minecraft.goal.survival.wooden-axe-tree", "minecraft.player.state.read", "minecraft.world.region.scan",
                             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact"),
