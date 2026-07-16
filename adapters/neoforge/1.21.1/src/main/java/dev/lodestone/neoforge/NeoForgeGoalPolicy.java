@@ -67,6 +67,10 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return safety == Safety.HIGH;
     }
 
+    boolean fallProtectionEnabled() {
+        return highSafety() || intelligence == Intelligence.ADAPTIVE_V1;
+    }
+
     String mode() {
         return intelligence.id() + "+" + safety.id();
     }

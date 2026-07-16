@@ -49,7 +49,11 @@ final class NeoForgeSafePathPlanner {
                     var candidate = new BlockPos(horizontal.getX(), current.position().getY() + dy,
                             horizontal.getZ());
                     if (!withinBounds(origin, candidate) || !snapshot.walkable(candidate)) continue;
-                    if (policy.highSafety() && current.position().getY() - candidate.getY() > 2) continue;
+                    // A normal player can safely step down one block; larger drops are
+                    // fall damage, not navigation. Adaptive intelligence keeps this rule
+                    // even with balanced safety so planning quality cannot trade health for
+                    // a shorter route.
+                    if (current.position().getY() - candidate.getY() > 1) continue;
                     var nextCost = cost.get(current.position().asLong()) + edgeCost(current.position(), candidate, policy);
                     if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) continue;
                     cost.put(candidate.asLong(), nextCost);

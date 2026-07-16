@@ -49,7 +49,7 @@ final class NeoForgeGoalSupervisor {
             return true;
         }
 
-        if (player.fallDistance > 2.0F && !player.onGround() && policy.highSafety()) {
+        if (player.fallDistance > 2.0F && !player.onGround() && policy.fallProtectionEnabled()) {
             brakeTicks = 5;
             diagnostics.add("fall-risk:braking-inputs");
             return true;
