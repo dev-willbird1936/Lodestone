@@ -49,9 +49,12 @@ final class NeoForgeSurvivalTreeGoal {
     private final InvocationContext invocation;
     private final CompletableFuture<Map<String, Object>> result;
     private final boolean suppressInGameMessages;
+    private final NeoForgeGoalPolicy policy;
     private final LinkedHashSet<String> inputActions = new LinkedHashSet<>();
     private final List<String> navigationDiagnostics = new ArrayList<>();
+    private final List<String> safetyDiagnostics = new ArrayList<>();
     private final ArrayDeque<ClickOp> clicks = new ArrayDeque<>();
+    private final NeoForgeGoalSupervisor supervisor;
 
     private Stage stage = Stage.WAIT_WORLD;
     private Runnable clicksComplete;
@@ -88,12 +91,15 @@ final class NeoForgeSurvivalTreeGoal {
     private int navigationDetourSign = 1;
     private boolean navigationDirectFallback;
     private double navigationLastDistance = Double.POSITIVE_INFINITY;
+    private int obstructionBreaks;
 
     NeoForgeSurvivalTreeGoal(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
         this.invocation = invocation;
         this.result = result;
         this.suppressInGameMessages = Boolean.TRUE.equals(
                 invocation.request().input().get("suppressInGameMessages"));
+        this.policy = NeoForgeGoalPolicy.from(invocation.request().input());
+        this.supervisor = new NeoForgeGoalSupervisor(policy, inputActions, safetyDiagnostics);
     }
 
     boolean done() {
@@ -105,6 +111,8 @@ final class NeoForgeSurvivalTreeGoal {
         try {
             invocation.cancellation().throwIfCancelled();
             if (++totalTicks > MAX_TOTAL_TICKS) throw new IllegalStateException("survival tree goal exceeded its bounded input budget");
+
+            if (supervisor.tick(client)) return;
 
             if (!clicks.isEmpty() || clicksComplete != null) {
                 tickClicks(client);
@@ -157,6 +165,9 @@ final class NeoForgeSurvivalTreeGoal {
         var server = client.getSingleplayerServer();
         if (server != null && server.getWorldData() != null) worldName = server.getWorldData().getLevelName();
         if (!survival) throw new IllegalStateException("goal world is not survival");
+        if (!policy.allowBlockBreaking() || !policy.allowBlockPlacing()) {
+            throw new IllegalStateException("survival wooden-axe workflow requires block breaking and placing permissions");
+        }
         if (!freshWorld) {
             throw new IllegalStateException("goal requires a fresh empty world; gameTime=" + worldGameTimeAtStart
                     + ", nonEmptySlots=" + countNonEmpty(player));
@@ -543,7 +554,12 @@ final class NeoForgeSurvivalTreeGoal {
             throw new IllegalStateException("wooden axe was not held during target-tree mining");
         }
         var target = targetTree.logs().get(mineIndex);
-        if (!client.level.getBlockState(target).is(BlockTags.LOGS)) {
+        var state = client.level.getBlockState(target);
+        if (!state.is(BlockTags.LOGS) && !state.isAir() && policy.obstructionRecoveryEnabled()) {
+            if (breakVisibleMiningObstruction(client, target)) return;
+            throw new IllegalStateException("target log is obstructed by an unreachable block " + target);
+        }
+        if (!state.is(BlockTags.LOGS)) {
             stopAttack(client);
             targetMinedLogs++;
             mineIndex++;
@@ -556,6 +572,25 @@ final class NeoForgeSurvivalTreeGoal {
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-with-wooden-axe");
         if (stageTicks > 260) throw new IllegalStateException("axe mining failed to break observed target log " + target);
+    }
+
+    private boolean breakVisibleMiningObstruction(Minecraft client, BlockPos target) {
+        var player = requirePlayer(client);
+        var hit = client.level.clip(new net.minecraft.world.level.ClipContext(player.getEyePosition(),
+                net.minecraft.world.phys.Vec3.atCenterOf(target),
+                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)
+                || blockHit.getBlockPos().equals(target)
+                || player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(blockHit.getBlockPos())) > 30.0) return false;
+        var state = client.level.getBlockState(blockHit.getBlockPos());
+        if (!NeoForgeGoalActionGuard.canBreakObstruction(client.level, player, blockHit.getBlockPos(), policy)) return false;
+        lookAt(player, blockHit.getBlockPos());
+        client.options.keyAttack.setDown(true);
+        obstructionBreaks++;
+        inputActions.add("recovery:break-tree-obstruction:" + blockHit.getBlockPos());
+        safetyDiagnostics.add("tree-obstruction:" + blockHit.getBlockPos());
+        return true;
     }
 
     private void verify(Minecraft client) {
@@ -589,6 +624,12 @@ final class NeoForgeSurvivalTreeGoal {
                 Map.entry("fullTreeMined", remaining == 0 && targetMinedLogs == targetTree.logs().size()),
                 Map.entry("allTargetLogsMinedWithWoodenAxe", allTargetLogsMinedWithWoodenAxe),
                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
+                Map.entry("intelligence", policy.intelligence().id()), Map.entry("safety", policy.safety().id()),
+                Map.entry("policyMode", policy.mode()), Map.entry("obstructionBreaks", obstructionBreaks),
+                Map.entry("safetyInterventions", List.copyOf(safetyDiagnostics)),
+                Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
+                Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
+                Map.entry("allowBlockPlacing", policy.allowBlockPlacing()),
                 Map.entry("suppressInGameMessages", suppressInGameMessages),
                 Map.entry("inGameMessagesEmitted", inGameMessagesEmitted),
                 Map.entry("navigationDiagnostics", List.copyOf(navigationDiagnostics)),
@@ -609,6 +650,9 @@ final class NeoForgeSurvivalTreeGoal {
             navigationStuckTicks = 0;
             navigationReplans = 0;
             navigationDetourTicks = 0;
+            if (navigationPath.isEmpty() && policy.highSafety()) {
+                throw new IllegalStateException("high-safety route unavailable to " + label);
+            }
             navigationDirectFallback = navigationPath.isEmpty();
             navigationLastDistance = Double.POSITIVE_INFINITY;
             var diagnostic = "planned " + label + " route: player=" + player.blockPosition()
@@ -651,6 +695,11 @@ final class NeoForgeSurvivalTreeGoal {
 
         if (navigationStuckTicks > 80) {
             stopMovement(client);
+            if (policy.obstructionRecoveryEnabled() && breakVisibleNavigationObstruction(client, target)) {
+                navigationStuckTicks = 0;
+                navigationLastDistance = Double.POSITIVE_INFINITY;
+                return false;
+            }
             if (++navigationReplans > 5) {
                 throw new IllegalStateException("normal-input route remained obstructed before reaching " + label
                         + "; player=" + player.blockPosition() + ", target=" + target
@@ -662,6 +711,9 @@ final class NeoForgeSurvivalTreeGoal {
             navigationStuckTicks = 0;
             navigationLastDistance = Double.POSITIVE_INFINITY;
             if (navigationPath.isEmpty()) {
+                if (policy.highSafety()) {
+                    throw new IllegalStateException("high-safety route remained unavailable to " + label);
+                }
                 navigationDirectFallback = true;
                 navigationDetourTicks = 50;
                 navigationDetourSign = navigationReplans % 2 == 0 ? 1 : -1;
@@ -755,11 +807,33 @@ final class NeoForgeSurvivalTreeGoal {
         return false;
     }
 
+    private boolean breakVisibleNavigationObstruction(Minecraft client, BlockPos target) {
+        var player = requirePlayer(client);
+        var hit = client.level.clip(new net.minecraft.world.level.ClipContext(player.getEyePosition(),
+                net.minecraft.world.phys.Vec3.atCenterOf(target),
+                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)) return false;
+        var position = blockHit.getBlockPos();
+        var state = client.level.getBlockState(position);
+        if (position.equals(target) || !NeoForgeGoalActionGuard.canBreakObstruction(client.level, player, position, policy)
+                || player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(position)) > 30.0) return false;
+        lookAt(player, position);
+        client.options.keyAttack.setDown(true);
+        obstructionBreaks++;
+        inputActions.add("recovery:break-navigation-obstruction:" + position);
+        safetyDiagnostics.add("navigation-obstruction:" + position);
+        return true;
+    }
+
     private static double rounded(double value) {
         return Math.round(value * 100.0) / 100.0;
     }
 
     private List<BlockPos> findNavigationPath(Minecraft client, BlockPos target) {
+        if (policy.smartNavigation()) {
+            return NeoForgeSafePathPlanner.find(client.level, requirePlayer(client).blockPosition(), target, policy);
+        }
         var level = client.level;
         var player = requirePlayer(client);
         var start = player.blockPosition();

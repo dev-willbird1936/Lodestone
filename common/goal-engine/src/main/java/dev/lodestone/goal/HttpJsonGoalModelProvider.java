@@ -40,7 +40,7 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
             var p95 = longEnv("LODESTONE_GOAL_MODEL_P95_MS", 150);
             var timeoutMs = Math.max(100, longEnv("LODESTONE_GOAL_MODEL_TIMEOUT_MS", 1_500));
             return Optional.of(new HttpJsonGoalModelProvider(
-                    env("LODESTONE_GOAL_MODEL_ID", "configured-http"), URI.create(url.trim()),
+                    env("LODESTONE_GOAL_MODEL_ID", GoalModelProviders.EXECUTOR_MODEL_ID), URI.create(url.trim()),
                     System.getenv("LODESTONE_GOAL_MODEL_API_KEY"), p95, Duration.ofMillis(timeoutMs)));
         } catch (RuntimeException invalid) {
             return Optional.empty();
@@ -75,7 +75,7 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                         "input", step.input())).toList(),
                 "response", "Return JSON only: {candidateIndex: integer, rationale: string}."));
         var body = JsonSupport.MAPPER.toJson(Map.of(
-                "model", env("LODESTONE_GOAL_MODEL_ID", "configured"),
+                "model", GoalModelProviders.EXECUTOR_MODEL_ID,
                 "temperature", 0,
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
                 "response_format", Map.of("type", "json_object")));

@@ -5,7 +5,11 @@ param(
     [string] $Mode,
     [int] $Port = 37828,
     [string] $EvidenceDirectory = '',
-    [string] $JavaHome = ''
+    [string] $JavaHome = '',
+    [ValidateSet('raw-v1', 'guarded-v1', 'adaptive-v1')]
+    [string] $Intelligence = 'raw-v1',
+    [ValidateSet('low', 'balanced', 'high')]
+    [string] $Safety = 'low'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -279,6 +283,8 @@ try {
             maxDurationMs = 480000
             dryRun = $false
             suppressInGameMessages = $true
+            intelligence = $Intelligence
+            safety = $Safety
         }
     }
     $goalResponse = Convert-ToolResponse $goalRpc

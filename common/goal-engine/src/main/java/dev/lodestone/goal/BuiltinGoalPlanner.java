@@ -20,6 +20,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         var normalized = goal.toLowerCase(java.util.Locale.ROOT);
         if (normalized.contains("wool") && normalized.contains("zombie") && normalized.contains("diamond sword"))
             return GoalTaskCatalog.find("creative.wool-tree-zombie-defense").orElseThrow();
+        if (normalized.contains("nether") || normalized.contains("nether portal"))
+            return GoalTaskCatalog.find("survival.reach-nether").orElseThrow();
         if (normalized.contains("wooden axe") || normalized.contains("mine an entire tree"))
             return GoalTaskCatalog.find("survival.wooden-axe-mine-tree").orElseThrow();
         if (normalized.contains("pillar") && (normalized.contains("place") || normalized.contains("build")))
@@ -42,6 +44,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         return switch (taskId) {
             case "creative.wool-tree-zombie-defense" -> woolTreeZombieDefensePlan(spec);
             case "survival.wooden-axe-mine-tree" -> woodenAxePlan(spec);
+            case "survival.reach-nether" -> netherPlan(spec);
             case "creative.place-pillar" -> blockPlan("creative.place-pillar", goal, "minecraft:stone", "pillar must be stone");
             case "creative.clear-pillar" -> blockPlan("creative.clear-pillar", goal, "minecraft:air", "pillar must be air");
             case "navigation.reach-waypoint" -> navigationPlan(goal);
@@ -63,7 +66,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_world"), false);
         var workflow = GoalStep.invoke("survival-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
-                Map.of("suppressInGameMessages", spec.suppressInGameMessages()), true,
+                workflowInput(spec), true,
                 new GoalAssertion("steps.survival-workflow.survival", "equals", true),
                 new GoalAssertion("steps.survival-workflow.freshWorld", "equals", true),
                 new GoalAssertion("steps.survival-workflow.handMinedLogs", "gte", 3),
@@ -90,6 +93,58 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("taskId", "survival.wooden-axe-mine-tree", "craftingRequired", true,
                         "adaptiveTreeTraversalRequired", true, "authenticPlayerInputRequired", true,
                         "completionPredicateReady", true));
+    }
+
+    private static GoalPlan netherPlan(GoalSpec spec) {
+        var goal = spec.goal();
+        var open = GoalStep.invoke("open-singleplayer", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "singleplayer"), false);
+        var createScreen = GoalStep.invoke("open-create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_new_world"), false);
+        var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_world"), false);
+        var workflow = GoalStep.invoke("nether-workflow", "minecraft.goal.survival.reach-nether", "1.0",
+                workflowInput(spec), true,
+                new GoalAssertion("steps.nether-workflow.freshWorld", "equals", true),
+                new GoalAssertion("steps.nether-workflow.survival", "equals", true),
+                new GoalAssertion("steps.nether-workflow.initialDimension", "equals", "minecraft:overworld"),
+                new GoalAssertion("steps.nether-workflow.manualPortalBuilt", "equals", true),
+                new GoalAssertion("steps.nether-workflow.portalFrameBlocksPlaced", "equals", 10),
+                new GoalAssertion("steps.nether-workflow.portalLit", "equals", true),
+                new GoalAssertion("steps.nether-workflow.enteredPortal", "equals", true),
+                new GoalAssertion("steps.nether-workflow.reachedNether", "equals", true),
+                new GoalAssertion("steps.nether-workflow.finalDimension", "equals", "minecraft:the_nether"),
+                new GoalAssertion("steps.nether-workflow.playerAlive", "equals", true),
+                new GoalAssertion("steps.nether-workflow.teleportedToBuildSite", "equals", false),
+                new GoalAssertion("steps.nether-workflow.setupCommandsUsed", "equals", false),
+                new GoalAssertion("steps.nether-workflow.commandFeedbackSuppressed", "equals", true),
+                new GoalAssertion("steps.nether-workflow.directMutationUsed", "equals", false));
+        var assertions = new ArrayList<GoalAssertion>();
+        if (spec.suppressInGameMessages()) {
+            assertions.add(new GoalAssertion("steps.nether-workflow.suppressInGameMessages", "equals", true));
+            assertions.add(new GoalAssertion("steps.nether-workflow.inGameMessagesEmitted", "equals", 0));
+        }
+        workflow = new GoalStep(workflow.id(), workflow.kind(), workflow.capability(), workflow.capabilityVersion(),
+                workflow.input(), concat(workflow.assertions(), assertions), workflow.observeAfter());
+        return new GoalPlan("survival.reach-nether", goal, List.of(
+                new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
+                        List.of(open), List.of()),
+                new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
+                        List.of(createScreen), List.of()),
+                new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
+                        List.of(createWorld), List.of()),
+                new GoalSegment("nether-gameplay", "Use normal portal placement, ignition, movement, and dimension readback until the Nether predicate is proven.",
+                        List.of(workflow), List.of())),
+                Map.of("taskId", "survival.reach-nether", "realtimePreferred", true,
+                        "randomFreshWorldRequired", true, "naturalPortalChestOptional", true,
+                        "manualPortalInputRequired", true,
+                        "completionPredicateReady", true));
+    }
+
+    private static List<GoalAssertion> concat(List<GoalAssertion> first, List<GoalAssertion> second) {
+        var output = new ArrayList<GoalAssertion>(first);
+        output.addAll(second);
+        return output;
     }
 
     private static GoalPlan woolTreeZombieDefensePlan(GoalSpec spec) {
@@ -128,7 +183,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         }
         var workflow = new GoalStep("wool-tree-defense", GoalStepKind.INVOKE,
                 "minecraft.goal.creative.wool-tree-zombie-defense", "1.0",
-                Map.of("suppressInGameMessages", spec.suppressInGameMessages()), assertions, true);
+                workflowInput(spec), assertions, true);
         return new GoalPlan("creative.wool-tree-zombie-defense", spec.goal(), List.of(
                 new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
                         List.of(open), List.of()),
@@ -142,6 +197,15 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("taskId", "creative.wool-tree-zombie-defense",
                         "manualTreeInputRequired", true, "reactiveDefenseRequired", true,
                         "setupCommandsSeparated", true, "completionPredicateReady", true));
+    }
+
+    private static Map<String, Object> workflowInput(GoalSpec spec) {
+        return Map.of("suppressInGameMessages", spec.suppressInGameMessages(),
+                "intelligence", spec.intelligence().id(), "safety", spec.safety().id(),
+                "observation", spec.controls().observation(),
+                "combatPolicy", spec.controls().combatPolicy(),
+                "allowBlockBreaking", spec.controls().allowBlockBreaking(),
+                "allowBlockPlacing", spec.controls().allowBlockPlacing());
     }
 
     private static GoalPlan blockPlan(String id, String goal, String block, String description) {

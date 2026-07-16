@@ -14,6 +14,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GoalEngineTest {
     @Test
+    void intelligenceAndSafetyAreIndependentAndReachNativeWorkflow() {
+        var spec = new GoalSpec("get a wooden axe and mine an entire tree", GoalMode.REALTIME,
+                "survival.wooden-axe-mine-tree", 20, 10_000, false, null, true,
+                GoalIntelligence.ADAPTIVE_V1, GoalSafety.HIGH);
+        var workflow = new BuiltinGoalPlanner().plan(spec).plan().segments().stream()
+                .flatMap(segment -> segment.steps().stream())
+                .filter(step -> "minecraft.goal.survival.wooden-axe-tree".equals(step.capability()))
+                .findFirst().orElseThrow();
+
+        assertEquals("adaptive-v1", workflow.input().get("intelligence"));
+        assertEquals("high", workflow.input().get("safety"));
+        assertEquals("loaded-chunks", workflow.input().get("observation"));
+        assertEquals("defensive", workflow.input().get("combatPolicy"));
+        assertEquals(true, workflow.input().get("allowBlockBreaking"));
+        assertEquals(true, workflow.input().get("allowBlockPlacing"));
+    }
+
+    @Test
+    void adaptiveIntelligenceRequiresRealtimeMode() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                new GoalSpec("test", GoalMode.SCRIPT, null, 10, 10_000, false, null, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.HIGH));
+    }
+
+    @Test
     void scriptSegmentsPassStructuredStateToLaterStepsAndVerifyPredicates() {
         var calls = new ArrayList<Map<String, Object>>();
         GoalInvoker invoker = (capability, version, input, dryRun) -> {
@@ -116,6 +141,25 @@ class GoalEngineTest {
                 .filter(step -> "minecraft.goal.survival.wooden-axe-tree".equals(step.capability()))
                 .findFirst().orElseThrow();
         assertFalse((Boolean) oldWorkflow.input().get("suppressInGameMessages"));
+    }
+
+    @Test
+    void netherPlanInfersRealtimePreferredWorkflowAndTerminalDimension() {
+        var spec = new GoalSpec("load into a fresh survival world and get to the Nether",
+                GoalMode.REALTIME, null, 256, 480_000, false, null, true);
+        var plan = new BuiltinGoalPlanner().plan(spec).plan();
+        assertEquals("survival.reach-nether", plan.id());
+        assertEquals(true, plan.metadata().get("realtimePreferred"));
+        var workflow = plan.segments().stream().flatMap(segment -> segment.steps().stream())
+                .filter(step -> "minecraft.goal.survival.reach-nether".equals(step.capability()))
+                .findFirst().orElseThrow();
+        assertEquals(true, workflow.input().get("suppressInGameMessages"));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.nether-workflow.reachedNether")
+                        && assertion.expected().equals(true)));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.nether-workflow.finalDimension")
+                        && assertion.expected().equals("minecraft:the_nether")));
     }
 
     @Test

@@ -8,6 +8,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import dev.lodestone.goal.GoalMode;
+import dev.lodestone.goal.GoalIntelligence;
+import dev.lodestone.goal.GoalSafety;
+import dev.lodestone.goal.GoalControls;
 import dev.lodestone.protocol.JsonSupport;
 import dev.lodestone.protocol.PermissionClass;
 import dev.lodestone.protocol.ProtocolVersion;
@@ -306,15 +309,21 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode. Script mode executes validated segments; realtime mode selects one bounded step, observes fresh state, and repeats.", schema(Map.of(
-                    "goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096),
-                    "mode", Map.of("type", "string", "enum", List.of("script", "realtime")),
-                    "taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128),
-                    "maxSteps", Map.of("type", "integer", "minimum", 1, "maximum", 1000),
-                    "maxDurationMs", Map.of("type", "integer", "minimum", 100, "maximum", 600000),
-                    "dryRun", Map.of("type", "boolean"),
-                    "suppressInGameMessages", Map.of("type", "boolean"),
-                    "plan", Map.of("type", "object"))), List.of("goal")));
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Raw preserves legacy behavior; guarded adds deterministic survival supervision; adaptive uses the pinned GPT-5.4 mini executor for high-level replanning.", schema(Map.ofEntries(
+                    Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
+                    Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
+                    Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
+                    Map.entry("maxSteps", Map.of("type", "integer", "minimum", 1, "maximum", 1000)),
+                    Map.entry("maxDurationMs", Map.of("type", "integer", "minimum", 100, "maximum", 600000)),
+                    Map.entry("dryRun", Map.of("type", "boolean")),
+                    Map.entry("suppressInGameMessages", Map.of("type", "boolean")),
+                    Map.entry("intelligence", Map.of("type", "string", "enum", List.of("raw-v1", "guarded-v1", "adaptive-v1"))),
+                    Map.entry("safety", Map.of("type", "string", "enum", List.of("low", "balanced", "high"))),
+                    Map.entry("observation", Map.of("type", "string", "enum", List.of("loaded-chunks"))),
+                    Map.entry("combatPolicy", Map.of("type", "string", "enum", List.of("defensive", "avoid", "none"))),
+                    Map.entry("allowBlockBreaking", Map.of("type", "boolean")),
+                    Map.entry("allowBlockPlacing", Map.of("type", "boolean")),
+                    Map.entry("plan", Map.of("type", "object")))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
                     "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
             tools.add(tool("minecraft_goal_benchmark", "Run matched script and realtime task cases and compare correctness before elapsed time. Use dryRun only where the capability documents dry-run support; otherwise use an isolated fixture.", schema(Map.of(
@@ -963,9 +972,16 @@ public final class McpGateway {
         var maxDurationMs = boundedLongArgument(args, "maxDurationMs", 120_000L, 100L, 600_000L);
         try {
             var customPlan = GoalService.parsePlan(args.get("plan"));
+            var intelligence = GoalIntelligence.parse(text(args, "intelligence", "raw-v1"));
+            var safety = GoalSafety.parse(text(args, "safety", "low"));
+            var controls = new GoalControls(text(args, "observation", "loaded-chunks"),
+                    text(args, "combatPolicy", "defensive"),
+                    bool(args, "allowBlockBreaking", true), bool(args, "allowBlockPlacing", true));
             var report = goalService.run(goal, mode, text(args, "taskId", null), maxSteps, maxDurationMs,
                     bool(args, "dryRun", false), customPlan,
-                    bool(args, "suppressInGameMessages", false), session().id, session().authorization);
+                    bool(args, "suppressInGameMessages", false), intelligence, safety,
+                    controls,
+                    session().id, session().authorization);
             return toolResult(report);
         } catch (IllegalArgumentException invalid) {
             throw new GatewayException(-32602, invalid.getMessage());
@@ -975,8 +991,11 @@ public final class McpGateway {
     private JsonElement goalTasks(JsonObject args) {
         var descriptor = runtime.handshake().adapter();
         return toolResult(Map.of("tasks", goalService.tasks(text(args, "category", "")),
-                "modelProviders", goalService.modelProviders(), "minecraftVersion", descriptor.gameVersion(),
-                "loader", descriptor.loader()));
+                "modelProviders", goalService.modelProviders(),
+                "executorModel", dev.lodestone.goal.GoalModelProviders.EXECUTOR_MODEL_ID,
+                "intelligenceLevels", List.of("raw-v1", "guarded-v1", "adaptive-v1"),
+                "safetyPolicies", List.of("low", "balanced", "high"),
+                "minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader()));
     }
 
     private JsonElement goalBenchmark(JsonObject args) {

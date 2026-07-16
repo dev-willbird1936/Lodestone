@@ -6,6 +6,9 @@ import dev.lodestone.goal.GoalBenchmarkRunner;
 import dev.lodestone.goal.GoalEngine;
 import dev.lodestone.goal.GoalInvoker;
 import dev.lodestone.goal.GoalMode;
+import dev.lodestone.goal.GoalIntelligence;
+import dev.lodestone.goal.GoalSafety;
+import dev.lodestone.goal.GoalControls;
 import dev.lodestone.goal.GoalPlan;
 import dev.lodestone.goal.GoalRunReport;
 import dev.lodestone.goal.GoalSpec;
@@ -39,8 +42,20 @@ public final class GoalService {
                              boolean dryRun, GoalPlan customPlan, boolean suppressInGameMessages,
                              String callerSessionId,
                              AuthorizationPolicy authorization) {
+        return run(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
+                suppressInGameMessages, GoalIntelligence.RAW_V1, GoalSafety.LOW,
+                GoalControls.defaults(),
+                callerSessionId, authorization);
+    }
+
+    public GoalRunReport run(String goal, GoalMode mode, String taskId, int maxSteps, long maxDurationMs,
+                             boolean dryRun, GoalPlan customPlan, boolean suppressInGameMessages,
+                             GoalIntelligence intelligence, GoalSafety safety,
+                             GoalControls controls,
+                             String callerSessionId,
+                             AuthorizationPolicy authorization) {
         var spec = new GoalSpec(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
-                suppressInGameMessages);
+                suppressInGameMessages, intelligence, safety, controls);
         return engine.run(spec, invoker(callerSessionId, authorization));
     }
 

@@ -43,6 +43,7 @@ final class NeoForgeWoolTreeZombieGoal {
     private final InvocationContext invocation;
     private final CompletableFuture<Map<String, Object>> result;
     private final boolean suppressInGameMessages;
+    private final NeoForgeGoalPolicy policy;
     private final LinkedHashSet<String> inputActions = new LinkedHashSet<>();
     private final List<String> setupCommands = new ArrayList<>();
     private final List<String> defenseDiagnostics = new ArrayList<>();
@@ -95,6 +96,7 @@ final class NeoForgeWoolTreeZombieGoal {
         this.result = result;
         this.suppressInGameMessages = Boolean.TRUE.equals(
                 invocation.request().input().get("suppressInGameMessages"));
+        this.policy = NeoForgeGoalPolicy.from(invocation.request().input());
     }
 
     boolean done() {
@@ -107,6 +109,9 @@ final class NeoForgeWoolTreeZombieGoal {
             invocation.cancellation().throwIfCancelled();
             if (++totalTicks > MAX_TOTAL_TICKS) {
                 throw new IllegalStateException("wool-tree zombie-defense goal exceeded its bounded input budget");
+            }
+            if (stage == Stage.WAIT_WORLD && (!policy.allowBlockBreaking() || !policy.allowBlockPlacing())) {
+                throw new IllegalStateException("wool-tree defense workflow requires block breaking and placing permissions");
             }
             if (waitTicks > 0) {
                 waitTicks--;
@@ -525,6 +530,12 @@ final class NeoForgeWoolTreeZombieGoal {
                 Map.entry("fullTreeMined", remaining == 0 && treeMinedBlocks == mineTargets.size()),
                 Map.entry("playerAlive", player.isAlive() && player.getHealth() > 0.0F),
                 Map.entry("healthAtEnd", player.getHealth()),
+                Map.entry("intelligence", policy.intelligence().id()),
+                Map.entry("safety", policy.safety().id()),
+                Map.entry("policyMode", policy.mode()),
+                Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
+                Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
+                Map.entry("allowBlockPlacing", policy.allowBlockPlacing()),
                 Map.entry("setupCommandsUsed", !setupCommands.isEmpty()),
                 Map.entry("setupCommandCount", setupCommands.size()),
                 Map.entry("setupCommands", List.copyOf(setupCommands)),

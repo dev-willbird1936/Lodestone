@@ -33,9 +33,24 @@ public final class GoalEngine {
                     0, 0, List.of(), Map.of());
         }
         var plan = planned.plan();
+        if (spec.intelligence().modelReplanningEnabled() && modelProvider.fallback()) {
+            return report(plan.id(), spec, GoalStatus.UNSUPPORTED,
+                    "adaptive-v1 requires the pinned GPT-5.4 mini executor; no matching provider is available",
+                    started, 0, 0, List.of(), Map.of(
+                            "intelligence", spec.intelligence().id(),
+                            "safety", spec.safety().id(),
+                            "executorModel", modelProvider.id()));
+        }
         var state = new LinkedHashMap<String, Object>();
         state.put("goal", spec.goal());
         state.put("mode", spec.mode().toString());
+        state.put("intelligence", spec.intelligence().id());
+        state.put("safety", spec.safety().id());
+        state.put("observation", spec.controls().observation());
+        state.put("combatPolicy", spec.controls().combatPolicy());
+        state.put("allowBlockBreaking", spec.controls().allowBlockBreaking());
+        state.put("allowBlockPlacing", spec.controls().allowBlockPlacing());
+        state.put("executorModel", modelProvider.id());
         state.put("planId", plan.id());
         var steps = new LinkedHashMap<String, Object>();
         state.put("steps", steps);
@@ -160,7 +175,12 @@ public final class GoalEngine {
     }
 
     private GoalStep selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
-        var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, pending)).orElse(new GoalDecision(0, "provider returned no decision"));
+        var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, pending)).orElseGet(() -> {
+            if (spec.intelligence().modelReplanningEnabled()) {
+                throw new IllegalStateException("adaptive-v1 executor returned no decision");
+            }
+            return new GoalDecision(0, "provider returned no decision");
+        });
         if (decision.candidateIndex() >= pending.size()) {
             throw new IllegalArgumentException("realtime model selected an invalid candidate index");
         }
