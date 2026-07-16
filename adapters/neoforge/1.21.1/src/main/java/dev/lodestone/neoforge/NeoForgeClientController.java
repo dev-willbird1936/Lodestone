@@ -808,13 +808,17 @@ public final class NeoForgeClientController {
 
         private Map<String, Object> playerState() {
             var player = requirePlayer();
-            return Map.of("uuid", player.getUUID().toString(),
-                    "name", player.getGameProfile().getName(),
-                    "position", Map.of("x", player.getX(), "y", player.getY(), "z", player.getZ()),
-                    "rotation", Map.of("yaw", player.getYRot(), "pitch", player.getXRot()),
-                    "dimension", player.level().dimension().location().toString(),
-                    "health", player.getHealth(), "food", player.getFoodData().getFoodLevel(),
-                    "selectedSlot", player.getInventory().selected);
+            var state = new LinkedHashMap<String, Object>();
+            state.put("uuid", player.getUUID().toString());
+            state.put("name", player.getGameProfile().getName());
+            state.put("position", Map.of("x", player.getX(), "y", player.getY(), "z", player.getZ()));
+            state.put("rotation", Map.of("yaw", player.getYRot(), "pitch", player.getXRot()));
+            state.put("dimension", player.level().dimension().location().toString());
+            state.put("health", player.getHealth());
+            state.put("food", player.getFoodData().getFoodLevel());
+            state.put("selectedSlot", player.getInventory().selected);
+            state.put("worldObservation", NeoForgeGoalObservation.capture(Minecraft.getInstance()));
+            return Map.copyOf(state);
         }
 
         private Map<String, Object> look(dev.lodestone.adapter.InvocationContext invocation) {

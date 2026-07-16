@@ -29,6 +29,10 @@ guarded realtime reports `deterministic-selection`. Native goal actors remain de
 low-level executors beneath those high-level decisions, with their terminal output still subject to
 goal assertions.
 
+The NeoForge `minecraft.player.state.read` post-action observation also includes the bounded local
+goal observation, so realtime decisions see fresh inventory/tool, threat, target-block, fluid, and
+fall state after ordinary actions—not only the final actor result.
+
 Intelligence is applied at the `minecraft_goal` layer. Direct `minecraft.input.*` or
 `minecraft.player.interact` calls remain raw low-level controls; they are not silently upgraded into
 tool acquisition. For guarded and adaptive survival workflows, the native prerequisite chain owns

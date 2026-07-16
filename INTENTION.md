@@ -58,6 +58,9 @@ every Minecraft environment.
 - Goal steps now have reusable assertion-shaped preconditions. Realtime candidate selection filters
   steps whose state or phase prerequisites are not ready, while script execution fails closed before
   an invalid action; native tree and Nether phase plans declare their tool/checkpoint dependencies.
+- NeoForge player-state readback now carries the same bounded local goal observation after ordinary
+  actions, giving realtime replanning fresh inventory/tool, threat, target-block, fluid, and fall
+  facts instead of only a terminal native-actor summary.
 - NeoForge 1.21.1 now includes a native combat task that selects a loaded hostile, path-plans with
   ordinary movement, chooses an available hotbar weapon at guarded intelligence levels, attacks with
   normal input, and requires terminal entity-death readback while the player remains alive.

@@ -23,6 +23,10 @@ final class NeoForgeGoalObservation {
     private NeoForgeGoalObservation() {
     }
 
+    static Map<String, Object> capture(Minecraft client) {
+        return capture(client, NeoForgeGoalPolicy.from(Map.of()));
+    }
+
     static Map<String, Object> capture(Minecraft client, NeoForgeGoalPolicy policy) {
         var result = new LinkedHashMap<String, Object>();
         result.put("intelligence", policy.intelligence().id());
