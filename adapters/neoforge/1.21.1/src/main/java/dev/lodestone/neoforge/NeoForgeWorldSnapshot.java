@@ -28,9 +28,12 @@ final class NeoForgeWorldSnapshot {
         if (!feetState.getCollisionShape(level, feet).isEmpty()
                 || !headState.getCollisionShape(level, feet.above()).isEmpty()) return false;
         if (supportState.getCollisionShape(level, supportPos).isEmpty()) return false;
+        // A recovery/path feet block must be dry even for balanced policy. Water and lava are
+        // valid observations and bucket targets, but never valid surfaces to walk or recover to.
+        if (!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.above()).isEmpty()) return false;
         if (policy.highSafety()) {
             return !hazard(feet) && !hazard(feet.above()) && !hazard(supportPos)
-                    && level.getFluidState(feet).isEmpty();
+                    && level.getFluidState(supportPos).isEmpty();
         }
         return true;
     }
