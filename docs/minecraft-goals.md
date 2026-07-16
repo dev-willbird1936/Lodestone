@@ -6,7 +6,8 @@ expose the individual capability gateway without these goal tools.
 NeoForge 1.21.1 exposes three goal tools through the MCP gateway:
 
 - `minecraft_goal`: run one goal in `script` or `realtime` mode.
-- `minecraft_goal_tasks`: list built-in tasks, required capabilities, and success contracts.
+- `minecraft_goal_tasks`: list built-in tasks, required capabilities, execution modes, policy
+  profiles, prerequisite contracts, and success contracts.
 - `minecraft_goal_benchmark`: run matched script/realtime cases and compare correctness before elapsed time.
 
 `minecraft_goal` defaults to `guarded-v1` with `balanced` safety. Select `raw-v1` explicitly for

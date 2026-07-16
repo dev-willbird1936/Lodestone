@@ -56,7 +56,28 @@ public final class GoalTaskCatalog {
             return Map.of("id", id, "category", category, "description", description,
                     "gameMode", gameMode, "requiredCapabilities", requiredCapabilities,
                     "successContract", successContract,
-                    "defaultMaxDurationMs", GoalSpec.defaultMaxDurationMs(description, id));
+                    "defaultMaxDurationMs", GoalSpec.defaultMaxDurationMs(description, id),
+                    "executionModes", List.of("script", "realtime"),
+                    "intelligenceProfiles", List.of("raw-v1", "guarded-v1", "adaptive-v1"),
+                    "safetyPolicies", List.of("low", "balanced", "high"),
+                    "adaptiveRealtimeRequiresModel", true,
+                    "preconditionContract", preconditionContract());
+        }
+
+        private String preconditionContract() {
+            return switch (id) {
+                case "survival.wooden-axe-mine-tree" ->
+                        "gather starter logs before visible crafting; equip the wooden axe before target-tree mining";
+                case "survival.collect-wood" ->
+                        "guarded/adaptive: gather starter logs before visible crafting and equip the wooden axe before target-tree mining; raw-v1 retains low-level input behavior";
+                case "survival.reach-nether" ->
+                        "gather starter tools before portal tools; complete portal tools before portal construction";
+                case "combat.attack-nearest" ->
+                        "observe a loaded hostile and select an available weapon before attack input";
+                case "navigation.safe-waypoint" ->
+                        "observe loaded collision chunks and require a safe path before intelligent movement";
+                default -> "step inputs and declared assertions must be satisfied before each action";
+            };
         }
     }
 

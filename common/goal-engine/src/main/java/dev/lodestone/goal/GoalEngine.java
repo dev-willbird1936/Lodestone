@@ -93,7 +93,11 @@ public final class GoalEngine {
                     if (!inputsResolved(selected.input(), state)) {
                         throw new IllegalStateException("goal step dependency is unresolved: " + selected.id());
                     }
-                    if (!preconditionsPass(selected, state)) {
+                    var failedPreconditions = failedPreconditions(selected, state);
+                    if (!failedPreconditions.isEmpty()) {
+                        state.put("lastPreconditionFailure", Map.of(
+                                "step", selected.id(),
+                                "failed", failedPreconditions.stream().map(GoalAssertion::toMap).toList()));
                         throw new IllegalStateException("goal step precondition failed: " + selected.id());
                     }
                     if (spec.mode() == GoalMode.REALTIME) {
@@ -325,7 +329,11 @@ public final class GoalEngine {
     }
 
     private static boolean preconditionsPass(GoalStep step, Map<String, Object> state) {
-        return assertionsPass(step.preconditions(), state);
+        return failedPreconditions(step, state).isEmpty();
+    }
+
+    private static List<GoalAssertion> failedPreconditions(GoalStep step, Map<String, Object> state) {
+        return step.preconditions().stream().filter(assertion -> !assertion.test(state)).toList();
     }
 
     private static Map<String, Object> resolve(Map<String, Object> input, Map<String, Object> state) {

@@ -324,7 +324,8 @@ public final class McpGateway {
                     Map.entry("allowBlockBreaking", Map.of("type", "boolean")),
                     Map.entry("allowBlockPlacing", Map.of("type", "boolean")),
                     Map.entry("allowCommands", Map.of("type", "boolean")),
-                    Map.entry("plan", Map.of("type", "object")))), List.of("goal")));
+                    Map.entry("plan", Map.of("type", "object", "description",
+                            "Optional declarative plan; invoke steps may declare assertion-shaped preconditions")))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
                     "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
             tools.add(tool("minecraft_goal_benchmark", "Run matched script and realtime task cases and compare correctness before elapsed time. Use dryRun only where the capability documents dry-run support; otherwise use an isolated fixture.", schema(Map.of(
