@@ -35,8 +35,10 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
         goal = goal.trim();
         mode = mode == null ? GoalMode.SCRIPT : mode;
         taskId = taskId == null || taskId.isBlank() ? null : taskId.trim().toLowerCase(Locale.ROOT);
-        intelligence = intelligence == null ? GoalIntelligence.RAW_V1 : intelligence;
-        safety = safety == null ? GoalSafety.LOW : safety;
+        // A missing policy must be useful by default. Raw/low remains available only
+        // when the caller explicitly asks for the legacy fast path.
+        intelligence = intelligence == null ? GoalIntelligence.GUARDED_V1 : intelligence;
+        safety = safety == null ? GoalSafety.BALANCED : safety;
         controls = controls == null ? GoalControls.defaults() : controls;
         if (maxSteps < 1 || maxSteps > 1_000) {
             throw new IllegalArgumentException("maxSteps must be between 1 and 1000");

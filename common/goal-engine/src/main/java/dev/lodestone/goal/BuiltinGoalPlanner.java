@@ -25,6 +25,10 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             return GoalTaskCatalog.find("survival.reach-nether").orElseThrow();
         if (normalized.contains("wooden axe") || normalized.contains("mine an entire tree"))
             return GoalTaskCatalog.find("survival.wooden-axe-mine-tree").orElseThrow();
+        if ((normalized.contains("collect") || normalized.contains("gather") || normalized.contains("chop")
+                || normalized.contains("get"))
+                && (normalized.contains("wood") || normalized.contains("log") || normalized.contains("tree")))
+            return GoalTaskCatalog.find("survival.collect-wood").orElseThrow();
         if (normalized.contains("pillar") && (normalized.contains("place") || normalized.contains("build")))
             return GoalTaskCatalog.find("creative.place-pillar").orElseThrow();
         if (normalized.contains("clear") && normalized.contains("pillar"))
@@ -53,7 +57,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             case "combat.attack-nearest" -> combatPlan(goal);
             case "commands.set-day" -> commandPlan(goal);
             case "tools.inspect-nearby" -> inspectPlan(goal);
-            case "survival.collect-wood" -> collectWoodPlan(goal);
+            case "survival.collect-wood" -> collectWoodPlan(spec);
             case "failure.stale-ui-snapshot" -> staleUiPlan(goal);
             default -> throw new IllegalArgumentException("no built-in plan for task: " + taskId);
         };
@@ -312,14 +316,36 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("taskId", "tools.inspect-nearby", "mutatesWorld", false, "completionPredicateReady", true));
     }
 
-    private static GoalPlan collectWoodPlan(String goal) {
+    private static GoalPlan collectWoodPlan(GoalSpec spec) {
+        var goal = spec.goal();
+        if (spec.intelligence() != GoalIntelligence.RAW_V1) {
+            var workflow = GoalStep.invoke("wood-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                    workflowInput(spec), true,
+                    new GoalAssertion("steps.wood-workflow.survival", "equals", true),
+                    new GoalAssertion("steps.wood-workflow.handMinedLogs", "gte", 3),
+                    new GoalAssertion("steps.wood-workflow.planksCrafted", "gte", 12),
+                    new GoalAssertion("steps.wood-workflow.sticksCrafted", "gte", 4),
+                    new GoalAssertion("steps.wood-workflow.craftingTableCrafted", "equals", true),
+                    new GoalAssertion("steps.wood-workflow.woodenAxeCrafted", "equals", true),
+                    new GoalAssertion("steps.wood-workflow.woodenAxeEquipped", "equals", true),
+                    new GoalAssertion("steps.wood-workflow.targetTreeRemainingLogs", "equals", 0),
+                    new GoalAssertion("steps.wood-workflow.commandsUsed", "equals", false),
+                    new GoalAssertion("steps.wood-workflow.directMutationUsed", "equals", false));
+            return new GoalPlan("survival.collect-wood", goal, List.of(
+                    new GoalSegment("intelligent-wood", "Acquire the minimum wooden tools through visible crafting before collecting the target tree.",
+                            List.of(workflow), List.of())),
+                    Map.of("taskId", "survival.collect-wood", "toolPrerequisitePlanning", true,
+                            "requiresCrafting", true, "ordinaryInputOnly", true,
+                            "completionPredicateReady", true));
+        }
         var state = GoalStep.observe("state", "minecraft.player.state.read", Map.of());
         var scan = GoalStep.observe("scan", "minecraft.world.region.scan", Map.of(
                 "dimension", "minecraft:overworld", "x", 0, "y", 60, "z", 0,
                 "sizeX", 32, "sizeY", 32, "sizeZ", 32));
         var move = GoalStep.invoke("approach", "minecraft.player.move", "2.0",
                 Map.of("forward", 1.0, "durationMs", 500), true);
-        var attack = GoalStep.invoke("mine", "minecraft.player.interact", "1.0", Map.of("action", "attack"), true);
+        var attack = GoalStep.invoke("mine", "minecraft.player.interact", "1.0",
+                Map.of("action", "attack", "intelligence", spec.intelligence().id()), true);
         return new GoalPlan("survival.collect-wood", goal, List.of(
                 new GoalSegment("find", "Read player state and bounded nearby blocks before acting.", List.of(state, scan), List.of()),
                 new GoalSegment("act", "Approach and queue bounded mining input; a live agent must adapt aim and repeat.", List.of(move, attack), List.of())),

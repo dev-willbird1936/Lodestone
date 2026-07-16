@@ -4,6 +4,9 @@ package dev.lodestone.neoforge;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
 /** Deterministic action vetoes for normal-input goal actors. */
 final class NeoForgeGoalActionGuard {
@@ -21,5 +24,15 @@ final class NeoForgeGoalActionGuard {
                     || snapshot.hazard(position.below())) return false;
         }
         return true;
+    }
+
+    /** Returns a diagnostic when an intelligent attack would punch a hard block without its tool. */
+    static String toolRequiredAttackTarget(ClientLevel level, LocalPlayer player) {
+        var hit = player.pick(5.0F, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit)) return null;
+        var state = level.getBlockState(blockHit.getBlockPos());
+        if (state.isAir() || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES)
+                || player.getMainHandItem().isCorrectToolForDrops(state)) return null;
+        return state.getBlock().getName().getString();
     }
 }

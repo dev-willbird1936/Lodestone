@@ -52,6 +52,8 @@ every Minecraft environment.
 - NeoForge 1.21.1 now includes a native combat task that selects a loaded hostile, path-plans with
   ordinary movement, chooses an available hotbar weapon at guarded intelligence levels, attacks with
   normal input, and requires terminal entity-death readback while the player remains alive.
+- Guarded and adaptive wood-collection goals now route through the native prerequisite workflow,
+  while the explicitly selected raw profile retains the low-level legacy behavior for comparison.
 - KeepFocus remains a separate opt-in client mod and is staged by the NeoForge 1.21.1 automation
   profile after rebuilding against the exact Lodestone NeoForge patch.
 - Quilt Loader 0.29.2 compatibility is verified on Minecraft 1.20.1 and 1.21.1 using the exact

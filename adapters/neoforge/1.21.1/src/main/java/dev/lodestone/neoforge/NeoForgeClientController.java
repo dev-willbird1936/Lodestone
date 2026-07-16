@@ -861,8 +861,19 @@ public final class NeoForgeClientController {
 
         private Map<String, Object> interactKey(dev.lodestone.adapter.InvocationContext invocation) {
             var client = Minecraft.getInstance();
-            requirePlayer();
-            var action = text(input(invocation), "action", "use");
+            var player = requirePlayer();
+            var arguments = input(invocation);
+            var action = text(arguments, "action", "use");
+            var intelligence = text(arguments, "intelligence", "").trim().toLowerCase(Locale.ROOT);
+            if ("attack".equals(action) && !intelligence.isBlank() && !"raw".equals(intelligence)
+                    && !"lowest".equals(intelligence) && !"raw-v1".equals(intelligence)
+                    && client.gameMode != null && client.gameMode.getPlayerMode() == net.minecraft.world.level.GameType.SURVIVAL) {
+                var blockedBlock = NeoForgeGoalActionGuard.toolRequiredAttackTarget(client.level, player);
+                if (blockedBlock != null) {
+                    throw new IllegalStateException("intelligent attack refused tool-required block " + blockedBlock
+                            + "; acquire and equip the prerequisite tool first");
+                }
+            }
             var mapping = switch (action) {
                 case "use" -> client.options.keyUse;
                 case "attack" -> client.options.keyAttack;
@@ -871,7 +882,8 @@ public final class NeoForgeClientController {
             };
             invocation.cancellation().commitMutation();
             KeyMapping.click(mapping.getKey());
-            return Map.of("action", action, "queued", true);
+            return Map.of("action", action, "queued", true,
+                    "intelligence", intelligence.isBlank() ? "unspecified" : intelligence);
         }
 
         private Map<String, Object> selectSlot(dev.lodestone.adapter.InvocationContext invocation) {

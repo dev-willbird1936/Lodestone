@@ -95,7 +95,8 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
     }
 
     private static Intelligence parseIntelligence(Object value) {
-        var normalized = value == null ? "raw-v1" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+        var normalized = value == null || String.valueOf(value).isBlank()
+                ? "guarded-v1" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
             case "raw", "lowest", "raw-v1" -> Intelligence.RAW_V1;
             case "guarded", "medium", "guarded-v1" -> Intelligence.GUARDED_V1;
@@ -105,7 +106,8 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
     }
 
     private static Safety parseSafety(Object value) {
-        var normalized = value == null ? "low" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+        var normalized = value == null || String.valueOf(value).isBlank()
+                ? "balanced" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
             case "low", "fast" -> Safety.LOW;
             case "balanced", "normal", "medium" -> Safety.BALANCED;
