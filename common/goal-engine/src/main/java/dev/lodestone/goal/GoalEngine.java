@@ -45,6 +45,9 @@ public final class GoalEngine {
         state.put("goal", spec.goal());
         state.put("mode", spec.mode().toString());
         state.put("intelligence", spec.intelligence().id());
+        state.put("planningDepth", spec.intelligence().planningDepth());
+        state.put("prerequisitePlanning", spec.intelligence().prerequisitePlanningEnabled());
+        state.put("actionSegmentReplanning", spec.intelligence().actionSegmentReplanningEnabled());
         state.put("safety", spec.safety().id());
         state.put("observation", spec.controls().observation());
         state.put("combatPolicy", spec.controls().combatPolicy());

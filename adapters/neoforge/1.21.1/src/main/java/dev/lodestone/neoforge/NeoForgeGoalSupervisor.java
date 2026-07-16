@@ -4,6 +4,7 @@ package dev.lodestone.neoforge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.GameType;
@@ -113,7 +114,8 @@ final class NeoForgeGoalSupervisor {
         if (policy.obstructionRecoveryEnabled() && hit instanceof BlockHitResult blockHit) {
             var block = blockHit.getBlockPos();
             var state = client.level.getBlockState(block);
-            if (!state.isAir() && state.getFluidState().isEmpty()) {
+            if (!state.isAir() && state.getFluidState().isEmpty()
+                    && canClearWithCurrentTool(player, state)) {
                 lookAt(player, Vec3.atCenterOf(block));
                 client.options.keyUp.setDown(false);
                 client.options.keySprint.setDown(false);
@@ -124,6 +126,9 @@ final class NeoForgeGoalSupervisor {
                 stalledMovementTicks = 0;
                 recoveryTicks = 4;
                 return true;
+            }
+            if (!state.isAir() && state.getFluidState().isEmpty()) {
+                diagnostics.add("obstruction-recovery:defer-hard-block-until-tool");
             }
         }
 
@@ -147,6 +152,14 @@ final class NeoForgeGoalSupervisor {
         stalledMovementTicks = 0;
         recoveryTicks = 8;
         return true;
+    }
+
+    private static boolean canClearWithCurrentTool(LocalPlayer player,
+                                                   net.minecraft.world.level.block.state.BlockState state) {
+        var held = player.getMainHandItem();
+        // Logs and foliage are legitimate early-game prerequisites; hard terrain is not.
+        if (held.isEmpty()) return state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
+        return held.isCorrectToolForDrops(state);
     }
 
     private LivingEntity findThreat(LocalPlayer player) {

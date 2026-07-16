@@ -681,6 +681,7 @@ final class NeoForgeNetherGoal {
     }
 
     private void findStone(Minecraft client) {
+        requirePrerequisiteTool(client, Items.WOODEN_PICKAXE, "stone mining");
         observedStone = scanVisibleBlocks(client, state -> state.is(Blocks.STONE), 28, 20);
         if (observedStone.size() >= 3) {
             stoneMineIndex = 0;
@@ -691,6 +692,7 @@ final class NeoForgeNetherGoal {
     }
 
     private void mineStone(Minecraft client) {
+        requireEquippedTool(client, Items.WOODEN_PICKAXE, "stone mining");
         if (countItem(requirePlayer(client), Items.COBBLESTONE) >= COBBLESTONE_REQUIRED) {
             stopAttack(client);
             nextTableStage = Stage.CRAFT_STONE_PICK;
@@ -719,6 +721,7 @@ final class NeoForgeNetherGoal {
     }
 
     private void findIron(Minecraft client) {
+        requirePrerequisiteTool(client, Items.STONE_PICKAXE, "iron mining");
         observedIron = scanVisibleBlocks(client,
                 state -> state.is(Blocks.IRON_ORE) || state.is(Blocks.DEEPSLATE_IRON_ORE), 72, 48);
         if (!observedIron.isEmpty()) {
@@ -730,6 +733,7 @@ final class NeoForgeNetherGoal {
     }
 
     private void mineIron(Minecraft client) {
+        requireEquippedTool(client, Items.STONE_PICKAXE, "iron mining");
         if (countItem(requirePlayer(client), Items.RAW_IRON) >= RAW_IRON_REQUIRED) {
             stopAttack(client);
             transition(Stage.FIND_GRAVEL, 15);
@@ -757,6 +761,7 @@ final class NeoForgeNetherGoal {
     }
 
     private void findGravel(Minecraft client) {
+        requirePrerequisiteTool(client, Items.STONE_PICKAXE, "gravel mining");
         observedGravel = scanVisibleBlocks(client, state -> state.is(Blocks.GRAVEL), 64, 32);
         if (!observedGravel.isEmpty()) {
             gravelMineIndex = 0;
@@ -767,6 +772,7 @@ final class NeoForgeNetherGoal {
     }
 
     private void mineGravel(Minecraft client) {
+        requireEquippedTool(client, Items.STONE_PICKAXE, "gravel mining");
         if (countItem(requirePlayer(client), Items.FLINT) > 0) {
             stopAttack(client);
             transition(Stage.PLACE_FURNACE, 15);
@@ -1432,6 +1438,8 @@ final class NeoForgeNetherGoal {
                 Map.entry("intelligence", policy.intelligence().id()),
                 Map.entry("safety", policy.safety().id()),
                 Map.entry("policyMode", policy.mode()),
+                Map.entry("prerequisitePlanning", policy.prerequisitePlanningEnabled()),
+                Map.entry("actionSegmentReplanning", policy.actionSegmentReplanningEnabled()),
                 Map.entry("safetyInterventions", List.copyOf(safetyDiagnostics)),
                 Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
                 Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
@@ -1840,6 +1848,27 @@ final class NeoForgeNetherGoal {
             if (!player.getInventory().getItem(slot).isEmpty()) count++;
         }
         return count;
+    }
+
+    private void requirePrerequisiteTool(Minecraft client, Item item, String action) {
+        if (!policy.prerequisitePlanningEnabled()) return;
+        var player = requirePlayer(client);
+        if (countItem(player, item) < 1) {
+            throw new IllegalStateException("intelligent prerequisite missing before " + action + ": " + item);
+        }
+        if (hotbarSlot(player, item) < 0) {
+            throw new IllegalStateException("intelligent prerequisite was not promoted to the hotbar before "
+                    + action + ": " + item);
+        }
+    }
+
+    private void requireEquippedTool(Minecraft client, Item item, String action) {
+        if (!policy.prerequisitePlanningEnabled()) return;
+        requirePrerequisiteTool(client, item, action);
+        if (!requirePlayer(client).getMainHandItem().is(item)) {
+            throw new IllegalStateException("intelligent prerequisite tool was not equipped before "
+                    + action + ": " + item);
+        }
     }
 
     private static int hotbarSlot(LocalPlayer player, Item item) {

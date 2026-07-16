@@ -5,18 +5,20 @@ import java.util.Locale;
 
 /** Versioned goal reasoning contract. Safety remains an independent policy axis. */
 public enum GoalIntelligence {
-    RAW_V1("raw-v1", false, false),
-    GUARDED_V1("guarded-v1", true, false),
-    ADAPTIVE_V1("adaptive-v1", true, true);
+    RAW_V1("raw-v1", false, false, 0),
+    GUARDED_V1("guarded-v1", true, false, 1),
+    ADAPTIVE_V1("adaptive-v1", true, true, 3);
 
     private final String id;
     private final boolean guardrails;
     private final boolean modelReplanning;
+    private final int planningDepth;
 
-    GoalIntelligence(String id, boolean guardrails, boolean modelReplanning) {
+    GoalIntelligence(String id, boolean guardrails, boolean modelReplanning, int planningDepth) {
         this.id = id;
         this.guardrails = guardrails;
         this.modelReplanning = modelReplanning;
+        this.planningDepth = planningDepth;
     }
 
     public String id() { return id; }
@@ -24,6 +26,15 @@ public enum GoalIntelligence {
     public boolean guardrailsEnabled() { return guardrails; }
 
     public boolean modelReplanningEnabled() { return modelReplanning; }
+
+    /** Number of prerequisite/action layers the native executor must preserve. */
+    public int planningDepth() { return planningDepth; }
+
+    /** Highest profiles must acquire required tools before attempting dependent work. */
+    public boolean prerequisitePlanningEnabled() { return planningDepth >= 1; }
+
+    /** Adaptive profiles may replan from fresh observations after each action segment. */
+    public boolean actionSegmentReplanningEnabled() { return planningDepth >= 3; }
 
     public static GoalIntelligence parse(String value) {
         if (value == null || value.isBlank()) return RAW_V1;

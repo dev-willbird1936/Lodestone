@@ -55,6 +55,14 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return intelligence != Intelligence.RAW_V1 && allowBlockBreaking;
     }
 
+    boolean prerequisitePlanningEnabled() {
+        return intelligence != Intelligence.RAW_V1;
+    }
+
+    boolean actionSegmentReplanningEnabled() {
+        return intelligence == Intelligence.ADAPTIVE_V1;
+    }
+
     boolean highSafety() {
         return safety == Safety.HIGH;
     }
