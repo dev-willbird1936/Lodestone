@@ -253,7 +253,9 @@ final class NeoForgeNetherGoal {
     }
 
     private void findLoot(Minecraft client) {
-        lootChest = findNearestChest(client, 96);
+        // The ruined-portal chest is an optional shortcut. Keep its observation local so a
+        // missing chest cannot monopolize the client tick before the genuine wood route starts.
+        lootChest = findNearestChest(client, 48);
         if (lootChest != null) {
             announce(client, "Observed a natural portal chest at " + lootChest + "; walking there normally");
             navigationDestination = null;
