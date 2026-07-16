@@ -136,12 +136,13 @@ public final class GoalEngine {
                         pendingFailure = new ExecutionFailure(GoalStatus.FAILED, "step postcondition failed: " + selected.id());
                         break;
                     }
-                    if (shouldObserveAfter(spec, selected)) {
+                    var postObservation = postObservationCapability(spec, selected);
+                    if (postObservation != null) {
                         if (completedSteps >= spec.maxSteps()) {
-                            pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "no budget for realtime post-action observation");
+                            pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "no budget for post-action observation");
                             break;
                         }
-                        var observed = invokeWithTransientRetry(invoker, "minecraft.player.state.read", "1.0", Map.of(),
+                        var observed = invokeWithTransientRetry(invoker, postObservation, "1.0", Map.of(),
                                 spec.dryRun(), spec, started);
                         actionCount++;
                         if (observed.status() != ResultEnvelope.Status.OK) {
@@ -151,7 +152,7 @@ public final class GoalEngine {
                         steps.put("postObserve." + selected.id(), observed.output());
                         completedSteps++;
                         trace.add(Map.of("step", "postObserve." + selected.id(), "kind", "observe",
-                                "capability", "minecraft.player.state.read", "status", "ok"));
+                                "capability", postObservation, "status", "ok"));
                         if (elapsedMs(started) >= spec.maxDurationMs()) {
                             pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT,
                                     "goal duration budget exhausted after post-action observation: " + selected.id());
@@ -220,18 +221,30 @@ public final class GoalEngine {
                 decision.candidateIndex());
     }
 
-    private static boolean shouldObserveAfter(GoalSpec spec, GoalStep selected) {
-        if (selected.kind() != GoalStepKind.INVOKE
-                || "minecraft.player.state.read".equals(selected.capability())) return false;
-        if (selected.observeAfter()) return true;
-        if (spec.mode() != GoalMode.SCRIPT || !spec.intelligence().scriptSegmentObservationEnabled()) return false;
-        // UI transitions can legitimately leave no player/world available. Restrict the
-        // automatic script checkpoint to gameplay capabilities with a stable observation.
+    private static String postObservationCapability(GoalSpec spec, GoalStep selected) {
+        if (selected.kind() != GoalStepKind.INVOKE) return null;
         var capability = selected.capability();
-        return capability != null && (capability.startsWith("minecraft.player.")
-                || capability.startsWith("minecraft.world.")
-                || capability.startsWith("minecraft.entity.")
-                || capability.startsWith("minecraft.goal."));
+        if (capability == null || "minecraft.player.state.read".equals(capability)
+                || "minecraft.ui.state.read".equals(capability)
+                || "minecraft.server.info.read".equals(capability)) return null;
+
+        if (spec.mode() == GoalMode.REALTIME) {
+            if (capability.startsWith("lodestone.ui.") || capability.startsWith("minecraft.ui.")
+                    || capability.startsWith("minecraft.input.")) return "minecraft.ui.state.read";
+            if (capability.startsWith("minecraft.command.")) return "minecraft.server.info.read";
+            return "minecraft.player.state.read";
+        }
+
+        if (spec.intelligence().scriptSegmentObservationEnabled()) {
+            if (capability.startsWith("lodestone.ui.") || capability.startsWith("minecraft.ui.")
+                    || capability.startsWith("minecraft.input.")) return "minecraft.ui.state.read";
+            if (capability.startsWith("minecraft.command.")) return "minecraft.server.info.read";
+            if (capability.startsWith("minecraft.player.") || capability.startsWith("minecraft.world.")
+                    || capability.startsWith("minecraft.entity.") || capability.startsWith("minecraft.goal.")) {
+                return "minecraft.player.state.read";
+            }
+        }
+        return selected.observeAfter() ? "minecraft.player.state.read" : null;
     }
 
     private static ResultEnvelope invokeWithTransientRetry(GoalInvoker invoker, String capability,

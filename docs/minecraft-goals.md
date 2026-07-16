@@ -16,7 +16,7 @@ and segment checkpoints.
 
 Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Arbitrary shell, JavaScript, or Python is never executed by a plan.
 
-Script mode runs segments in declared order. Realtime mode asks the selected provider for one candidate step, invokes it, performs a fresh `minecraft.player.state.read` after action steps marked `observeAfter`, and continues. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
+Script mode runs segments in declared order. Realtime mode asks the selected provider for one candidate step, invokes it, then reads fresh UI, server, or player state after every action. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
 
 Realtime reports retain `model-decision` trace entries with candidate index and rationale; native
 goal actors remain deterministic low-level executors beneath those high-level decisions.
