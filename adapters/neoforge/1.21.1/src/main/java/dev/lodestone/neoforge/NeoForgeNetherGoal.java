@@ -397,10 +397,24 @@ final class NeoForgeNetherGoal {
                 navigateTo(client, vantage, 1.8, "tree-log-vantage");
                 return;
             }
+            if (stageTicks > 180) {
+                stopAttack(client);
+                safetyDiagnostics.add("mining-replan:skip-unreachable-tree-log:" + target);
+                mineIndex++;
+                stageTicks = 0;
+                waitTicks = 5;
+                return;
+            }
         }
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-by-hand");
-        if (stageTicks > 420) throw new IllegalStateException("hand mining failed at observed log " + target);
+        if (stageTicks > 240) {
+            stopAttack(client);
+            safetyDiagnostics.add("mining-replan:skip-stalled-tree-log:" + target);
+            mineIndex++;
+            stageTicks = 0;
+            waitTicks = 5;
+        }
     }
 
     private BlockPos findTreeMiningVantage(Minecraft client, BlockPos target) {
