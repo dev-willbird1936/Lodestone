@@ -90,6 +90,8 @@ final class NeoForgeNetherGoal {
     private boolean recipeStarted;
     private boolean smeltLoaded;
     private boolean smeltCollected;
+    private boolean woodPickVerificationPending;
+    private int woodPickAttempts;
     private BlockPos placementVantage;
     private BlockPos navigationDestination;
     private double navigationLastDistance = Double.POSITIVE_INFINITY;
@@ -470,6 +472,25 @@ final class NeoForgeNetherGoal {
 
     private void craftWoodPick(Minecraft client) {
         var screen = requireContainer(client, CraftingScreen.class);
+        if (woodPickVerificationPending) {
+            if (countItem(requirePlayer(client), Items.WOODEN_PICKAXE) >= 1) {
+                woodPickVerificationPending = false;
+                afterTableClose = Stage.EQUIP_WOOD_PICK;
+                transition(Stage.MOVE_WOOD_PICK_TO_HOTBAR, 15);
+                return;
+            }
+            if (stageTicks <= 20) return;
+            woodPickVerificationPending = false;
+            if (++woodPickAttempts <= 2) {
+                clearCraftingGrid(client);
+                recipeStarted = false;
+                stageTicks = 0;
+                waitTicks = 8;
+                inputActions.add("craft:retry-wooden-pickaxe-after-container-sync");
+                return;
+            }
+            throw new IllegalStateException("visible wooden-pick recipe did not produce a pickaxe");
+        }
         if (!recipeStarted) {
             var planks = findPlayerItemSlot(screen, stack -> stack.is(ItemTags.PLANKS));
             var sticks = findPlayerItemSlot(screen, stack -> stack.is(Items.STICK));
@@ -485,12 +506,22 @@ final class NeoForgeNetherGoal {
                     new ClickOp(8, 1, ClickType.PICKUP, "wood-pick-stick-bottom"),
                     new ClickOp(sticks, 0, ClickType.PICKUP, "return-unused-pick-sticks"),
                     new ClickOp(0, 0, ClickType.QUICK_MOVE, "take-wooden-pickaxe")), () -> {
-                if (countItem(requirePlayer(client), Items.WOODEN_PICKAXE) < 1) {
-                    throw new IllegalStateException("visible wooden-pick recipe did not produce a pickaxe");
-                }
-                afterTableClose = Stage.EQUIP_WOOD_PICK;
-                transition(Stage.MOVE_WOOD_PICK_TO_HOTBAR, 15);
+                woodPickVerificationPending = true;
+                stageTicks = 0;
+                recipeStarted = false;
             });
+        }
+    }
+
+    private void clearCraftingGrid(Minecraft client) {
+        if (client.gameMode == null) throw new IllegalStateException("game mode unavailable while clearing recipe grid");
+        var screen = requireContainer(client, CraftingScreen.class);
+        for (int slot = 1; slot <= 9; slot++) {
+            if (!screen.getMenu().getSlot(slot).getItem().isEmpty()) {
+                client.gameMode.handleInventoryMouseClick(screen.getMenu().containerId, slot, 0,
+                        ClickType.QUICK_MOVE, requirePlayer(client));
+                inputActions.add("container-click:clear-wood-pick-grid-" + slot);
+            }
         }
     }
 
