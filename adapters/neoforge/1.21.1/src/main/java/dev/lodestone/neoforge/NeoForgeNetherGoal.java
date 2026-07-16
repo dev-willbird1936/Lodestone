@@ -476,6 +476,14 @@ final class NeoForgeNetherGoal {
 
     private void collectTree(Minecraft client) {
         var player = requirePlayer(client);
+        if (countLogs(player) == 0 && handMinedLogs == 0
+                && mineIndex >= Math.min(LOGS_REQUIRED, resourceTree.logs().size())) {
+            safetyDiagnostics.add("mining-replan:tree-plan-produced-no-logs:" + resourceTree.base());
+            stopMovement(client);
+            resourceTree = null;
+            transition(Stage.FIND_TREE, 15);
+            return;
+        }
         if (countLogs(player) >= Math.min(LOGS_REQUIRED, resourceTree.logs().size())) {
             stopMovement(client);
             announce(client, "Collected hand-mined wood; opening the inventory crafting grid");
