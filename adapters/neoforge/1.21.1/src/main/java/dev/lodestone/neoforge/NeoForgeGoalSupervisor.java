@@ -7,6 +7,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -18,6 +20,8 @@ final class NeoForgeGoalSupervisor {
     private final Collection<String> diagnostics;
     private int recoveryTicks;
     private int brakeTicks;
+    private Vec3 lastPosition;
+    private int stalledMovementTicks;
 
     NeoForgeGoalSupervisor(NeoForgeGoalPolicy policy, Collection<String> actions,
                            Collection<String> diagnostics) {
@@ -31,6 +35,8 @@ final class NeoForgeGoalSupervisor {
                 || client.gameMode == null || client.gameMode.getPlayerMode() != GameType.SURVIVAL
                 || client.screen != null) return false;
         var player = client.player;
+
+        if (recoverObstructionOrStall(client, player)) return true;
 
         if (brakeTicks > 0) {
             client.options.keyShift.setDown(true);
@@ -80,6 +86,67 @@ final class NeoForgeGoalSupervisor {
             return true;
         }
         return false;
+    }
+
+    /** Normal-input recovery for a player wedged in terrain, foliage, or a visible block. */
+    private boolean recoverObstructionOrStall(Minecraft client, LocalPlayer player) {
+        var movingInput = client.options.keyUp.isDown() || client.options.keySprint.isDown()
+                || client.options.keyJump.isDown();
+        var position = player.position();
+        if (!movingInput) {
+            lastPosition = position;
+            stalledMovementTicks = 0;
+            return false;
+        }
+        if (lastPosition != null && position.distanceToSqr(lastPosition) < 0.0009) stalledMovementTicks++;
+        else stalledMovementTicks = 0;
+        lastPosition = position;
+
+        var feet = player.blockPosition();
+        var feetBlocked = !client.level.getBlockState(feet).getCollisionShape(client.level, feet).isEmpty();
+        var head = feet.above();
+        var headBlocked = !client.level.getBlockState(head).getCollisionShape(client.level, head).isEmpty();
+        var stalled = stalledMovementTicks > (policy.highSafety() ? 30 : 60);
+        if (!feetBlocked && !headBlocked && !player.isInWall() && !stalled) return false;
+
+        var hit = player.pick(5.0, 1.0F, false);
+        if (policy.obstructionRecoveryEnabled() && hit instanceof BlockHitResult blockHit) {
+            var block = blockHit.getBlockPos();
+            var state = client.level.getBlockState(block);
+            if (!state.isAir() && state.getFluidState().isEmpty()) {
+                lookAt(player, Vec3.atCenterOf(block));
+                client.options.keyUp.setDown(false);
+                client.options.keySprint.setDown(false);
+                client.options.keyJump.setDown(false);
+                client.options.keyAttack.setDown(true);
+                actions.add("safety:clear-visible-obstruction");
+                diagnostics.add("obstruction-recovery:attack:" + state.getBlock().getName().getString());
+                stalledMovementTicks = 0;
+                recoveryTicks = 4;
+                return true;
+            }
+        }
+
+        var target = NeoForgeWorldSnapshot.capture(client.level, policy)
+                .nearestSafeSurface(feet, policy.highSafety() ? 12 : 8);
+        if (target != null && !target.equals(feet)) {
+            lookAt(player, target);
+            setRecoveryMovement(client, true);
+            actions.add("safety:escape-obstruction");
+            diagnostics.add("obstruction-recovery:escape-to:" + target);
+        } else {
+            client.options.keyUp.setDown(true);
+            client.options.keySprint.setDown(false);
+            client.options.keyJump.setDown(true);
+            client.options.keyLeft.setDown(stalledMovementTicks % 2 == 0);
+            client.options.keyRight.setDown(stalledMovementTicks % 2 != 0);
+            client.options.keyShift.setDown(false);
+            actions.add("safety:unstick-jump-strafe");
+            diagnostics.add("obstruction-recovery:no-distinct-safe-surface");
+        }
+        stalledMovementTicks = 0;
+        recoveryTicks = 8;
+        return true;
     }
 
     private LivingEntity findThreat(LocalPlayer player) {
