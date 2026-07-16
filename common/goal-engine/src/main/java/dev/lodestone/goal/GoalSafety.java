@@ -23,7 +23,7 @@ public enum GoalSafety {
     public boolean progressMayBePreempted() { return this == HIGH; }
 
     public static GoalSafety parse(String value) {
-        if (value == null || value.isBlank()) return LOW;
+        if (value == null || value.isBlank()) return BALANCED;
         var normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');
         return switch (normalized) {
             case "low", "fast" -> LOW;

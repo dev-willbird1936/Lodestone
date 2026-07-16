@@ -43,7 +43,7 @@ public final class GoalService {
                              String callerSessionId,
                              AuthorizationPolicy authorization) {
         return run(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
-                suppressInGameMessages, GoalIntelligence.RAW_V1, GoalSafety.LOW,
+                suppressInGameMessages, GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED,
                 GoalControls.defaults(),
                 callerSessionId, authorization);
     }
@@ -61,7 +61,7 @@ public final class GoalService {
 
     public List<GoalBenchmarkRunner.BenchmarkCase> benchmark(List<String> taskIds, boolean dryRun,
                                                              String callerSessionId, AuthorizationPolicy authorization) {
-        return benchmark(taskIds, dryRun, GoalIntelligence.RAW_V1, GoalSafety.LOW, GoalControls.defaults(),
+        return benchmark(taskIds, dryRun, GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults(),
                 callerSessionId, authorization);
     }
 

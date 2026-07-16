@@ -44,10 +44,14 @@ every Minecraft environment.
 - Goal execution now keeps intelligence and safety as separate, inspectable policy axes: adaptive
   script checkpoints are supported, realtime providers are selected by measured latency with low
   reasoning effort by default, intelligent actors veto tool-required bare-hand mining, and command
-  execution is explicitly denied unless a goal request or bounded creative setup authorizes it.
+  execution is explicitly denied unless a goal request or bounded creative setup authorizes it;
+  guarded defaults now apply at the Java API and recording-launcher boundaries as well as MCP.
 - NeoForge 1.21.1 now proves the survival wooden-axe tree goal in both script and realtime modes
   through visible normal player input: hand gathering, inventory/container crafting, table placement,
   axe equipping, navigation, and full-tree mining, with commands and direct mutation prohibited.
+- NeoForge 1.21.1 now includes a native combat task that selects a loaded hostile, path-plans with
+  ordinary movement, chooses an available hotbar weapon at guarded intelligence levels, attacks with
+  normal input, and requires terminal entity-death readback while the player remains alive.
 - KeepFocus remains a separate opt-in client mod and is staged by the NeoForge 1.21.1 automation
   profile after rebuilding against the exact Lodestone NeoForge patch.
 - Quilt Loader 0.29.2 compatibility is verified on Minecraft 1.20.1 and 1.21.1 using the exact

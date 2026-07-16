@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(53, CoreCatalog.load().size());
+        assertEquals(54, CoreCatalog.load().size());
     }
 
     @Test

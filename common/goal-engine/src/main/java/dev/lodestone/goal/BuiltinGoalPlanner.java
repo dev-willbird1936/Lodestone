@@ -274,15 +274,19 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
     }
 
     private static GoalPlan combatPlan(String goal) {
-        var nearby = GoalStep.observe("nearby", "minecraft.entity.nearby.read", Map.of("radius", 16, "limit", 16));
-        var attack = GoalStep.invoke("attack", "minecraft.player.interact", "1.0", Map.of("action", "attack"), true);
-        var after = GoalStep.observe("after", "minecraft.player.state.read", Map.of());
-        var verify = new GoalStep("verify", GoalStepKind.ASSERT, null, "1.0", Map.of(),
-                List.of(new GoalAssertion("steps.after", "exists", null)), false);
+        var attack = GoalStep.invoke("attack-nearest", "minecraft.goal.combat.attack-nearest", "1.0",
+                Map.of("intelligence", "${intelligence}", "safety", "${safety}",
+                        "observation", "${observation}", "combatPolicy", "${combatPolicy}",
+                        "allowBlockBreaking", "${allowBlockBreaking}",
+                        "allowBlockPlacing", "${allowBlockPlacing}",
+                        "allowCommands", "${allowCommands}"), true,
+                new GoalAssertion("steps.attack-nearest.targetObserved", "equals", true),
+                new GoalAssertion("steps.attack-nearest.targetKilled", "equals", true),
+                new GoalAssertion("steps.attack-nearest.playerAlive", "equals", true));
         return new GoalPlan("combat.attack-nearest", goal, List.of(
-                new GoalSegment("engage", "Read nearby entities, queue one attack, and observe fresh state.", List.of(nearby, attack, after, verify), List.of())),
-                Map.of("taskId", "combat.attack-nearest", "killConfirmation", "native entity readback required",
-                        "completionPredicateReady", false));
+                new GoalSegment("engage", "Observe a nearby hostile, path with ordinary movement, attack with a held input, and prove target death.", List.of(attack), List.of())),
+                Map.of("taskId", "combat.attack-nearest", "killConfirmation", "native entity death readback",
+                        "ordinaryInputOnly", true, "completionPredicateReady", true));
     }
 
     private static GoalPlan commandPlan(String goal) {

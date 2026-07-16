@@ -233,7 +233,14 @@ final class NeoForgeSurvivalTreeGoal {
             throw new IllegalStateException("hand-mining stage unexpectedly has a held item");
         }
         var target = resourceTree.logs().get(mineIndex);
-        if (!client.level.getBlockState(target).is(BlockTags.LOGS)) {
+        var state = client.level.getBlockState(target);
+        if (!state.is(BlockTags.LOGS) && !state.isAir()) {
+            stopAttack(client);
+            if (policy.obstructionRecoveryEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            throw new IllegalStateException("resource log target is occupied by non-log block " + target
+                    + ": " + state.getBlock().getName().getString());
+        }
+        if (state.isAir()) {
             stopAttack(client);
             handMinedLogs++;
             mineIndex++;
@@ -555,11 +562,13 @@ final class NeoForgeSurvivalTreeGoal {
         }
         var target = targetTree.logs().get(mineIndex);
         var state = client.level.getBlockState(target);
-        if (!state.is(BlockTags.LOGS) && !state.isAir() && policy.obstructionRecoveryEnabled()) {
-            if (breakVisibleMiningObstruction(client, target)) return;
-            throw new IllegalStateException("target log is obstructed by an unreachable block " + target);
+        if (!state.is(BlockTags.LOGS) && !state.isAir()) {
+            stopAttack(client);
+            if (policy.obstructionRecoveryEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            throw new IllegalStateException("target log is occupied by non-log block " + target
+                    + ": " + state.getBlock().getName().getString());
         }
-        if (!state.is(BlockTags.LOGS)) {
+        if (state.isAir()) {
             stopAttack(client);
             targetMinedLogs++;
             mineIndex++;
@@ -569,6 +578,20 @@ final class NeoForgeSurvivalTreeGoal {
             return;
         }
         lookAt(player, target);
+        var hit = player.pick(5.0F, 0.0F, false);
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)
+                || !blockHit.getBlockPos().equals(target)) {
+            stopAttack(client);
+            if (policy.obstructionRecoveryEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            if (policy.toolPrerequisiteGuardEnabled()) {
+                if (stageTicks > 120) {
+                    throw new IllegalStateException("intelligent mining route cannot see target log " + target
+                            + "; refusing to attack an unplanned obstruction");
+                }
+                navigationDiagnostics.add("mining-target-not-visible:" + target);
+                return;
+            }
+        }
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-with-wooden-axe");
         if (stageTicks > 260) throw new IllegalStateException("axe mining failed to break observed target log " + target);

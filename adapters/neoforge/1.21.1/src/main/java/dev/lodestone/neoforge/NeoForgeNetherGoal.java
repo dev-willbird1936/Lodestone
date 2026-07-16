@@ -374,7 +374,13 @@ final class NeoForgeNetherGoal {
             return;
         }
         var target = resourceTree.logs().get(mineIndex);
-        if (!client.level.getBlockState(target).is(BlockTags.LOGS)) {
+        var state = client.level.getBlockState(target);
+        if (!state.is(BlockTags.LOGS) && !state.isAir()) {
+            stopAttack(client);
+            throw new IllegalStateException("natural tree target is occupied by non-log block " + target
+                    + ": " + state.getBlock().getName().getString());
+        }
+        if (state.isAir()) {
             stopAttack(client);
             handMinedLogs++;
             mineIndex++;

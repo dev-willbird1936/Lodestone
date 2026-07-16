@@ -99,6 +99,12 @@ final class NeoForgeGoalSupervisor {
      */
     private boolean preventBareHandToolMining(Minecraft client, LocalPlayer player) {
         if (!policy.toolPrerequisiteGuardEnabled() || !client.options.keyAttack.isDown()) return false;
+        var activeThreat = findThreat(player);
+        if (activeThreat != null && player.distanceToSqr(activeThreat) <= 20.25) {
+            // Combat/defense input is allowed to reach a close hostile; it must not be
+            // mistaken for a mining request merely because a block is behind the mob.
+            return false;
+        }
         var hit = player.pick(5.0F, 0.0F, false);
         if (!(hit instanceof BlockHitResult blockHit)) return false;
         var state = client.level.getBlockState(blockHit.getBlockPos());

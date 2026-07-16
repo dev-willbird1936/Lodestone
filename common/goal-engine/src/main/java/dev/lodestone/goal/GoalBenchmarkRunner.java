@@ -17,7 +17,7 @@ public final class GoalBenchmarkRunner {
     }
 
     public List<BenchmarkCase> run(List<String> taskIds, GoalInvoker invoker, boolean dryRun) {
-        return run(taskIds, invoker, dryRun, GoalIntelligence.RAW_V1, GoalSafety.LOW, GoalControls.defaults());
+        return run(taskIds, invoker, dryRun, GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults());
     }
 
     public List<BenchmarkCase> run(List<String> taskIds, GoalInvoker invoker, boolean dryRun,

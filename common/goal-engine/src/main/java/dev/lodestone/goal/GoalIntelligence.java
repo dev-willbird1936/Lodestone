@@ -36,7 +36,7 @@ public enum GoalIntelligence {
 
     public boolean obstructionRecoveryEnabled() { return guardrailsEnabled(); }
 
-    /** Highest profiles must acquire required tools before attempting dependent work. */
+    /** Guarded and higher profiles acquire required tools before dependent work when the actor supports it. */
     public boolean prerequisitePlanningEnabled() { return toolPrerequisitePlanningEnabled(); }
 
     /** Adaptive profiles may replan from fresh observations after each action segment. */
@@ -51,7 +51,7 @@ public enum GoalIntelligence {
     }
 
     public static GoalIntelligence parse(String value) {
-        if (value == null || value.isBlank()) return RAW_V1;
+        if (value == null || value.isBlank()) return GUARDED_V1;
         var normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');
         return switch (normalized) {
             case "raw", "lowest", "raw-v1" -> RAW_V1;
