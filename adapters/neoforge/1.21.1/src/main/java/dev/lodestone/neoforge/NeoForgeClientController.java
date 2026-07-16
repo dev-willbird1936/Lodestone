@@ -283,7 +283,7 @@ public final class NeoForgeClientController {
                 case "minecraft.input.key.set" -> setKey(invocation, false);
                 case "minecraft.input.mouse.set" -> setKey(invocation, true);
                 case "minecraft.input.release-all" -> releaseAllInput(invocation);
-                case "minecraft.player.state.read" -> playerState();
+                case "minecraft.player.state.read" -> playerState(invocation);
                 case "minecraft.player.context.read" -> playerContext(invocation);
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" ->
                         worldAnalysis(capability, invocation);
@@ -806,7 +806,7 @@ public final class NeoForgeClientController {
                     }, invocation.cancellation()::throwIfCancelled);
         }
 
-        private Map<String, Object> playerState() {
+        private Map<String, Object> playerState(dev.lodestone.adapter.InvocationContext invocation) {
             var player = requirePlayer();
             var state = new LinkedHashMap<String, Object>();
             state.put("uuid", player.getUUID().toString());
@@ -817,7 +817,8 @@ public final class NeoForgeClientController {
             state.put("health", player.getHealth());
             state.put("food", player.getFoodData().getFoodLevel());
             state.put("selectedSlot", player.getInventory().selected);
-            state.put("worldObservation", NeoForgeGoalObservation.capture(Minecraft.getInstance()));
+            state.put("worldObservation", NeoForgeGoalObservation.capture(Minecraft.getInstance(),
+                    NeoForgeGoalPolicy.from(input(invocation))));
             return Map.copyOf(state);
         }
 

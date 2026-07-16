@@ -58,6 +58,10 @@ every Minecraft environment.
 - Goal steps now have reusable assertion-shaped preconditions. Realtime candidate selection filters
   steps whose state or phase prerequisites are not ready, while script execution fails closed before
   an invalid action; native tree and Nether phase plans declare their tool/checkpoint dependencies.
+- Goal intelligence now distinguishes obstruction recovery from obstruction mining: guarded routes
+  around visible blocks, while adaptive may clear a visible obstruction only with the required tool
+  and explicit block-breaking permission. Guarded and adaptive script segments also receive fresh
+  state handoffs, including a bounded local collision/hazard grid and forward-drop risk.
 - NeoForge player-state readback now carries the same bounded local goal observation after ordinary
   actions, giving realtime replanning fresh inventory/tool, threat, target-block, fluid, and fall
   facts instead of only a terminal native-actor summary.

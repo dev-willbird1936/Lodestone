@@ -36,14 +36,17 @@ public enum GoalIntelligence {
 
     public boolean obstructionRecoveryEnabled() { return guardrailsEnabled(); }
 
+    /** Only the highest profile may turn a visible obstruction into a mining action. */
+    public boolean obstructionMiningEnabled() { return planningDepth >= 3; }
+
     /** Guarded and higher profiles acquire required tools before dependent work when the actor supports it. */
     public boolean prerequisitePlanningEnabled() { return toolPrerequisitePlanningEnabled(); }
 
     /** Adaptive profiles may replan from fresh observations after each action segment. */
     public boolean actionSegmentReplanningEnabled() { return planningDepth >= 3; }
 
-    /** Script mode uses deterministic segment replanning; realtime mode may additionally use the model. */
-    public boolean scriptSegmentObservationEnabled() { return planningDepth >= 3; }
+    /** Guarded and adaptive scripts pass a fresh observation across each action boundary. */
+    public boolean scriptSegmentObservationEnabled() { return guardrailsEnabled(); }
 
     /** Only realtime adaptive execution requires the pinned low-latency model provider. */
     public boolean requiresModel(GoalMode mode) {

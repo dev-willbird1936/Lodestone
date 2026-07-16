@@ -1007,8 +1007,8 @@ public final class McpGateway {
                 "executorModel", dev.lodestone.goal.GoalModelProviders.EXECUTOR_MODEL_ID,
                 "intelligenceLevels", List.of(
                         Map.of("id", "raw-v1", "behavior", "legacy action order; no prerequisite or safety intervention"),
-                        Map.of("id", "guarded-v1", "behavior", "deterministic prerequisite/tool checks, safe navigation, obstruction and threat recovery"),
-                        Map.of("id", "adaptive-v1", "behavior", "layered prerequisites, loaded-chunk replanning, segment checkpoints, and realtime model selection")),
+                        Map.of("id", "guarded-v1", "behavior", "deterministic prerequisite/tool checks, fresh script handoffs, safe navigation, obstruction routing, and threat recovery"),
+                        Map.of("id", "adaptive-v1", "behavior", "layered prerequisites, loaded-chunk replanning, fresh segment observations, visible obstruction mining with the right tool, and realtime model selection")),
                 "safetyPolicies", List.of(
                         Map.of("id", "low", "behavior", "goal progress with minimal intervention"),
                         Map.of("id", "balanced", "avoid fluids and damaging routes; recover visible hazards"),

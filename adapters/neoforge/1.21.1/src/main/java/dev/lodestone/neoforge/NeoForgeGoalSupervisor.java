@@ -152,7 +152,7 @@ final class NeoForgeGoalSupervisor {
         if (!feetBlocked && !headBlocked && !player.isInWall() && !stalled) return false;
 
         var hit = player.pick(5.0, 1.0F, false);
-        if (policy.obstructionRecoveryEnabled() && hit instanceof BlockHitResult blockHit) {
+        if (policy.obstructionMiningEnabled() && hit instanceof BlockHitResult blockHit) {
             var block = blockHit.getBlockPos();
             var state = client.level.getBlockState(block);
             if (!state.isAir() && state.getFluidState().isEmpty()

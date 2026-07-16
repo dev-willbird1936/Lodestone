@@ -15,14 +15,14 @@ legacy action order, or `adaptive-v1` for highest prerequisite/replanning behavi
 realtime requires an available model provider; adaptive script uses deterministic native planning
 and segment checkpoints.
 
-Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Custom invoke steps may also declare assertion-shaped `preconditions`; realtime excludes steps whose inputs or preconditions are not satisfied, while script mode fails closed before invoking an invalid step. The selected low-latency model receives those preconditions with each candidate. Arbitrary shell, JavaScript, or Python is never executed by a plan.
+Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`; automatic post-action observations are available under `steps.postObserve.<step-id>`. Custom invoke steps may also declare assertion-shaped `preconditions`; realtime excludes steps whose inputs or preconditions are not satisfied, while script mode fails closed before invoking an invalid step. The selected low-latency model receives those preconditions with each candidate. Arbitrary shell, JavaScript, or Python is never executed by a plan.
 
 If `maxDurationMs` is omitted, short bounded tasks use 120 seconds. The native wool-tree,
 wooden-axe tree, collect-wood, and Nether workflows use 480 seconds so normal movement, hand
 mining, visible crafting, and terminal readback are not cut off mid-prerequisite. An explicit
 caller budget still wins and remains capped at 600 seconds.
 
-Script mode runs segments in declared order. Guarded realtime follows that declared order while still observing after each action. Adaptive realtime asks the selected provider for one candidate step, invokes it, then reads fresh UI, server, or player state before selecting again. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
+Script mode runs segments in declared order and, for guarded or adaptive intelligence, reads fresh UI, server, or player state after each action so the next segment receives a real state handoff. Guarded realtime follows that declared order while still observing after each action. Adaptive realtime asks the selected provider for one eligible candidate step, invokes it, then reads fresh state before selecting again. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
 
 Adaptive realtime reports retain `model-decision` trace entries with candidate index and rationale;
 guarded realtime reports `deterministic-selection`. Native goal actors remain deterministic
@@ -57,14 +57,18 @@ boundaries.
 
 Native intelligent phase results also include a bounded `worldObservation` object: dimension and
 game mode, player position/health/food/fall and fluid state, held item, bounded inventory counts,
-nearby hostile/threat entities, and the currently targeted block. The full execution trace stays
-local; model prompts receive a bounded tail projection so low-latency decisions do not degrade as
-an action trace grows.
+nearby hostile/threat entities, the currently targeted block, and a small local collision grid with
+safe neighbors and forward-drop risk. Native actors may read the full loaded chunk directly for
+path planning; the local projection gives realtime model decisions enough geometry to choose
+movement, retreat, or a permitted obstruction action. The full execution trace stays local; model
+prompts receive a bounded tail projection so low-latency decisions do not degrade as an action
+trace grows.
 
 Guarded and adaptive navigation treat an unavailable loaded-chunk safe path as a recovery failure,
-not permission to walk blindly toward the target. Intelligent movement also blocks an observed
-multi-block forward drop before movement input, while low/raw profiles retain their comparison
-fallback behavior.
+not permission to walk blindly toward the target. Guarded intelligence routes around visible
+obstructions; adaptive intelligence may mine a visible obstruction only when the held tool and
+mutation control allow it. Intelligent movement also blocks an observed multi-block forward drop
+before movement input, while low/raw profiles retain their comparison fallback behavior.
 
 Command execution is denied by default through `allowCommands=false`. Survival Nether and tree
 goals do not use commands; the creative wool-tree fixture declares only its bounded setup commands

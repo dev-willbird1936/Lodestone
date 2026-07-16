@@ -78,6 +78,12 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
         var prompt = JsonSupport.MAPPER.toJson(Map.of(
                 "goal", request.spec().goal(),
                 "mode", request.spec().mode().toString(),
+                "policy", Map.of(
+                        "intelligence", request.spec().intelligence().id(),
+                        "safety", request.spec().safety().id(),
+                        "chooseOnlyEligibleCandidates", true,
+                        "preferPlayerSafetyWhenHigh", request.spec().safety().progressMayBePreempted(),
+                        "useFreshWorldObservation", true),
                 "state", request.decisionState(),
                 "candidates", request.candidates().stream().map(step -> Map.of(
                         "id", step.id(), "kind", step.kind().toString(),
@@ -85,7 +91,7 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                         "input", step.input(), "observeAfter", step.observeAfter(),
                         "preconditions", step.preconditions().stream().map(GoalAssertion::toMap).toList(),
                         "assertionCount", step.assertions().size())).toList(),
-                "response", "Return JSON only: {candidateIndex: integer, rationale: string}."));
+                "response", "Return JSON only: {candidateIndex: integer, rationale: string}. Choose only an eligible candidate; do not invent capabilities or bypass a precondition. When safety is high, select recovery or observation before progress if the player is threatened, falling, on fire, in lava, in water, or facing an unsafe drop."));
         var body = JsonSupport.MAPPER.toJson(Map.of(
                 "model", id,
                 "reasoning_effort", reasoningEffort,

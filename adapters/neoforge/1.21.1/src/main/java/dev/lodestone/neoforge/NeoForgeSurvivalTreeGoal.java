@@ -269,7 +269,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         var state = client.level.getBlockState(target);
         if (!state.is(BlockTags.LOGS) && !state.isAir()) {
             stopAttack(client);
-            if (policy.obstructionRecoveryEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            if (policy.obstructionMiningEnabled() && breakVisibleMiningObstruction(client, target)) return;
             throw new IllegalStateException("resource log target is occupied by non-log block " + target
                     + ": " + state.getBlock().getName().getString());
         }
@@ -599,7 +599,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         var state = client.level.getBlockState(target);
         if (!state.is(BlockTags.LOGS) && !state.isAir()) {
             stopAttack(client);
-            if (policy.obstructionRecoveryEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            if (policy.obstructionMiningEnabled() && breakVisibleMiningObstruction(client, target)) return;
             throw new IllegalStateException("target log is occupied by non-log block " + target
                     + ": " + state.getBlock().getName().getString());
         }
@@ -617,7 +617,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)
                 || !blockHit.getBlockPos().equals(target)) {
             stopAttack(client);
-            if (policy.obstructionRecoveryEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            if (policy.obstructionMiningEnabled() && breakVisibleMiningObstruction(client, target)) return;
             if (policy.toolPrerequisiteGuardEnabled()) {
                 if (stageTicks > 120) {
                     throw new IllegalStateException("intelligent mining route cannot see target log " + target
@@ -790,7 +790,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
 
         if (navigationStuckTicks > 80) {
             stopMovement(client);
-            if (policy.obstructionRecoveryEnabled() && breakVisibleNavigationObstruction(client, target)) {
+            if (policy.obstructionMiningEnabled() && breakVisibleNavigationObstruction(client, target)) {
                 navigationStuckTicks = 0;
                 navigationLastDistance = Double.POSITIVE_INFINITY;
                 return false;

@@ -51,6 +51,7 @@ public final class GoalEngine {
         state.put("stepPreconditionFiltering", true);
         state.put("safeNavigationPlanning", spec.intelligence().safeNavigationPlanningEnabled());
         state.put("obstructionRecovery", spec.intelligence().obstructionRecoveryEnabled());
+        state.put("obstructionMining", spec.intelligence().obstructionMiningEnabled());
         state.put("actionSegmentReplanning", spec.intelligence().actionSegmentReplanningEnabled());
         state.put("scriptSegmentObservation", spec.intelligence().scriptSegmentObservationEnabled());
         state.put("modelRequired", spec.intelligence().requiresModel(spec.mode()));
@@ -159,14 +160,15 @@ public final class GoalEngine {
                             pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "no budget for post-action observation");
                             break;
                         }
-                        var observed = invokeWithTransientRetry(invoker, postObservation, "1.0", Map.of(),
+                        var observed = invokeWithTransientRetry(invoker, postObservation, "1.0",
+                                postObservationInput(spec, postObservation),
                                 spec.dryRun(), spec, started);
                         actionCount++;
                         if (observed.status() != ResultEnvelope.Status.OK) {
                             pendingFailure = failureFor(observed);
                             break;
                         }
-                        steps.put("postObserve." + selected.id(), observed.output());
+                        postObservationSteps(steps).put(selected.id(), observed.output());
                         completedSteps++;
                         trace.add(Map.of("step", "postObserve." + selected.id(), "kind", "observe",
                                 "capability", postObservation, "status", "ok"));
@@ -272,6 +274,17 @@ public final class GoalEngine {
         return selected.observeAfter() ? "minecraft.player.state.read" : null;
     }
 
+    private static Map<String, Object> postObservationInput(GoalSpec spec, String capability) {
+        if (!"minecraft.player.state.read".equals(capability)) return Map.of();
+        return Map.of("intelligence", spec.intelligence().id(),
+                "safety", spec.safety().id(),
+                "observation", spec.controls().observation(),
+                "combatPolicy", spec.controls().combatPolicy(),
+                "allowBlockBreaking", spec.controls().allowBlockBreaking(),
+                "allowBlockPlacing", spec.controls().allowBlockPlacing(),
+                "allowCommands", spec.controls().allowCommands());
+    }
+
     private static boolean survivalCheatCapability(GoalPlan plan, GoalSpec spec, String capability) {
         if (!survivalScoped(plan, spec) || capability == null) return false;
         return commandCapability(capability)
@@ -330,6 +343,15 @@ public final class GoalEngine {
 
     private static boolean preconditionsPass(GoalStep step, Map<String, Object> state) {
         return failedPreconditions(step, state).isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> postObservationSteps(Map<String, Object> steps) {
+        var existing = steps.get("postObserve");
+        if (existing instanceof Map<?, ?> map) return (Map<String, Object>) map;
+        var observations = new LinkedHashMap<String, Object>();
+        steps.put("postObserve", observations);
+        return observations;
     }
 
     private static List<GoalAssertion> failedPreconditions(GoalStep step, Map<String, Object> state) {

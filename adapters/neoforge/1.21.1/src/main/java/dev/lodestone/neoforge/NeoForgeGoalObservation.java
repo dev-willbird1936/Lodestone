@@ -4,7 +4,9 @@ package dev.lodestone.neoforge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.BlockHitResult;
@@ -46,6 +48,7 @@ final class NeoForgeGoalObservation {
         result.put("inventory", inventory(player));
         result.put("nearbyThreats", threats(player));
         result.put("targetBlock", targetBlock(player, client));
+        result.put("localNavigation", localNavigation(client, player, policy));
         return Map.copyOf(result);
     }
 
@@ -98,13 +101,86 @@ final class NeoForgeGoalObservation {
         }
         var position = blockHit.getBlockPos();
         var state = client.level.getBlockState(position);
+        var handHarvestable = state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
         return Map.ofEntries(
                 Map.entry("observed", true),
                 Map.entry("position", position(position)),
                 Map.entry("block", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString()),
                 Map.entry("air", state.isAir()),
                 Map.entry("fluid", !state.getFluidState().isEmpty()),
+                Map.entry("collision", !state.getCollisionShape(client.level, position).isEmpty()),
+                Map.entry("destroySpeed", state.getDestroySpeed(client.level, position)),
+                Map.entry("handHarvestable", handHarvestable),
+                Map.entry("requiresCorrectTool", !state.isAir() && !handHarvestable),
                 Map.entry("correctTool", player.getMainHandItem().isCorrectToolForDrops(state)));
+    }
+
+    /**
+     * Small, deterministic collision projection for realtime decisions. Native actors still read
+     * the full loaded chunk directly; this bounded view gives a model enough local geometry to
+     * choose between moving, jumping, retreating, and mining an obstruction.
+     */
+    private static Map<String, Object> localNavigation(Minecraft client, LocalPlayer player,
+                                                        NeoForgeGoalPolicy policy) {
+        var origin = player.blockPosition();
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var cells = new java.util.ArrayList<Map<String, Object>>();
+        for (var y = -1; y <= 2; y++) {
+            for (var x = -1; x <= 1; x++) {
+                for (var z = -1; z <= 1; z++) {
+                    var position = origin.offset(x, y, z);
+                    var cell = new LinkedHashMap<String, Object>();
+                    var loaded = client.level.hasChunkAt(position);
+                    cell.put("position", position(position));
+                    cell.put("loaded", loaded);
+                    if (!loaded) {
+                        cell.put("block", "");
+                        cell.put("collision", false);
+                        cell.put("fluid", false);
+                        cell.put("hazard", true);
+                        cell.put("walkable", false);
+                    } else {
+                        var state = client.level.getBlockState(position);
+                        cell.put("block", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+                        cell.put("collision", !state.getCollisionShape(client.level, position).isEmpty());
+                        cell.put("fluid", !state.getFluidState().isEmpty());
+                        cell.put("hazard", snapshot.hazard(position));
+                        cell.put("walkable", snapshot.walkable(position));
+                    }
+                    cells.add(Map.copyOf(cell));
+                }
+            }
+        }
+
+        var neighbors = new java.util.ArrayList<Map<String, Object>>();
+        for (var direction : Direction.Plane.HORIZONTAL) {
+            var candidate = origin.relative(direction);
+            neighbors.add(Map.of(
+                    "direction", direction.getName(),
+                    "position", position(candidate),
+                    "walkable", snapshot.walkable(candidate),
+                    "hazard", snapshot.hazard(candidate),
+                    "verticalDelta", candidate.getY() - origin.getY()));
+        }
+
+        var ahead = origin.relative(player.getDirection());
+        var forwardDropRisk = true;
+        var forwardLanding = ahead;
+        for (var dy = 0; dy >= -4; dy--) {
+            var candidate = new BlockPos(ahead.getX(), origin.getY() + dy, ahead.getZ());
+            if (!snapshot.walkable(candidate)) continue;
+            forwardLanding = candidate;
+            forwardDropRisk = origin.getY() - candidate.getY() >= 2;
+            break;
+        }
+        return Map.of(
+                "origin", position(origin),
+                "currentWalkable", snapshot.walkable(origin),
+                "safeNeighbors", List.copyOf(neighbors),
+                "forwardPosition", position(ahead),
+                "forwardDropRisk", forwardDropRisk,
+                "forwardLanding", position(forwardLanding),
+                "cells", List.copyOf(cells));
     }
 
     private static boolean heldItemCorrectForTarget(LocalPlayer player, Minecraft client) {
