@@ -49,6 +49,9 @@ final class NeoForgeNetherGoal {
     private static final int LOGS_REQUIRED = 5;
     private static final int COBBLESTONE_REQUIRED = 11;
     private static final int RAW_IRON_REQUIRED = 4;
+    private static final int TREE_SCAN_HORIZONTAL_RADIUS = 32;
+    private static final int TREE_SCAN_BELOW = 8;
+    private static final int TREE_SCAN_ABOVE = 24;
 
     private final InvocationContext invocation;
     private final CompletableFuture<Map<String, Object>> result;
@@ -1430,10 +1433,12 @@ final class NeoForgeNetherGoal {
         var player = requirePlayer(client);
         var center = player.blockPosition();
         var logs = new HashSet<Long>();
-        var minY = Math.max(client.level.getMinBuildHeight(), center.getY() - 12);
-        var maxY = Math.min(client.level.getMaxBuildHeight() - 1, center.getY() + 32);
-        for (int x = center.getX() - 64; x <= center.getX() + 64; x++) {
-            for (int z = center.getZ() - 64; z <= center.getZ() + 64; z++) {
+        var minY = Math.max(client.level.getMinBuildHeight(), center.getY() - TREE_SCAN_BELOW);
+        var maxY = Math.min(client.level.getMaxBuildHeight() - 1, center.getY() + TREE_SCAN_ABOVE);
+        for (int x = center.getX() - TREE_SCAN_HORIZONTAL_RADIUS;
+             x <= center.getX() + TREE_SCAN_HORIZONTAL_RADIUS; x++) {
+            for (int z = center.getZ() - TREE_SCAN_HORIZONTAL_RADIUS;
+                 z <= center.getZ() + TREE_SCAN_HORIZONTAL_RADIUS; z++) {
                 var column = new BlockPos(x, center.getY(), z);
                 if (!client.level.hasChunkAt(column)) continue;
                 for (int y = minY; y <= maxY; y++) {
