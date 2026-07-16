@@ -309,7 +309,7 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw preserves legacy behavior; adaptive is the highest profile and uses a low-latency model for realtime high-level replanning.", schema(Map.ofEntries(
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw preserves legacy behavior; adaptive is the highest profile and uses a low-latency model for realtime high-level replanning. Custom plan steps may declare state preconditions; realtime filters ineligible candidates and script fails closed before invoking them.", schema(Map.ofEntries(
                     Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
                     Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
                     Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),

@@ -9,7 +9,14 @@ import java.util.List;
 import java.util.Map;
 
 public record GoalStep(String id, GoalStepKind kind, String capability, String capabilityVersion,
-                       Map<String, Object> input, List<GoalAssertion> assertions, boolean observeAfter) {
+                       Map<String, Object> input, List<GoalAssertion> assertions,
+                       List<GoalAssertion> preconditions, boolean observeAfter) {
+    /** Compatibility constructor for existing plans that have no explicit preconditions. */
+    public GoalStep(String id, GoalStepKind kind, String capability, String capabilityVersion,
+                    Map<String, Object> input, List<GoalAssertion> assertions, boolean observeAfter) {
+        this(id, kind, capability, capabilityVersion, input, assertions, List.of(), observeAfter);
+    }
+
     public GoalStep {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("goal step id is required");
         id = id.trim();
@@ -20,6 +27,7 @@ public record GoalStep(String id, GoalStepKind kind, String capability, String c
         capabilityVersion = capabilityVersion == null || capabilityVersion.isBlank() ? "1.0" : capabilityVersion;
         input = input == null ? Map.of() : Map.copyOf(input);
         assertions = assertions == null ? List.of() : List.copyOf(assertions);
+        preconditions = preconditions == null ? List.of() : List.copyOf(preconditions);
     }
 
     public static GoalStep observe(String id, String capability, Map<String, Object> input) {
@@ -30,6 +38,15 @@ public record GoalStep(String id, GoalStepKind kind, String capability, String c
                                   boolean observeAfter, GoalAssertion... assertions) {
         return new GoalStep(id, GoalStepKind.INVOKE, capability, version, input,
                 List.of(assertions), observeAfter);
+    }
+
+    /** Create an invocation whose prerequisites must be true in the accumulated goal state. */
+    public static GoalStep invokeWithPreconditions(String id, String capability, String version,
+                                                   Map<String, Object> input, boolean observeAfter,
+                                                   List<GoalAssertion> preconditions,
+                                                   GoalAssertion... assertions) {
+        return new GoalStep(id, GoalStepKind.INVOKE, capability, version, input,
+                List.of(assertions), preconditions, observeAfter);
     }
 
     @SuppressWarnings("unchecked")
@@ -44,8 +61,14 @@ public record GoalStep(String id, GoalStepKind kind, String capability, String c
         if (raw.get("assertions") instanceof List<?> list) {
             for (var value : list) if (value instanceof Map<?, ?> map) assertions.add(GoalPlan.assertion(castMap(map)));
         }
+        var preconditions = new ArrayList<GoalAssertion>();
+        if (raw.get("preconditions") instanceof List<?> list) {
+            for (var value : list) if (value instanceof Map<?, ?> map) {
+                preconditions.add(GoalPlan.assertion(castMap(map)));
+            }
+        }
         return new GoalStep(id, kind, capability, version, input, assertions,
-                Boolean.TRUE.equals(raw.get("observeAfter")));
+                preconditions, Boolean.TRUE.equals(raw.get("observeAfter")));
     }
 
     private static Map<String, Object> castMap(Map<?, ?> map) {

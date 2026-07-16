@@ -100,8 +100,9 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             var craftInput = new LinkedHashMap<>(workflowInput(spec));
             craftInput.put("checkpoint", "craft-axe");
             craftInput.put("continuationToken", "${steps.gather-resource.continuationToken}");
-            workflowSteps.add(GoalStep.invoke("craft-axe", "minecraft.goal.survival.wooden-axe-tree", "1.0",
-                    craftInput, true,
+            workflowSteps.add(GoalStep.invokeWithPreconditions("craft-axe", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                    craftInput, true, List.of(
+                            new GoalAssertion("steps.gather-resource.checkpointComplete", "equals", true)),
                     new GoalAssertion("steps.craft-axe.checkpoint", "equals", "craft-axe"),
                     new GoalAssertion("steps.craft-axe.checkpointComplete", "equals", true),
                     new GoalAssertion("steps.craft-axe.woodenAxeCrafted", "equals", true),
@@ -116,7 +117,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         assertion.operator(), assertion.expected()));
             }
             workflowSteps.add(new GoalStep("mine-target", GoalStepKind.INVOKE,
-                    "minecraft.goal.survival.wooden-axe-tree", "1.0", mineInput, mineAssertions, true));
+                    "minecraft.goal.survival.wooden-axe-tree", "1.0", mineInput, mineAssertions,
+                    List.of(new GoalAssertion("steps.craft-axe.woodenAxeEquipped", "equals", true)), true));
         } else {
             var workflow = GoalStep.invoke("survival-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
                     workflowInput(spec), true,
@@ -176,8 +178,9 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             var portalToolsInput = new LinkedHashMap<>(workflowInput(spec));
             portalToolsInput.put("checkpoint", "portal-tools");
             portalToolsInput.put("continuationToken", "${steps.gather-starter-tools.continuationToken}");
-            workflowSteps.add(GoalStep.invoke("craft-portal-tools", "minecraft.goal.survival.reach-nether", "1.0",
-                    portalToolsInput, true,
+            workflowSteps.add(GoalStep.invokeWithPreconditions("craft-portal-tools", "minecraft.goal.survival.reach-nether", "1.0",
+                    portalToolsInput, true, List.of(
+                            new GoalAssertion("steps.gather-starter-tools.checkpointComplete", "equals", true)),
                     new GoalAssertion("steps.craft-portal-tools.checkpoint", "equals", "portal-tools"),
                     new GoalAssertion("steps.craft-portal-tools.checkpointComplete", "equals", true),
                     new GoalAssertion("steps.craft-portal-tools.playerAlive", "equals", true)));
@@ -192,7 +195,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         assertion.operator(), assertion.expected()));
             }
             workflowSteps.add(new GoalStep("enter-nether", GoalStepKind.INVOKE,
-                    "minecraft.goal.survival.reach-nether", "1.0", finalInput, finalStepAssertions, true));
+                    "minecraft.goal.survival.reach-nether", "1.0", finalInput, finalStepAssertions,
+                    List.of(new GoalAssertion("steps.craft-portal-tools.checkpointComplete", "equals", true)), true));
         } else {
             var workflow = GoalStep.invoke("nether-workflow", "minecraft.goal.survival.reach-nether", "1.0",
                     workflowInput(spec), true,
@@ -211,7 +215,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         if (!assertions.isEmpty()) {
             var last = workflowSteps.remove(workflowSteps.size() - 1);
             workflowSteps.add(new GoalStep(last.id(), last.kind(), last.capability(), last.capabilityVersion(),
-                    last.input(), concat(last.assertions(), assertions), last.observeAfter()));
+                    last.input(), concat(last.assertions(), assertions), last.preconditions(), last.observeAfter()));
         }
         return new GoalPlan("survival.reach-nether", goal, List.of(
                 new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
@@ -426,8 +430,9 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 var craftInput = new LinkedHashMap<>(workflowInput(spec));
                 craftInput.put("checkpoint", "craft-axe");
                 craftInput.put("continuationToken", "${steps.gather-resource.continuationToken}");
-                workflowSteps.add(GoalStep.invoke("craft-axe", "minecraft.goal.survival.wooden-axe-tree", "1.0",
-                        craftInput, true,
+                workflowSteps.add(GoalStep.invokeWithPreconditions("craft-axe", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                        craftInput, true, List.of(
+                                new GoalAssertion("steps.gather-resource.checkpointComplete", "equals", true)),
                         new GoalAssertion("steps.craft-axe.checkpoint", "equals", "craft-axe"),
                         new GoalAssertion("steps.craft-axe.checkpointComplete", "equals", true),
                         new GoalAssertion("steps.craft-axe.woodenAxeCrafted", "equals", true),
@@ -444,7 +449,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                             assertion.operator(), assertion.expected()));
                 }
                 workflowSteps.add(new GoalStep("collect-target", GoalStepKind.INVOKE,
-                        "minecraft.goal.survival.wooden-axe-tree", "1.0", finalInput, finalStepAssertions, true));
+                        "minecraft.goal.survival.wooden-axe-tree", "1.0", finalInput, finalStepAssertions,
+                        List.of(new GoalAssertion("steps.craft-axe.woodenAxeEquipped", "equals", true)), true));
             } else {
                 workflowSteps.add(GoalStep.invoke("wood-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
                         workflowInput(spec), true,

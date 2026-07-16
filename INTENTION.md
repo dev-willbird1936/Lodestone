@@ -55,6 +55,9 @@ every Minecraft environment.
 - Intelligent native goals now expose bounded decision-state projections, structured player/world
   observations, and pre-step tool/drop safety vetoes so high-intelligence routes acquire required
   tools and recover from hazards instead of blindly mining or walking.
+- Goal steps now have reusable assertion-shaped preconditions. Realtime candidate selection filters
+  steps whose state or phase prerequisites are not ready, while script execution fails closed before
+  an invalid action; native tree and Nether phase plans declare their tool/checkpoint dependencies.
 - NeoForge 1.21.1 now includes a native combat task that selects a loaded hostile, path-plans with
   ordinary movement, chooses an available hotbar weapon at guarded intelligence levels, attacks with
   normal input, and requires terminal entity-death readback while the player remains alive.

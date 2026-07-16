@@ -48,6 +48,7 @@ public final class GoalEngine {
         state.put("planningDepth", spec.intelligence().planningDepth());
         state.put("prerequisitePlanning", spec.intelligence().prerequisitePlanningEnabled());
         state.put("toolPrerequisitePlanning", spec.intelligence().toolPrerequisitePlanningEnabled());
+        state.put("stepPreconditionFiltering", true);
         state.put("safeNavigationPlanning", spec.intelligence().safeNavigationPlanningEnabled());
         state.put("obstructionRecovery", spec.intelligence().obstructionRecoveryEnabled());
         state.put("actionSegmentReplanning", spec.intelligence().actionSegmentReplanningEnabled());
@@ -91,6 +92,9 @@ public final class GoalEngine {
                     var selected = selection.step();
                     if (!inputsResolved(selected.input(), state)) {
                         throw new IllegalStateException("goal step dependency is unresolved: " + selected.id());
+                    }
+                    if (!preconditionsPass(selected, state)) {
+                        throw new IllegalStateException("goal step precondition failed: " + selected.id());
                     }
                     if (spec.mode() == GoalMode.REALTIME) {
                         var decisionKind = spec.intelligence().modelReplanningEnabled()
@@ -217,9 +221,10 @@ public final class GoalEngine {
     }
 
     private StepSelection selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
-        var eligible = pending.stream().filter(step -> inputsResolved(step.input(), state)).toList();
+        var eligible = pending.stream().filter(step -> inputsResolved(step.input(), state)
+                && preconditionsPass(step, state)).toList();
         if (eligible.isEmpty()) {
-            throw new IllegalStateException("realtime goal has no eligible step; pending dependencies are unresolved");
+            throw new IllegalStateException("realtime goal has no eligible step; pending inputs or preconditions are unresolved");
         }
         if (!spec.intelligence().modelReplanningEnabled()) {
             return new StepSelection(eligible.get(0), "guarded declared order", 0);
@@ -317,6 +322,10 @@ public final class GoalEngine {
     private static boolean assertionsPass(List<GoalAssertion> assertions, Map<String, Object> state) {
         for (var assertion : assertions) if (!assertion.test(state)) return false;
         return true;
+    }
+
+    private static boolean preconditionsPass(GoalStep step, Map<String, Object> state) {
+        return assertionsPass(step.preconditions(), state);
     }
 
     private static Map<String, Object> resolve(Map<String, Object> input, Map<String, Object> state) {

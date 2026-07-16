@@ -14,7 +14,7 @@ legacy action order, or `adaptive-v1` for highest prerequisite/replanning behavi
 realtime requires an available model provider; adaptive script uses deterministic native planning
 and segment checkpoints.
 
-Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Arbitrary shell, JavaScript, or Python is never executed by a plan.
+Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Custom invoke steps may also declare assertion-shaped `preconditions`; realtime excludes steps whose inputs or preconditions are not satisfied, while script mode fails closed before invoking an invalid step. The selected low-latency model receives those preconditions with each candidate. Arbitrary shell, JavaScript, or Python is never executed by a plan.
 
 If `maxDurationMs` is omitted, short bounded tasks use 120 seconds. The native wool-tree,
 wooden-axe tree, collect-wood, and Nether workflows use 480 seconds so normal movement, hand

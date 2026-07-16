@@ -83,6 +83,7 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                         "id", step.id(), "kind", step.kind().toString(),
                         "capability", step.capability() == null ? "" : step.capability(),
                         "input", step.input(), "observeAfter", step.observeAfter(),
+                        "preconditions", step.preconditions().stream().map(GoalAssertion::toMap).toList(),
                         "assertionCount", step.assertions().size())).toList(),
                 "response", "Return JSON only: {candidateIndex: integer, rationale: string}."));
         var body = JsonSupport.MAPPER.toJson(Map.of(
