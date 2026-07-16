@@ -253,20 +253,21 @@ final class NeoForgeNetherGoal {
     }
 
     private void findLoot(Minecraft client) {
+        if (searchAttempts > 0) {
+            announce(client, "No immediate ruined-portal chest observed; starting genuine wood-and-iron survival route");
+            transition(Stage.FIND_TREE, 20);
+            return;
+        }
         // The ruined-portal chest is an optional shortcut. Keep its observation local so a
         // missing chest cannot monopolize the client tick before the genuine wood route starts.
-        lootChest = findNearestChest(client, 16);
+        lootChest = findNearestChest(client, 8);
         if (lootChest != null) {
             announce(client, "Observed a natural portal chest at " + lootChest + "; walking there normally");
             navigationDestination = null;
             transition(Stage.NAVIGATE_LOOT, 12);
             return;
         }
-        if (++searchAttempts > 3) {
-            announce(client, "No nearby ruined-portal chest observed; starting genuine wood-and-iron survival route");
-            transition(Stage.FIND_TREE, 20);
-            return;
-        }
+        searchAttempts++;
         var player = requirePlayer(client);
         player.setYRot(player.getYRot() + 45.0F);
         player.setYHeadRot(player.getYRot());
