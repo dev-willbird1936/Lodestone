@@ -98,6 +98,9 @@ final class NeoForgeNetherGoal {
     private int navigationStuckTicks;
     private List<BlockPos> navigationPath = List.of();
     private int navigationIndex;
+    private Vec3 explorationLastPosition;
+    private int explorationNoProgressTicks;
+    private BlockPos explorationWaypoint;
     private Stage afterTableClose = Stage.EQUIP_WOOD_PICK;
     private Stage nextTableStage = Stage.CRAFT_WOOD_PICK;
     private int searchAttempts;
@@ -1215,6 +1218,44 @@ final class NeoForgeNetherGoal {
     private void exploreSafely(Minecraft client, String label) {
         var player = requirePlayer(client);
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        if (explorationLastPosition != null
+                && player.position().distanceToSqr(explorationLastPosition) < 0.0009) {
+            explorationNoProgressTicks++;
+        } else {
+            explorationNoProgressTicks = 0;
+        }
+        explorationLastPosition = player.position();
+
+        if (explorationNoProgressTicks >= 45) {
+            if (explorationWaypoint == null) {
+                explorationWaypoint = findExplorationWaypoint(client, snapshot);
+                if (explorationWaypoint != null) {
+                    resetNavigation();
+                    safetyDiagnostics.add("exploration-replan:" + explorationWaypoint);
+                }
+            }
+            if (explorationWaypoint != null) {
+                if (navigateTo(client, explorationWaypoint, 1.2, "safe-observation-replan:" + label)) {
+                    explorationWaypoint = null;
+                    explorationNoProgressTicks = 0;
+                    explorationLastPosition = player.position();
+                    resetNavigation();
+                }
+                inputActions.add("move:safety-weighted-exploration-replan:" + label.replace(' ', '-'));
+                return;
+            }
+            stopMovement(client);
+            player.setYRot(player.getYRot() + 91.0F);
+            player.setYHeadRot(player.getYRot());
+            if (player.onGround() && explorationNoProgressTicks % 2 == 0) {
+                client.options.keyJump.setDown(true);
+            }
+            explorationNoProgressTicks = 0;
+            explorationLastPosition = player.position();
+            inputActions.add("look:safe-observation-hard-detour:" + label.replace(' ', '-'));
+            return;
+        }
+
         var forward = Direction.fromYRot(player.getYRot());
         var front = player.blockPosition().relative(forward);
         if (snapshot.walkable(front)) {
@@ -1231,6 +1272,23 @@ final class NeoForgeNetherGoal {
         player.setYRot(player.getYRot() + 43.0F);
         player.setYHeadRot(player.getYRot());
         inputActions.add("look:safe-observation-detour:" + label.replace(' ', '-'));
+    }
+
+    private BlockPos findExplorationWaypoint(Minecraft client, NeoForgeWorldSnapshot snapshot) {
+        var origin = requirePlayer(client).blockPosition();
+        var directions = List.of(Direction.fromYRot(requirePlayer(client).getYRot()),
+                Direction.fromYRot(requirePlayer(client).getYRot() + 90.0F),
+                Direction.fromYRot(requirePlayer(client).getYRot() - 90.0F),
+                Direction.fromYRot(requirePlayer(client).getYRot() + 180.0F));
+        for (var direction : directions) {
+            for (int distance : List.of(6, 10, 16)) {
+                var candidate = origin.relative(direction, distance);
+                if (!snapshot.walkable(candidate)) continue;
+                var path = NeoForgeSafePathPlanner.find(client.level, origin, candidate, policy);
+                if (!path.isEmpty() && path.size() > 1) return candidate.immutable();
+            }
+        }
+        return null;
     }
 
     private List<BlockPos> scanVisibleBlocks(Minecraft client,
@@ -2008,6 +2066,9 @@ final class NeoForgeNetherGoal {
         stageTicks = 0;
         waitTicks = delay;
         recipeStarted = false;
+        explorationLastPosition = null;
+        explorationNoProgressTicks = 0;
+        explorationWaypoint = null;
     }
 
     private void resetRecipeState() {
