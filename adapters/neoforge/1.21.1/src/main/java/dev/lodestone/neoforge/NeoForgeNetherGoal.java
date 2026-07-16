@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.UUID;
 
 /**
  * Realtime-first survival Nether workflow.
@@ -43,7 +44,7 @@ import java.util.concurrent.CompletableFuture;
  * transition are all performed and read back through ordinary client input. No command, teleport,
  * direct inventory edit, or direct world mutation is available to this actor.</p>
  */
-final class NeoForgeNetherGoal {
+final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private static final int MAX_TOTAL_TICKS = 9_600;
     private static final int MAX_SEARCH_ATTEMPTS = 18;
     private static final int LOGS_REQUIRED = 5;
@@ -53,18 +54,22 @@ final class NeoForgeNetherGoal {
     private static final int TREE_SCAN_BELOW = 8;
     private static final int TREE_SCAN_ABOVE = 24;
 
-    private final InvocationContext invocation;
-    private final CompletableFuture<Map<String, Object>> result;
+    private InvocationContext invocation;
+    private CompletableFuture<Map<String, Object>> result;
     private final boolean suppressInGameMessages;
     private final NeoForgeGoalPolicy policy;
     private final List<String> inputActions = new ArrayList<>();
     private final List<String> safetyDiagnostics = new ArrayList<>();
     private final NeoForgeGoalSupervisor supervisor;
+    private final String continuationToken = UUID.randomUUID().toString();
     private final List<Placement> placements = new ArrayList<>();
     private final java.util.ArrayDeque<ClickOp> clicks = new java.util.ArrayDeque<>();
     private final List<BlockPos> portalScaffolds = new ArrayList<>();
 
     private Stage stage = Stage.WAIT_WORLD;
+    private String requestedCheckpoint;
+    private boolean paused;
+    private boolean finished;
     private Site site;
     private BlockPos lootChest;
     private Runnable clicksComplete;
@@ -143,14 +148,37 @@ final class NeoForgeNetherGoal {
                 invocation.request().input().get("suppressInGameMessages"));
         this.policy = NeoForgeGoalPolicy.from(invocation.request().input());
         this.supervisor = new NeoForgeGoalSupervisor(policy, inputActions, safetyDiagnostics);
+        this.requestedCheckpoint = checkpoint(invocation.request().input());
     }
 
-    boolean done() {
-        return result.isDone();
+    @Override
+    public boolean done() {
+        return finished;
+    }
+
+    @Override
+    public boolean paused() {
+        return paused;
+    }
+
+    @Override
+    public String continuationToken() {
+        return continuationToken;
+    }
+
+    @Override
+    public void resume(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
+        if (!paused || finished) throw new IllegalStateException("Nether goal is not resumable");
+        this.invocation = invocation;
+        this.result = result;
+        this.requestedCheckpoint = checkpoint(invocation.request().input());
+        this.paused = false;
+        this.stageTicks = 0;
+        this.waitTicks = 1;
     }
 
     void tick(Minecraft client) {
-        if (done()) return;
+        if (done() || paused) return;
         try {
             invocation.cancellation().throwIfCancelled();
             if (++totalTicks > MAX_TOTAL_TICKS) {
@@ -223,6 +251,8 @@ final class NeoForgeNetherGoal {
             }
         } catch (Throwable failure) {
             releaseInput(client);
+            finished = true;
+            paused = false;
             result.completeExceptionally(failure);
         }
     }
@@ -674,6 +704,7 @@ final class NeoForgeNetherGoal {
         moveCraftedToHotbar(client, Items.FLINT_AND_STEEL, () -> {
             afterTableClose = Stage.FIND_WATER;
             transition(Stage.CLOSE_TABLE, 12);
+            pauseAtCheckpoint(client, "portal-tools");
         });
     }
 
@@ -818,7 +849,12 @@ final class NeoForgeNetherGoal {
         toolHotbarSlot = slot;
         selectHotbar(client, slot);
         if (requirePlayer(client).getMainHandItem().is(item)) {
-            transition(item == Items.WOODEN_PICKAXE ? Stage.FIND_STONE : Stage.FIND_IRON, 15);
+            if (item == Items.WOODEN_PICKAXE) {
+                transition(Stage.FIND_STONE, 15);
+                pauseAtCheckpoint(client, "starter-tools");
+            } else {
+                transition(Stage.FIND_IRON, 15);
+            }
             return;
         }
         if (stageTicks > 80) throw new IllegalStateException("normal hotbar input did not equip " + item);
@@ -1665,14 +1701,31 @@ final class NeoForgeNetherGoal {
         releaseInput(client);
         if (!reachedNether) throw new IllegalStateException("Nether terminal predicate was not observed");
         finalDimension = client.level == null ? finalDimension : client.level.dimension().location().toString();
-        result.complete(Map.ofEntries(
+        finished = true;
+        result.complete(output(client, "complete", true));
+    }
+
+    private void pauseAtCheckpoint(Minecraft client, String checkpoint) {
+        if (!requestedCheckpoint.equals(checkpoint)) return;
+        releaseInput(client);
+        paused = true;
+        result.complete(output(client, checkpoint, true));
+    }
+
+    private Map<String, Object> output(Minecraft client, String checkpoint, boolean checkpointComplete) {
+        var player = requirePlayer(client);
+        var portalPosition = site == null ? player.blockPosition() : site.base();
+        return Map.ofEntries(
+                Map.entry("checkpoint", checkpoint),
+                Map.entry("checkpointComplete", checkpointComplete),
+                Map.entry("continuationToken", continuationToken),
                 Map.entry("freshWorld", freshWorld),
                 Map.entry("survival", survival),
                 Map.entry("worldName", worldName),
                 Map.entry("worldGameTimeAtStart", worldGameTimeAtStart),
                 Map.entry("initialDimension", initialDimension),
                 Map.entry("finalDimension", finalDimension),
-                Map.entry("portalBase", position(site.base())),
+                Map.entry("portalBase", position(portalPosition)),
                 Map.entry("teleportedToBuildSite", teleportedToBuildSite),
                 // Retain legacy output fields as an explicit empty no-command proof for clients
                 // that still consume the original schema.
@@ -1686,8 +1739,8 @@ final class NeoForgeNetherGoal {
                 Map.entry("portalBlocksObserved", portalBlocksObserved),
                 Map.entry("enteredPortal", enteredPortal),
                 Map.entry("reachedNether", reachedNether),
-                Map.entry("playerAlive", requirePlayer(client).isAlive() && requirePlayer(client).getHealth() > 0.0F),
-                Map.entry("healthAtEnd", requirePlayer(client).getHealth()),
+                Map.entry("playerAlive", player.isAlive() && player.getHealth() > 0.0F),
+                Map.entry("healthAtEnd", player.getHealth()),
                 Map.entry("intelligence", policy.intelligence().id()),
                 Map.entry("safety", policy.safety().id()),
                 Map.entry("policyMode", policy.mode()),
@@ -1702,7 +1755,18 @@ final class NeoForgeNetherGoal {
                 Map.entry("suppressInGameMessages", suppressInGameMessages),
                 Map.entry("inGameMessagesEmitted", inGameMessagesEmitted),
                 Map.entry("directMutationUsed", false),
-                Map.entry("inputActions", List.copyOf(inputActions))));
+                Map.entry("inputActions", List.copyOf(inputActions)));
+    }
+
+    private static String checkpoint(Map<String, Object> input) {
+        var value = input.get("checkpoint");
+        var checkpoint = value == null || String.valueOf(value).isBlank()
+                ? "complete" : String.valueOf(value).trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (checkpoint) {
+            case "starter-tools", "portal-tools", "complete" -> checkpoint;
+            default -> throw new IllegalArgumentException(
+                    "Nether checkpoint must be starter-tools, portal-tools, or complete");
+        };
     }
 
     private Site findPortalSite(Minecraft client) {

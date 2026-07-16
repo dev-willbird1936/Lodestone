@@ -89,6 +89,9 @@ public final class GoalEngine {
                             ? selectRealtimeStep(spec, state, pending)
                             : new StepSelection(pending.get(0), "declared script order", 0);
                     var selected = selection.step();
+                    if (!inputsResolved(selected.input(), state)) {
+                        throw new IllegalStateException("goal step dependency is unresolved: " + selected.id());
+                    }
                     if (spec.mode() == GoalMode.REALTIME) {
                         var decisionKind = spec.intelligence().modelReplanningEnabled()
                                 ? "model-decision" : "deterministic-selection";
@@ -214,19 +217,23 @@ public final class GoalEngine {
     }
 
     private StepSelection selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
-        if (!spec.intelligence().modelReplanningEnabled()) {
-            return new StepSelection(pending.get(0), "guarded declared order", 0);
+        var eligible = pending.stream().filter(step -> inputsResolved(step.input(), state)).toList();
+        if (eligible.isEmpty()) {
+            throw new IllegalStateException("realtime goal has no eligible step; pending dependencies are unresolved");
         }
-        var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, pending)).orElseGet(() -> {
+        if (!spec.intelligence().modelReplanningEnabled()) {
+            return new StepSelection(eligible.get(0), "guarded declared order", 0);
+        }
+        var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, eligible)).orElseGet(() -> {
             if (spec.intelligence().requiresModel(spec.mode())) {
                 throw new IllegalStateException("adaptive-v1 executor returned no decision");
             }
             return new GoalDecision(0, "provider returned no decision");
         });
-        if (decision.candidateIndex() >= pending.size()) {
+        if (decision.candidateIndex() >= eligible.size()) {
             throw new IllegalArgumentException("realtime model selected an invalid candidate index");
         }
-        return new StepSelection(pending.get(decision.candidateIndex()), decision.rationale(),
+        return new StepSelection(eligible.get(decision.candidateIndex()), decision.rationale(),
                 decision.candidateIndex());
     }
 
@@ -334,6 +341,20 @@ public final class GoalEngine {
 
     private static Object readPath(Map<String, Object> state, String path) {
         return GoalValues.read(state, path);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean inputsResolved(Object value, Map<String, Object> state) {
+        if (value instanceof String text && text.startsWith("${") && text.endsWith("}")) {
+            return readPath(state, text.substring(2, text.length() - 1)) != null;
+        }
+        if (value instanceof Map<?, ?> map) {
+            return map.values().stream().allMatch(nested -> inputsResolved(nested, state));
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().allMatch(nested -> inputsResolved(nested, state));
+        }
+        return true;
     }
 
     private static ExecutionFailure failureFor(ResultEnvelope result) {

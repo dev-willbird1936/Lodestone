@@ -28,6 +28,21 @@ guarded realtime reports `deterministic-selection`. Native goal actors remain de
 low-level executors beneath those high-level decisions, with their terminal output still subject to
 goal assertions.
 
+## Native continuation checkpoints
+
+Highest-intelligence native workflows are resumable at safe phase boundaries. The wooden-axe tree
+workflow exposes `resource-gather -> craft-axe -> complete`; the Nether workflow exposes
+`starter-tools -> portal-tools -> complete`. Each phase is a separate MCP invocation carrying an
+opaque `continuationToken` returned by the previous phase. The NeoForge actor retains its client-
+thread state while paused, releases every held input, and rejects stale or unknown tokens.
+
+Adaptive realtime can select only phases whose token dependencies are already resolved, so a model
+cannot jump into crafting or portal construction before the required observations and tools exist.
+Adaptive script uses the same phase boundaries in declared order, passing each phase result to the
+next script. A phase boundary is not a per-tick model call: the native actor continues to use
+ordinary look, movement, mining, visible container clicks, and loaded-chunk observations between
+boundaries.
+
 Command execution is denied by default through `allowCommands=false`. Survival Nether and tree
 goals do not use commands; the creative wool-tree fixture declares only its bounded setup commands
 inside its task plan.

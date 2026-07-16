@@ -71,23 +71,61 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("target", "create_new_world"), false);
         var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_world"), false);
-        var workflow = GoalStep.invoke("survival-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
-                workflowInput(spec), true,
-                new GoalAssertion("steps.survival-workflow.survival", "equals", true),
-                new GoalAssertion("steps.survival-workflow.freshWorld", "equals", true),
-                new GoalAssertion("steps.survival-workflow.handMinedLogs", "gte", 3),
-                new GoalAssertion("steps.survival-workflow.planksCrafted", "gte", 12),
-                new GoalAssertion("steps.survival-workflow.sticksCrafted", "gte", 4),
-                new GoalAssertion("steps.survival-workflow.craftingTableCrafted", "equals", true),
-                new GoalAssertion("steps.survival-workflow.woodenAxeCrafted", "equals", true),
-                new GoalAssertion("steps.survival-workflow.woodenAxeEquipped", "equals", true),
-                new GoalAssertion("steps.survival-workflow.targetTreeInitialLogs", "gte", 3),
-                new GoalAssertion("steps.survival-workflow.targetTreeRemainingLogs", "equals", 0),
-                new GoalAssertion("steps.survival-workflow.fullTreeMined", "equals", true),
-                new GoalAssertion("steps.survival-workflow.allTargetLogsMinedWithWoodenAxe", "equals", true),
-                new GoalAssertion("steps.survival-workflow.playerAlive", "equals", true),
-                new GoalAssertion("steps.survival-workflow.commandsUsed", "equals", false),
-                new GoalAssertion("steps.survival-workflow.directMutationUsed", "equals", false));
+        var finalAssertions = new GoalAssertion[]{
+                new GoalAssertion("survival", "equals", true),
+                new GoalAssertion("freshWorld", "equals", true),
+                new GoalAssertion("handMinedLogs", "gte", 3),
+                new GoalAssertion("planksCrafted", "gte", 12),
+                new GoalAssertion("sticksCrafted", "gte", 4),
+                new GoalAssertion("craftingTableCrafted", "equals", true),
+                new GoalAssertion("woodenAxeCrafted", "equals", true),
+                new GoalAssertion("woodenAxeEquipped", "equals", true),
+                new GoalAssertion("targetTreeInitialLogs", "gte", 3),
+                new GoalAssertion("targetTreeRemainingLogs", "equals", 0),
+                new GoalAssertion("fullTreeMined", "equals", true),
+                new GoalAssertion("allTargetLogsMinedWithWoodenAxe", "equals", true),
+                new GoalAssertion("playerAlive", "equals", true),
+                new GoalAssertion("commandsUsed", "equals", false),
+                new GoalAssertion("directMutationUsed", "equals", false)};
+        var workflowSteps = new ArrayList<GoalStep>();
+        if (spec.intelligence() == GoalIntelligence.ADAPTIVE_V1) {
+            var gatherInput = new LinkedHashMap<>(workflowInput(spec));
+            gatherInput.put("checkpoint", "resource-gather");
+            workflowSteps.add(GoalStep.invoke("gather-resource", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                    gatherInput, true,
+                    new GoalAssertion("steps.gather-resource.checkpoint", "equals", "resource-gather"),
+                    new GoalAssertion("steps.gather-resource.checkpointComplete", "equals", true),
+                    new GoalAssertion("steps.gather-resource.handMinedLogs", "gte", 3),
+                    new GoalAssertion("steps.gather-resource.playerAlive", "equals", true)));
+            var craftInput = new LinkedHashMap<>(workflowInput(spec));
+            craftInput.put("checkpoint", "craft-axe");
+            craftInput.put("continuationToken", "${steps.gather-resource.continuationToken}");
+            workflowSteps.add(GoalStep.invoke("craft-axe", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                    craftInput, true,
+                    new GoalAssertion("steps.craft-axe.checkpoint", "equals", "craft-axe"),
+                    new GoalAssertion("steps.craft-axe.checkpointComplete", "equals", true),
+                    new GoalAssertion("steps.craft-axe.woodenAxeCrafted", "equals", true),
+                    new GoalAssertion("steps.craft-axe.woodenAxeEquipped", "equals", true),
+                    new GoalAssertion("steps.craft-axe.playerAlive", "equals", true)));
+            var mineInput = new LinkedHashMap<>(workflowInput(spec));
+            mineInput.put("checkpoint", "complete");
+            mineInput.put("continuationToken", "${steps.craft-axe.continuationToken}");
+            var mineAssertions = new ArrayList<GoalAssertion>();
+            for (var assertion : finalAssertions) {
+                mineAssertions.add(new GoalAssertion("steps.mine-target." + assertion.path(),
+                        assertion.operator(), assertion.expected()));
+            }
+            workflowSteps.add(new GoalStep("mine-target", GoalStepKind.INVOKE,
+                    "minecraft.goal.survival.wooden-axe-tree", "1.0", mineInput, mineAssertions, true));
+        } else {
+            var workflow = GoalStep.invoke("survival-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                    workflowInput(spec), true,
+                    java.util.Arrays.stream(finalAssertions)
+                            .map(assertion -> new GoalAssertion("steps.survival-workflow." + assertion.path(),
+                                    assertion.operator(), assertion.expected()))
+                            .toArray(GoalAssertion[]::new));
+            workflowSteps.add(workflow);
+        }
         return new GoalPlan("survival.wooden-axe-mine-tree", goal, List.of(
                 new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
                         List.of(open), List.of()),
@@ -96,7 +134,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
                         List.of(createWorld), List.of()),
                 new GoalSegment("survival-gameplay", "Use normal look, movement, attack, inventory, and crafting-table input until the full predicate is proven.",
-                        List.of(workflow), List.of())),
+                        workflowSteps, List.of())),
                 Map.of("taskId", "survival.wooden-axe-mine-tree", "gameMode", "survival",
                         "craftingRequired", true,
                         "adaptiveTreeTraversalRequired", true, "authenticPlayerInputRequired", true,
@@ -111,29 +149,70 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("target", "create_new_world"), false);
         var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_world"), false);
-        var workflow = GoalStep.invoke("nether-workflow", "minecraft.goal.survival.reach-nether", "1.0",
-                workflowInput(spec), true,
-                new GoalAssertion("steps.nether-workflow.freshWorld", "equals", true),
-                new GoalAssertion("steps.nether-workflow.survival", "equals", true),
-                new GoalAssertion("steps.nether-workflow.initialDimension", "equals", "minecraft:overworld"),
-                new GoalAssertion("steps.nether-workflow.manualPortalBuilt", "equals", true),
-                new GoalAssertion("steps.nether-workflow.portalFrameBlocksPlaced", "equals", 10),
-                new GoalAssertion("steps.nether-workflow.portalLit", "equals", true),
-                new GoalAssertion("steps.nether-workflow.enteredPortal", "equals", true),
-                new GoalAssertion("steps.nether-workflow.reachedNether", "equals", true),
-                new GoalAssertion("steps.nether-workflow.finalDimension", "equals", "minecraft:the_nether"),
-                new GoalAssertion("steps.nether-workflow.playerAlive", "equals", true),
-                new GoalAssertion("steps.nether-workflow.teleportedToBuildSite", "equals", false),
-                new GoalAssertion("steps.nether-workflow.setupCommandsUsed", "equals", false),
-                new GoalAssertion("steps.nether-workflow.commandFeedbackSuppressed", "equals", true),
-                new GoalAssertion("steps.nether-workflow.directMutationUsed", "equals", false));
+        var finalAssertions = List.of(
+                new GoalAssertion("freshWorld", "equals", true),
+                new GoalAssertion("survival", "equals", true),
+                new GoalAssertion("initialDimension", "equals", "minecraft:overworld"),
+                new GoalAssertion("manualPortalBuilt", "equals", true),
+                new GoalAssertion("portalFrameBlocksPlaced", "equals", 10),
+                new GoalAssertion("portalLit", "equals", true),
+                new GoalAssertion("enteredPortal", "equals", true),
+                new GoalAssertion("reachedNether", "equals", true),
+                new GoalAssertion("finalDimension", "equals", "minecraft:the_nether"),
+                new GoalAssertion("playerAlive", "equals", true),
+                new GoalAssertion("teleportedToBuildSite", "equals", false),
+                new GoalAssertion("setupCommandsUsed", "equals", false),
+                new GoalAssertion("commandFeedbackSuppressed", "equals", true),
+                new GoalAssertion("directMutationUsed", "equals", false));
+        var workflowSteps = new ArrayList<GoalStep>();
+        if (spec.intelligence() == GoalIntelligence.ADAPTIVE_V1) {
+            var starterInput = new LinkedHashMap<>(workflowInput(spec));
+            starterInput.put("checkpoint", "starter-tools");
+            workflowSteps.add(GoalStep.invoke("gather-starter-tools", "minecraft.goal.survival.reach-nether", "1.0",
+                    starterInput, true,
+                    new GoalAssertion("steps.gather-starter-tools.checkpoint", "equals", "starter-tools"),
+                    new GoalAssertion("steps.gather-starter-tools.checkpointComplete", "equals", true),
+                    new GoalAssertion("steps.gather-starter-tools.playerAlive", "equals", true)));
+            var portalToolsInput = new LinkedHashMap<>(workflowInput(spec));
+            portalToolsInput.put("checkpoint", "portal-tools");
+            portalToolsInput.put("continuationToken", "${steps.gather-starter-tools.continuationToken}");
+            workflowSteps.add(GoalStep.invoke("craft-portal-tools", "minecraft.goal.survival.reach-nether", "1.0",
+                    portalToolsInput, true,
+                    new GoalAssertion("steps.craft-portal-tools.checkpoint", "equals", "portal-tools"),
+                    new GoalAssertion("steps.craft-portal-tools.checkpointComplete", "equals", true),
+                    new GoalAssertion("steps.craft-portal-tools.playerAlive", "equals", true)));
+            var finalInput = new LinkedHashMap<>(workflowInput(spec));
+            finalInput.put("checkpoint", "complete");
+            finalInput.put("continuationToken", "${steps.craft-portal-tools.continuationToken}");
+            var finalStepAssertions = new ArrayList<GoalAssertion>();
+            finalStepAssertions.add(new GoalAssertion("steps.enter-nether.checkpoint", "equals", "complete"));
+            finalStepAssertions.add(new GoalAssertion("steps.enter-nether.checkpointComplete", "equals", true));
+            for (var assertion : finalAssertions) {
+                finalStepAssertions.add(new GoalAssertion("steps.enter-nether." + assertion.path(),
+                        assertion.operator(), assertion.expected()));
+            }
+            workflowSteps.add(new GoalStep("enter-nether", GoalStepKind.INVOKE,
+                    "minecraft.goal.survival.reach-nether", "1.0", finalInput, finalStepAssertions, true));
+        } else {
+            var workflow = GoalStep.invoke("nether-workflow", "minecraft.goal.survival.reach-nether", "1.0",
+                    workflowInput(spec), true,
+                    finalAssertions.stream()
+                            .map(assertion -> new GoalAssertion("steps.nether-workflow." + assertion.path(),
+                                    assertion.operator(), assertion.expected()))
+                            .toArray(GoalAssertion[]::new));
+            workflowSteps.add(workflow);
+        }
         var assertions = new ArrayList<GoalAssertion>();
         if (spec.suppressInGameMessages()) {
-            assertions.add(new GoalAssertion("steps.nether-workflow.suppressInGameMessages", "equals", true));
-            assertions.add(new GoalAssertion("steps.nether-workflow.inGameMessagesEmitted", "equals", 0));
+            var stepId = spec.intelligence() == GoalIntelligence.ADAPTIVE_V1 ? "enter-nether" : "nether-workflow";
+            assertions.add(new GoalAssertion("steps." + stepId + ".suppressInGameMessages", "equals", true));
+            assertions.add(new GoalAssertion("steps." + stepId + ".inGameMessagesEmitted", "equals", 0));
         }
-        workflow = new GoalStep(workflow.id(), workflow.kind(), workflow.capability(), workflow.capabilityVersion(),
-                workflow.input(), concat(workflow.assertions(), assertions), workflow.observeAfter());
+        if (!assertions.isEmpty()) {
+            var last = workflowSteps.remove(workflowSteps.size() - 1);
+            workflowSteps.add(new GoalStep(last.id(), last.kind(), last.capability(), last.capabilityVersion(),
+                    last.input(), concat(last.assertions(), assertions), last.observeAfter()));
+        }
         return new GoalPlan("survival.reach-nether", goal, List.of(
                 new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
                         List.of(open), List.of()),
@@ -142,7 +221,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
                         List.of(createWorld), List.of()),
                 new GoalSegment("nether-gameplay", "Use normal portal placement, ignition, movement, and dimension readback until the Nether predicate is proven.",
-                        List.of(workflow), List.of())),
+                        workflowSteps, List.of())),
                 Map.of("taskId", "survival.reach-nether", "gameMode", "survival",
                         "realtimePreferred", true,
                         "randomFreshWorldRequired", true, "naturalPortalChestOptional", true,
@@ -322,22 +401,61 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
     private static GoalPlan collectWoodPlan(GoalSpec spec) {
         var goal = spec.goal();
         if (spec.intelligence() != GoalIntelligence.RAW_V1) {
-            var workflow = GoalStep.invoke("wood-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
-                    workflowInput(spec), true,
-                    new GoalAssertion("steps.wood-workflow.survival", "equals", true),
-                    new GoalAssertion("steps.wood-workflow.handMinedLogs", "gte", 3),
-                    new GoalAssertion("steps.wood-workflow.planksCrafted", "gte", 12),
-                    new GoalAssertion("steps.wood-workflow.sticksCrafted", "gte", 4),
-                    new GoalAssertion("steps.wood-workflow.craftingTableCrafted", "equals", true),
-                    new GoalAssertion("steps.wood-workflow.woodenAxeCrafted", "equals", true),
-                    new GoalAssertion("steps.wood-workflow.woodenAxeEquipped", "equals", true),
-                    new GoalAssertion("steps.wood-workflow.targetTreeRemainingLogs", "equals", 0),
-                    new GoalAssertion("steps.wood-workflow.playerAlive", "equals", true),
-                    new GoalAssertion("steps.wood-workflow.commandsUsed", "equals", false),
-                    new GoalAssertion("steps.wood-workflow.directMutationUsed", "equals", false));
+            var finalAssertions = List.of(
+                    new GoalAssertion("survival", "equals", true),
+                    new GoalAssertion("handMinedLogs", "gte", 3),
+                    new GoalAssertion("planksCrafted", "gte", 12),
+                    new GoalAssertion("sticksCrafted", "gte", 4),
+                    new GoalAssertion("craftingTableCrafted", "equals", true),
+                    new GoalAssertion("woodenAxeCrafted", "equals", true),
+                    new GoalAssertion("woodenAxeEquipped", "equals", true),
+                    new GoalAssertion("targetTreeRemainingLogs", "equals", 0),
+                    new GoalAssertion("playerAlive", "equals", true),
+                    new GoalAssertion("commandsUsed", "equals", false),
+                    new GoalAssertion("directMutationUsed", "equals", false));
+            var workflowSteps = new ArrayList<GoalStep>();
+            if (spec.intelligence() == GoalIntelligence.ADAPTIVE_V1) {
+                var gatherInput = new LinkedHashMap<>(workflowInput(spec));
+                gatherInput.put("checkpoint", "resource-gather");
+                workflowSteps.add(GoalStep.invoke("gather-resource", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                        gatherInput, true,
+                        new GoalAssertion("steps.gather-resource.checkpoint", "equals", "resource-gather"),
+                        new GoalAssertion("steps.gather-resource.checkpointComplete", "equals", true),
+                        new GoalAssertion("steps.gather-resource.handMinedLogs", "gte", 3),
+                        new GoalAssertion("steps.gather-resource.playerAlive", "equals", true)));
+                var craftInput = new LinkedHashMap<>(workflowInput(spec));
+                craftInput.put("checkpoint", "craft-axe");
+                craftInput.put("continuationToken", "${steps.gather-resource.continuationToken}");
+                workflowSteps.add(GoalStep.invoke("craft-axe", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                        craftInput, true,
+                        new GoalAssertion("steps.craft-axe.checkpoint", "equals", "craft-axe"),
+                        new GoalAssertion("steps.craft-axe.checkpointComplete", "equals", true),
+                        new GoalAssertion("steps.craft-axe.woodenAxeCrafted", "equals", true),
+                        new GoalAssertion("steps.craft-axe.woodenAxeEquipped", "equals", true),
+                        new GoalAssertion("steps.craft-axe.playerAlive", "equals", true)));
+                var finalInput = new LinkedHashMap<>(workflowInput(spec));
+                finalInput.put("checkpoint", "complete");
+                finalInput.put("continuationToken", "${steps.craft-axe.continuationToken}");
+                var finalStepAssertions = new ArrayList<GoalAssertion>();
+                finalStepAssertions.add(new GoalAssertion("steps.collect-target.checkpoint", "equals", "complete"));
+                finalStepAssertions.add(new GoalAssertion("steps.collect-target.checkpointComplete", "equals", true));
+                for (var assertion : finalAssertions) {
+                    finalStepAssertions.add(new GoalAssertion("steps.collect-target." + assertion.path(),
+                            assertion.operator(), assertion.expected()));
+                }
+                workflowSteps.add(new GoalStep("collect-target", GoalStepKind.INVOKE,
+                        "minecraft.goal.survival.wooden-axe-tree", "1.0", finalInput, finalStepAssertions, true));
+            } else {
+                workflowSteps.add(GoalStep.invoke("wood-workflow", "minecraft.goal.survival.wooden-axe-tree", "1.0",
+                        workflowInput(spec), true,
+                        finalAssertions.stream()
+                                .map(assertion -> new GoalAssertion("steps.wood-workflow." + assertion.path(),
+                                        assertion.operator(), assertion.expected()))
+                                .toArray(GoalAssertion[]::new)));
+            }
             return new GoalPlan("survival.collect-wood", goal, List.of(
                     new GoalSegment("intelligent-wood", "Acquire the minimum wooden tools through visible crafting before collecting the target tree.",
-                            List.of(workflow), List.of())),
+                            workflowSteps, List.of())),
                     Map.of("taskId", "survival.collect-wood", "gameMode", "survival",
                             "toolPrerequisitePlanning", true,
                             "requiresCrafting", true, "ordinaryInputOnly", true,

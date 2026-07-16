@@ -46,6 +46,9 @@ every Minecraft environment.
   reasoning effort by default, intelligent actors veto tool-required bare-hand mining, and command
   execution is explicitly denied unless a goal request or bounded creative setup authorizes it;
   guarded defaults now apply at the Java API and recording-launcher boundaries as well as MCP.
+- Highest-intelligence NeoForge tree and Nether workflows now expose safe native continuation
+  checkpoints with opaque tokens; adaptive realtime filters unresolved phase dependencies before
+  model selection, while adaptive script passes each completed phase result into the next call.
 - NeoForge 1.21.1 now proves the survival wooden-axe tree goal in both script and realtime modes
   through visible normal player input: hand gathering, inventory/container crafting, table placement,
   axe equipping, navigation, and full-tree mining, with commands and direct mutation prohibited.

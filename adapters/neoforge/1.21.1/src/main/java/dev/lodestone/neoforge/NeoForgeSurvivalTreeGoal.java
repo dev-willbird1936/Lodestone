@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.UUID;
 
 /**
  * Bounded client-input actor for the registered survival tree goal.
@@ -41,13 +42,13 @@ import java.util.concurrent.CompletableFuture;
  * vanilla menus through the same container-click path exposed by the adapter, and the crafting
  * table is placed/opened with the normal use mapping.</p>
  */
-final class NeoForgeSurvivalTreeGoal {
+final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private static final int HAND_LOGS_REQUIRED = 3;
     private static final int MAX_TOTAL_TICKS = 9_000;
     private static final int MAX_SEARCH_ATTEMPTS = 16;
 
-    private final InvocationContext invocation;
-    private final CompletableFuture<Map<String, Object>> result;
+    private InvocationContext invocation;
+    private CompletableFuture<Map<String, Object>> result;
     private final boolean suppressInGameMessages;
     private final NeoForgeGoalPolicy policy;
     private final LinkedHashSet<String> inputActions = new LinkedHashSet<>();
@@ -55,8 +56,12 @@ final class NeoForgeSurvivalTreeGoal {
     private final List<String> safetyDiagnostics = new ArrayList<>();
     private final ArrayDeque<ClickOp> clicks = new ArrayDeque<>();
     private final NeoForgeGoalSupervisor supervisor;
+    private final String continuationToken = UUID.randomUUID().toString();
 
     private Stage stage = Stage.WAIT_WORLD;
+    private String requestedCheckpoint;
+    private boolean paused;
+    private boolean finished;
     private Runnable clicksComplete;
     private int clickDelay;
     private int waitTicks;
@@ -100,14 +105,37 @@ final class NeoForgeSurvivalTreeGoal {
                 invocation.request().input().get("suppressInGameMessages"));
         this.policy = NeoForgeGoalPolicy.from(invocation.request().input());
         this.supervisor = new NeoForgeGoalSupervisor(policy, inputActions, safetyDiagnostics);
+        this.requestedCheckpoint = checkpoint(invocation.request().input());
     }
 
-    boolean done() {
-        return result.isDone();
+    @Override
+    public boolean done() {
+        return finished;
+    }
+
+    @Override
+    public boolean paused() {
+        return paused;
+    }
+
+    @Override
+    public String continuationToken() {
+        return continuationToken;
+    }
+
+    @Override
+    public void resume(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
+        if (!paused || finished) throw new IllegalStateException("survival tree goal is not resumable");
+        this.invocation = invocation;
+        this.result = result;
+        this.requestedCheckpoint = checkpoint(invocation.request().input());
+        this.paused = false;
+        this.stageTicks = 0;
+        this.waitTicks = 1;
     }
 
     void tick(Minecraft client) {
-        if (done()) return;
+        if (done() || paused) return;
         try {
             invocation.cancellation().throwIfCancelled();
             if (++totalTicks > MAX_TOTAL_TICKS) throw new IllegalStateException("survival tree goal exceeded its bounded input budget");
@@ -149,6 +177,8 @@ final class NeoForgeSurvivalTreeGoal {
             }
         } catch (Throwable failure) {
             releaseInput(client);
+            finished = true;
+            paused = false;
             result.completeExceptionally(failure);
         }
     }
@@ -265,6 +295,7 @@ final class NeoForgeSurvivalTreeGoal {
             stopMovement(client);
             announce(client, "Collected " + logs + " hand-mined logs - opening inventory");
             transition(Stage.OPEN_INVENTORY, 20);
+            pauseAtCheckpoint(client, "resource-gather");
             return;
         }
         var drops = client.level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class,
@@ -541,6 +572,7 @@ final class NeoForgeSurvivalTreeGoal {
         }
         announce(client, "WOODEN AXE EQUIPPED - walking to second tree (" + targetTree.logs().size() + " logs)");
         transition(Stage.NAVIGATE_TARGET, 35);
+        pauseAtCheckpoint(client, "craft-axe");
     }
 
     private void navigateTarget(Minecraft client) {
@@ -641,20 +673,37 @@ final class NeoForgeSurvivalTreeGoal {
 
     private void completeAfterVisibleDelay(Minecraft client) {
         releaseInput(client);
-        var remaining = (int) targetTree.logs().stream()
+        finished = true;
+        result.complete(output(client, "complete", true));
+    }
+
+    private void pauseAtCheckpoint(Minecraft client, String checkpoint) {
+        if (!requestedCheckpoint.equals(checkpoint)) return;
+        releaseInput(client);
+        paused = true;
+        result.complete(output(client, checkpoint, true));
+    }
+
+    private Map<String, Object> output(Minecraft client, String checkpoint, boolean checkpointComplete) {
+        var player = requirePlayer(client);
+        var initialLogs = targetTree == null ? 0 : targetTree.logs().size();
+        var remaining = targetTree == null ? 0 : (int) targetTree.logs().stream()
                 .filter(position -> client.level.getBlockState(position).is(BlockTags.LOGS)).count();
-        result.complete(Map.ofEntries(
+        return Map.ofEntries(
+                Map.entry("checkpoint", checkpoint),
+                Map.entry("checkpointComplete", checkpointComplete),
+                Map.entry("continuationToken", continuationToken),
                 Map.entry("survival", survival), Map.entry("freshWorld", freshWorld),
                 Map.entry("worldName", worldName), Map.entry("worldGameTimeAtStart", worldGameTimeAtStart),
                 Map.entry("handMinedLogs", handMinedLogs), Map.entry("planksCrafted", planksCrafted),
                 Map.entry("sticksCrafted", sticksCrafted), Map.entry("craftingTableCrafted", craftingTableCrafted),
                 Map.entry("woodenAxeCrafted", woodenAxeCrafted), Map.entry("woodenAxeEquipped", woodenAxeEquipped),
-                Map.entry("targetTreeInitialLogs", targetTree.logs().size()),
+                Map.entry("targetTreeInitialLogs", initialLogs),
                 Map.entry("targetTreeMinedLogs", targetMinedLogs), Map.entry("targetTreeRemainingLogs", remaining),
-                Map.entry("fullTreeMined", remaining == 0 && targetMinedLogs == targetTree.logs().size()),
+                Map.entry("fullTreeMined", remaining == 0 && targetMinedLogs == initialLogs),
                 Map.entry("allTargetLogsMinedWithWoodenAxe", allTargetLogsMinedWithWoodenAxe),
-                Map.entry("playerAlive", requirePlayer(client).isAlive() && requirePlayer(client).getHealth() > 0.0F),
-                Map.entry("healthAtEnd", requirePlayer(client).getHealth()),
+                Map.entry("playerAlive", player.isAlive() && player.getHealth() > 0.0F),
+                Map.entry("healthAtEnd", player.getHealth()),
                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
                 Map.entry("intelligence", policy.intelligence().id()), Map.entry("safety", policy.safety().id()),
                 Map.entry("policyMode", policy.mode()), Map.entry("toolPrerequisiteGuard", policy.toolPrerequisiteGuardEnabled()),
@@ -668,6 +717,17 @@ final class NeoForgeSurvivalTreeGoal {
                 Map.entry("inGameMessagesEmitted", inGameMessagesEmitted),
                 Map.entry("navigationDiagnostics", List.copyOf(navigationDiagnostics)),
                 Map.entry("inputActions", List.copyOf(inputActions))));
+    }
+
+    private static String checkpoint(Map<String, Object> input) {
+        var value = input.get("checkpoint");
+        var checkpoint = value == null || String.valueOf(value).isBlank()
+                ? "complete" : String.valueOf(value).trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (checkpoint) {
+            case "resource-gather", "craft-axe", "complete" -> checkpoint;
+            default -> throw new IllegalArgumentException(
+                    "survival tree checkpoint must be resource-gather, craft-axe, or complete");
+        };
     }
 
     private boolean navigate(Minecraft client, BlockPos target, String label) {

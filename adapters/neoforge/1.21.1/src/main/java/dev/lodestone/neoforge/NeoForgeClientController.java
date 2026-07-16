@@ -310,14 +310,23 @@ public final class NeoForgeClientController {
             var result = new CompletableFuture<Map<String, Object>>();
             Minecraft.getInstance().execute(() -> {
                 try {
-                    if (survivalTreeGoal != null && !survivalTreeGoal.done()) {
-                        throw new IllegalStateException("a survival wooden-axe tree goal is already running");
-                    }
                     if (combatGoal != null && !combatGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
-                    survivalTreeGoal = new NeoForgeSurvivalTreeGoal(invocation, result);
+                    var token = String.valueOf(invocation.request().input().getOrDefault("continuationToken", ""));
+                    if (!token.isBlank()) {
+                        if (survivalTreeGoal == null || survivalTreeGoal.done() || !survivalTreeGoal.paused()
+                                || !survivalTreeGoal.continuationToken().equals(token)) {
+                            throw new IllegalStateException("survival tree continuation token is stale or unknown");
+                        }
+                        survivalTreeGoal.resume(invocation, result);
+                    } else {
+                        if (survivalTreeGoal != null && !survivalTreeGoal.done()) {
+                            throw new IllegalStateException("a survival wooden-axe tree goal is already running");
+                        }
+                        survivalTreeGoal = new NeoForgeSurvivalTreeGoal(invocation, result);
+                    }
                 } catch (Throwable failure) {
                     result.completeExceptionally(failure);
                 }
@@ -365,16 +374,25 @@ public final class NeoForgeClientController {
             var result = new CompletableFuture<Map<String, Object>>();
             Minecraft.getInstance().execute(() -> {
                 try {
+                    var token = String.valueOf(invocation.request().input().getOrDefault("continuationToken", ""));
                     if ((survivalTreeGoal != null && !survivalTreeGoal.done())
                             || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
-                            || (netherGoal != null && !netherGoal.done())) {
+                            || (netherGoal != null && !netherGoal.done() && token.isBlank())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (combatGoal != null && !combatGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
-                    netherGoal = new NeoForgeNetherGoal(invocation, result);
+                    if (!token.isBlank()) {
+                        if (netherGoal == null || netherGoal.done() || !netherGoal.paused()
+                                || !netherGoal.continuationToken().equals(token)) {
+                            throw new IllegalStateException("Nether continuation token is stale or unknown");
+                        }
+                        netherGoal.resume(invocation, result);
+                    } else {
+                        netherGoal = new NeoForgeNetherGoal(invocation, result);
+                    }
                 } catch (Throwable failure) {
                     result.completeExceptionally(failure);
                 }
