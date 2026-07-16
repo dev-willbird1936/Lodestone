@@ -18,6 +18,9 @@ Both modes use the same bounded plan format and verification kernel. A plan cont
 
 Script mode runs segments in declared order. Realtime mode asks the selected provider for one candidate step, invokes it, performs a fresh `minecraft.player.state.read` after action steps marked `observeAfter`, and continues. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
 
+Realtime reports retain `model-decision` trace entries with candidate index and rationale; native
+goal actors remain deterministic low-level executors beneath those high-level decisions.
+
 Command execution is denied by default through `allowCommands=false`. Survival Nether and tree
 goals do not use commands; the creative wool-tree fixture declares only its bounded setup commands
 inside its task plan.

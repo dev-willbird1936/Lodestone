@@ -65,6 +65,7 @@ public final class GoalEngine {
         state.put("allowCommands", spec.controls().allowCommands());
         state.put("executorModel", modelProvider.id());
         state.put("reasoningEffort", modelProvider.reasoningEffort());
+        state.put("modelMeasuredP95Ms", modelProvider.measuredP95LatencyMs());
         state.put("planId", plan.id());
         var steps = new LinkedHashMap<String, Object>();
         state.put("steps", steps);
@@ -84,9 +85,19 @@ public final class GoalEngine {
                         pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "goal budget exhausted");
                         break;
                     }
-                    var selected = spec.mode() == GoalMode.REALTIME
+                    var selection = spec.mode() == GoalMode.REALTIME
                             ? selectRealtimeStep(spec, state, pending)
-                            : pending.get(0);
+                            : new StepSelection(pending.get(0), "declared script order", 0);
+                    var selected = selection.step();
+                    if (spec.mode() == GoalMode.REALTIME) {
+                        state.put("lastModelDecision", Map.of(
+                                "segment", segment.id(), "step", selected.id(),
+                                "candidateIndex", selection.candidateIndex(),
+                                "rationale", selection.rationale()));
+                        trace.add(Map.of("step", "decision." + selected.id(), "kind", "model-decision",
+                                "segment", segment.id(), "candidateIndex", selection.candidateIndex(),
+                                "rationale", selection.rationale()));
+                    }
                     if (elapsedMs(started) >= spec.maxDurationMs()) {
                         pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "goal budget exhausted after planning");
                         break;
@@ -195,7 +206,7 @@ public final class GoalEngine {
         return finalReport;
     }
 
-    private GoalStep selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
+    private StepSelection selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
         var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, pending)).orElseGet(() -> {
             if (spec.intelligence().requiresModel(spec.mode())) {
                 throw new IllegalStateException("adaptive-v1 executor returned no decision");
@@ -205,7 +216,8 @@ public final class GoalEngine {
         if (decision.candidateIndex() >= pending.size()) {
             throw new IllegalArgumentException("realtime model selected an invalid candidate index");
         }
-        return pending.get(decision.candidateIndex());
+        return new StepSelection(pending.get(decision.candidateIndex()), decision.rationale(),
+                decision.candidateIndex());
     }
 
     private static boolean shouldObserveAfter(GoalSpec spec, GoalStep selected) {
@@ -326,5 +338,8 @@ public final class GoalEngine {
     }
 
     private record ExecutionFailure(GoalStatus status, String message) {
+    }
+
+    private record StepSelection(GoalStep step, String rationale, int candidateIndex) {
     }
 }
