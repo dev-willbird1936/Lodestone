@@ -9,4 +9,9 @@ public record GoalDecisionRequest(GoalSpec spec, Map<String, Object> state, List
         state = state == null ? Map.of() : Map.copyOf(state);
         candidates = candidates == null ? List.of() : List.copyOf(candidates);
     }
+
+    /** Return the bounded state projection intended for a low-latency model prompt. */
+    public Map<String, Object> decisionState() {
+        return GoalDecisionState.project(state);
+    }
 }

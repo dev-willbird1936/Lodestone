@@ -81,8 +81,8 @@ final class NeoForgeNavigationGoal {
                 replan(client);
             }
             if (path.isEmpty()) {
-                if (policy.highSafety()) {
-                    throw new IllegalStateException("high-safety route unavailable to benchmark target " + target);
+                if (policy.smartNavigation()) {
+                    throw new IllegalStateException("safe intelligent route unavailable to benchmark target " + target);
                 }
                 directFallback = true;
                 lookAt(player, target);

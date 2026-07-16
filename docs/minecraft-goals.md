@@ -28,6 +28,13 @@ guarded realtime reports `deterministic-selection`. Native goal actors remain de
 low-level executors beneath those high-level decisions, with their terminal output still subject to
 goal assertions.
 
+Intelligence is applied at the `minecraft_goal` layer. Direct `minecraft.input.*` or
+`minecraft.player.interact` calls remain raw low-level controls; they are not silently upgraded into
+tool acquisition. For guarded and adaptive survival workflows, the native prerequisite chain owns
+the lower steps: gather starter wood by hand, craft the required tools through visible UI, equip the
+right tool, and only then mine tool-required terrain. The intelligent guard vetoes a stray bare-hand
+stone/dirt attack and records the recovery diagnostic instead of allowing an accidental tunnel.
+
 ## Native continuation checkpoints
 
 Highest-intelligence native workflows are resumable at safe phase boundaries. The wooden-axe tree
@@ -42,6 +49,17 @@ Adaptive script uses the same phase boundaries in declared order, passing each p
 next script. A phase boundary is not a per-tick model call: the native actor continues to use
 ordinary look, movement, mining, visible container clicks, and loaded-chunk observations between
 boundaries.
+
+Native intelligent phase results also include a bounded `worldObservation` object: dimension and
+game mode, player position/health/food/fall and fluid state, held item, bounded inventory counts,
+nearby hostile/threat entities, and the currently targeted block. The full execution trace stays
+local; model prompts receive a bounded tail projection so low-latency decisions do not degrade as
+an action trace grows.
+
+Guarded and adaptive navigation treat an unavailable loaded-chunk safe path as a recovery failure,
+not permission to walk blindly toward the target. Intelligent movement also blocks an observed
+multi-block forward drop before movement input, while low/raw profiles retain their comparison
+fallback behavior.
 
 Command execution is denied by default through `allowCommands=false`. Survival Nether and tree
 goals do not use commands; the creative wool-tree fixture declares only its bounded setup commands

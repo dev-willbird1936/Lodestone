@@ -20,10 +20,11 @@ final class NeoForgeWorldSnapshot {
     }
 
     boolean walkable(BlockPos feet) {
-        if (!level.hasChunkAt(feet)) return false;
-        var feetState = level.getBlockState(feet);
-        var headState = level.getBlockState(feet.above());
+        var head = feet.above();
         var supportPos = feet.below();
+        if (!level.hasChunkAt(feet) || !level.hasChunkAt(head) || !level.hasChunkAt(supportPos)) return false;
+        var feetState = level.getBlockState(feet);
+        var headState = level.getBlockState(head);
         var supportState = level.getBlockState(supportPos);
         if (!feetState.getCollisionShape(level, feet).isEmpty()
                 || !headState.getCollisionShape(level, feet.above()).isEmpty()) return false;

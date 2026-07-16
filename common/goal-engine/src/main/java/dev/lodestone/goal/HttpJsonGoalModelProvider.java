@@ -78,7 +78,7 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
         var prompt = JsonSupport.MAPPER.toJson(Map.of(
                 "goal", request.spec().goal(),
                 "mode", request.spec().mode().toString(),
-                "state", request.state(),
+                "state", request.decisionState(),
                 "candidates", request.candidates().stream().map(step -> Map.of(
                         "id", step.id(), "kind", step.kind().toString(),
                         "capability", step.capability() == null ? "" : step.capability(),

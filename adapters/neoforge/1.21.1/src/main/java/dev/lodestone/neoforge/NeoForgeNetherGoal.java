@@ -1719,6 +1719,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 Map.entry("checkpoint", checkpoint),
                 Map.entry("checkpointComplete", checkpointComplete),
                 Map.entry("continuationToken", continuationToken),
+                Map.entry("worldObservation", NeoForgeGoalObservation.capture(client, policy)),
                 Map.entry("freshWorld", freshWorld),
                 Map.entry("survival", survival),
                 Map.entry("worldName", worldName),
@@ -1967,8 +1968,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             return true;
         }
         if (navigationPath.isEmpty()) {
-            if (policy.highSafety()) throw new IllegalStateException(
-                    "high-safety path unavailable before reaching " + label);
+            if (policy.smartNavigation()) throw new IllegalStateException(
+                    "safe intelligent path unavailable before reaching " + label);
             return false;
         }
         while (navigationIndex < navigationPath.size()) {
@@ -1990,8 +1991,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             navigationStuckTicks = 0;
             navigationLastDistance = Double.POSITIVE_INFINITY;
             safetyDiagnostics.add("navigation-replan:" + label);
-            if (navigationPath.isEmpty() && policy.highSafety()) {
-                throw new IllegalStateException("high-safety navigation remained blocked during " + label);
+            if (navigationPath.isEmpty() && policy.smartNavigation()) {
+                throw new IllegalStateException("safe intelligent navigation remained blocked during " + label);
             }
             return false;
         }

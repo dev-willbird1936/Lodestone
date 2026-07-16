@@ -159,8 +159,8 @@ final class NeoForgeCombatGoal {
             pathComputed = true;
             replans++;
             inputActions.add(path.isEmpty() ? "observe:combat-no-safe-path" : "observe:combat-safe-path");
-            if (path.isEmpty() && policy.highSafety()) {
-                throw new IllegalStateException("high-safety route unavailable to hostile target");
+            if (path.isEmpty() && policy.smartNavigation()) {
+                throw new IllegalStateException("safe intelligent route unavailable to hostile target");
             }
         }
         while (pathIndex < path.size() && closeTo(player, path.get(pathIndex), 0.8)) {

@@ -41,6 +41,15 @@ final class NeoForgeGoalSupervisor {
 
         if (recoverObstructionOrStall(client, player)) return true;
 
+        if (policy.fallProtectionEnabled() && unsafeForwardDrop(client, player)) {
+            stopMovement(client);
+            client.options.keyShift.setDown(true);
+            actions.add("safety:block-unsafe-forward-drop");
+            diagnostics.add("fall-risk:unsafe-forward-drop-at-" + player.blockPosition());
+            recoveryTicks = 6;
+            return true;
+        }
+
         if (brakeTicks > 0) {
             client.options.keyShift.setDown(true);
             client.options.keyUp.setDown(false);
@@ -192,6 +201,19 @@ final class NeoForgeGoalSupervisor {
         // Logs and foliage are legitimate early-game prerequisites; hard terrain is not.
         if (held.isEmpty()) return state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
         return held.isCorrectToolForDrops(state);
+    }
+
+    private boolean unsafeForwardDrop(Minecraft client, LocalPlayer player) {
+        if (!client.options.keyUp.isDown() && !client.options.keySprint.isDown()) return false;
+        var feet = player.blockPosition();
+        var ahead = feet.relative(player.getDirection());
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        if (snapshot.walkable(ahead)) return false;
+        for (var dy = -1; dy >= -4; dy--) {
+            var candidate = new BlockPos(ahead.getX(), feet.getY() + dy, ahead.getZ());
+            if (snapshot.walkable(candidate)) return dy <= -2;
+        }
+        return true;
     }
 
     private LivingEntity findThreat(LocalPlayer player) {

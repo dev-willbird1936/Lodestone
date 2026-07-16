@@ -693,6 +693,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 Map.entry("checkpoint", checkpoint),
                 Map.entry("checkpointComplete", checkpointComplete),
                 Map.entry("continuationToken", continuationToken),
+                Map.entry("worldObservation", NeoForgeGoalObservation.capture(client, policy)),
                 Map.entry("survival", survival), Map.entry("freshWorld", freshWorld),
                 Map.entry("worldName", worldName), Map.entry("worldGameTimeAtStart", worldGameTimeAtStart),
                 Map.entry("handMinedLogs", handMinedLogs), Map.entry("planksCrafted", planksCrafted),
@@ -744,8 +745,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             navigationStuckTicks = 0;
             navigationReplans = 0;
             navigationDetourTicks = 0;
-            if (navigationPath.isEmpty() && policy.highSafety()) {
-                throw new IllegalStateException("high-safety route unavailable to " + label);
+            if (navigationPath.isEmpty() && policy.smartNavigation()) {
+                throw new IllegalStateException("safe intelligent route unavailable to " + label);
             }
             navigationDirectFallback = navigationPath.isEmpty();
             navigationLastDistance = Double.POSITIVE_INFINITY;
@@ -805,8 +806,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             navigationStuckTicks = 0;
             navigationLastDistance = Double.POSITIVE_INFINITY;
             if (navigationPath.isEmpty()) {
-                if (policy.highSafety()) {
-                    throw new IllegalStateException("high-safety route remained unavailable to " + label);
+                if (policy.smartNavigation()) {
+                    throw new IllegalStateException("safe intelligent route remained unavailable to " + label);
                 }
                 navigationDirectFallback = true;
                 navigationDetourTicks = 50;

@@ -52,6 +52,9 @@ every Minecraft environment.
 - NeoForge 1.21.1 now proves the survival wooden-axe tree goal in both script and realtime modes
   through visible normal player input: hand gathering, inventory/container crafting, table placement,
   axe equipping, navigation, and full-tree mining, with commands and direct mutation prohibited.
+- Intelligent native goals now expose bounded decision-state projections, structured player/world
+  observations, and pre-step tool/drop safety vetoes so high-intelligence routes acquire required
+  tools and recover from hazards instead of blindly mining or walking.
 - NeoForge 1.21.1 now includes a native combat task that selects a loaded hostile, path-plans with
   ordinary movement, chooses an available hotbar weapon at guarded intelligence levels, attacks with
   normal input, and requires terminal entity-death readback while the player remains alive.
