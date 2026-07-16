@@ -59,6 +59,9 @@ final class NeoForgeNavigationGoal {
                     && client.gameMode.getPlayerMode() != GameType.ADVENTURE) {
                 throw new IllegalStateException("benchmark navigation requires survival or adventure mode");
             }
+            if (policy.allowCommands()) {
+                throw new IllegalStateException("survival navigation workflow refuses allowCommands=true");
+            }
             if (reached(client.player)) {
                 complete(client);
                 return;
@@ -152,6 +155,9 @@ final class NeoForgeNavigationGoal {
 
     private void complete(Minecraft client) {
         releaseInput(client);
+        if (!client.player.isAlive() || client.player.getHealth() <= 0.0F) {
+            throw new IllegalStateException("player died before navigation terminal readback");
+        }
         result.complete(Map.ofEntries(
                 Map.entry("reachedTarget", true),
                 Map.entry("target", position(target)),

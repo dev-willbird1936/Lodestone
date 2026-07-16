@@ -52,6 +52,7 @@ final class NeoForgeCombatGoal {
     private String targetUuid = "";
     private boolean targetObserved;
     private boolean weaponSelected;
+    private int selectedWeaponSlot = -1;
     private boolean playerAlive;
     private int attackActions;
     private boolean pathComputed;
@@ -105,6 +106,9 @@ final class NeoForgeCombatGoal {
         if (client.level == null || client.player == null || client.gameMode == null || client.screen != null) return;
         if (client.gameMode.getPlayerMode() != GameType.SURVIVAL) {
             throw new IllegalStateException("combat task requires survival mode");
+        }
+        if (policy.allowCommands()) {
+            throw new IllegalStateException("survival combat workflow refuses allowCommands=true");
         }
         playerAlive = client.player.isAlive() && client.player.getHealth() > 0.0F;
         if (!playerAlive) throw new IllegalStateException("combat task started with a dead player");
@@ -198,6 +202,13 @@ final class NeoForgeCombatGoal {
             stageTicks = 0;
             return;
         }
+        if (policy.toolPrerequisiteGuardEnabled() && selectedWeaponSlot >= 0
+                && (player.getInventory().selected != selectedWeaponSlot
+                || weaponScore(player.getMainHandItem()) <= 0)) {
+            KeyMapping.click(client.options.keyHotbarSlots[selectedWeaponSlot].getKey());
+            inputActions.add("select:verify-hotbar-combat-weapon-" + (selectedWeaponSlot + 1));
+            return;
+        }
         stopMovement(client);
         lookAt(player, target.position().add(0.0, Math.max(0.4, target.getBbHeight() * 0.45), 0.0));
         if (++attackTicks % 10 == 1) {
@@ -271,6 +282,7 @@ final class NeoForgeCombatGoal {
             KeyMapping.click(client.options.keyHotbarSlots[bestSlot].getKey());
             inputActions.add("select:best-hotbar-combat-weapon-" + (bestSlot + 1));
         }
+        selectedWeaponSlot = bestSlot;
         weaponSelected = true;
     }
 

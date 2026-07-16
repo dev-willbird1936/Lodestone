@@ -49,7 +49,27 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
     }
 
     public static GoalSpec of(String goal, GoalMode mode, String taskId, boolean dryRun) {
-        return new GoalSpec(goal, mode, taskId, 256, 120_000, dryRun, null, false,
+        return new GoalSpec(goal, mode, taskId, 256, defaultMaxDurationMs(goal, taskId), dryRun, null, false,
                 GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults());
+    }
+
+    /**
+     * Native multi-action actors need time for ordinary movement, mining, visible crafting, and
+     * terminal readback. Keep the fast default for bounded observations and short actions, but do
+     * not silently give the real survival workflows the old two-minute budget.
+     */
+    public static long defaultMaxDurationMs(String goal, String taskId) {
+        var id = taskId == null ? "" : taskId.trim().toLowerCase(Locale.ROOT);
+        var normalizedGoal = goal == null ? "" : goal.toLowerCase(Locale.ROOT);
+        if (id.equals("creative.wool-tree-zombie-defense")
+                || id.equals("survival.wooden-axe-mine-tree")
+                || id.equals("survival.collect-wood")
+                || id.equals("survival.reach-nether")
+                || (normalizedGoal.contains("wooden axe") && normalizedGoal.contains("tree"))
+                || normalizedGoal.contains("nether portal")
+                || normalizedGoal.contains("reach the nether")) {
+            return 480_000L;
+        }
+        return 120_000L;
     }
 }

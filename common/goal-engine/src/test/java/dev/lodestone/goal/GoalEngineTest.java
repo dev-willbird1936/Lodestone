@@ -107,6 +107,7 @@ class GoalEngineTest {
                                 Map.entry("targetTreeInitialLogs", 5), Map.entry("targetTreeRemainingLogs", 0),
                                 Map.entry("fullTreeMined", true),
                                 Map.entry("allTargetLogsMinedWithWoodenAxe", true),
+                                Map.entry("playerAlive", true), Map.entry("healthAtEnd", 20.0),
                                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false)));
                     }
                     return ResultEnvelope.ok(capability, Map.of("ok", true));

@@ -245,6 +245,9 @@ final class NeoForgeNetherGoal {
                     + worldGameTimeAtStart + ", dimension=" + initialDimension
                     + ", nonEmptySlots=" + countNonEmpty(player));
         }
+        if (policy.allowCommands()) {
+            throw new IllegalStateException("survival Nether workflow refuses allowCommands=true");
+        }
         if (!policy.allowBlockBreaking() || !policy.allowBlockPlacing()) {
             throw new IllegalStateException("survival Nether workflow requires block breaking and placing permissions");
         }

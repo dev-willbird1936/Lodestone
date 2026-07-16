@@ -309,7 +309,7 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety. Raw preserves legacy behavior; adaptive is the highest profile and uses a low-latency model for realtime high-level replanning.", schema(Map.ofEntries(
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw preserves legacy behavior; adaptive is the highest profile and uses a low-latency model for realtime high-level replanning.", schema(Map.ofEntries(
                     Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
                     Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
                     Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
@@ -976,8 +976,10 @@ public final class McpGateway {
         } catch (IllegalArgumentException invalid) {
             throw new GatewayException(-32602, "mode must be script or realtime");
         }
+        var taskId = text(args, "taskId", null);
         var maxSteps = boundedArgument(args, "maxSteps", 256, 1, 1000);
-        var maxDurationMs = boundedLongArgument(args, "maxDurationMs", 120_000L, 100L, 600_000L);
+        var maxDurationMs = boundedLongArgument(args, "maxDurationMs",
+                GoalSpec.defaultMaxDurationMs(goal, taskId), 100L, 600_000L);
         try {
             var customPlan = GoalService.parsePlan(args.get("plan"));
             var intelligence = GoalIntelligence.parse(text(args, "intelligence", "guarded-v1"));
@@ -986,7 +988,7 @@ public final class McpGateway {
                     text(args, "combatPolicy", "defensive"),
                     bool(args, "allowBlockBreaking", true), bool(args, "allowBlockPlacing", true),
                     bool(args, "allowCommands", false));
-            var report = goalService.run(goal, mode, text(args, "taskId", null), maxSteps, maxDurationMs,
+            var report = goalService.run(goal, mode, taskId, maxSteps, maxDurationMs,
                     bool(args, "dryRun", false), customPlan,
                     bool(args, "suppressInGameMessages", false), intelligence, safety,
                     controls,

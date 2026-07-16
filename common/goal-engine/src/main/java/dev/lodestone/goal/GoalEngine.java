@@ -90,11 +90,13 @@ public final class GoalEngine {
                             : new StepSelection(pending.get(0), "declared script order", 0);
                     var selected = selection.step();
                     if (spec.mode() == GoalMode.REALTIME) {
-                        state.put("lastModelDecision", Map.of(
+                        var decisionKind = spec.intelligence().modelReplanningEnabled()
+                                ? "model-decision" : "deterministic-selection";
+                        state.put("lastRealtimeSelection", Map.of(
                                 "segment", segment.id(), "step", selected.id(),
                                 "candidateIndex", selection.candidateIndex(),
                                 "rationale", selection.rationale()));
-                        trace.add(Map.of("step", "decision." + selected.id(), "kind", "model-decision",
+                        trace.add(Map.of("step", "decision." + selected.id(), "kind", decisionKind,
                                 "segment", segment.id(), "candidateIndex", selection.candidateIndex(),
                                 "rationale", selection.rationale()));
                     }
@@ -107,8 +109,12 @@ public final class GoalEngine {
                     ResultEnvelope result;
                     if (selected.kind() == GoalStepKind.ASSERT) {
                         result = ResultEnvelope.ok(selected.id(), Map.of("asserted", true));
-                    } else if (selected.capability() != null
-                            && selected.capability().startsWith("minecraft.command.")
+                    } else if (survivalCheatCapability(plan, spec, selected.capability())) {
+                        result = ResultEnvelope.error(selected.id(), ResultEnvelope.Status.ERROR,
+                                StructuredError.of("SURVIVAL_POLICY_DENIED",
+                                        "survival-scoped goals cannot invoke commands or direct world mutation",
+                                        false));
+                    } else if (commandCapability(selected.capability())
                             && !spec.controls().allowCommands()) {
                         result = ResultEnvelope.error(selected.id(), ResultEnvelope.Status.ERROR,
                                 StructuredError.of("COMMANDS_DISABLED",
@@ -208,6 +214,9 @@ public final class GoalEngine {
     }
 
     private StepSelection selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
+        if (!spec.intelligence().modelReplanningEnabled()) {
+            return new StepSelection(pending.get(0), "guarded declared order", 0);
+        }
         var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, pending)).orElseGet(() -> {
             if (spec.intelligence().requiresModel(spec.mode())) {
                 throw new IllegalStateException("adaptive-v1 executor returned no decision");
@@ -231,20 +240,42 @@ public final class GoalEngine {
         if (spec.mode() == GoalMode.REALTIME) {
             if (capability.startsWith("lodestone.ui.") || capability.startsWith("minecraft.ui.")
                     || capability.startsWith("minecraft.input.")) return "minecraft.ui.state.read";
-            if (capability.startsWith("minecraft.command.")) return "minecraft.server.info.read";
+            if (commandCapability(capability)) return "minecraft.server.info.read";
             return "minecraft.player.state.read";
         }
 
         if (spec.intelligence().scriptSegmentObservationEnabled()) {
             if (capability.startsWith("lodestone.ui.") || capability.startsWith("minecraft.ui.")
                     || capability.startsWith("minecraft.input.")) return "minecraft.ui.state.read";
-            if (capability.startsWith("minecraft.command.")) return "minecraft.server.info.read";
+            if (commandCapability(capability)) return "minecraft.server.info.read";
             if (capability.startsWith("minecraft.player.") || capability.startsWith("minecraft.world.")
                     || capability.startsWith("minecraft.entity.") || capability.startsWith("minecraft.goal.")) {
                 return "minecraft.player.state.read";
             }
         }
         return selected.observeAfter() ? "minecraft.player.state.read" : null;
+    }
+
+    private static boolean survivalCheatCapability(GoalPlan plan, GoalSpec spec, String capability) {
+        if (!survivalScoped(plan, spec) || capability == null) return false;
+        return commandCapability(capability)
+                || capability.equals("minecraft.world.block.write")
+                || capability.equals("minecraft.world.blocks.write");
+    }
+
+    private static boolean commandCapability(String capability) {
+        return capability != null && (capability.startsWith("minecraft.command.")
+                || capability.startsWith("minecraft.player.command."));
+    }
+
+    private static boolean survivalScoped(GoalPlan plan, GoalSpec spec) {
+        return "survival".equals(String.valueOf(plan.metadata().get("gameMode")))
+                || survivalScopedId(plan.id()) || survivalScopedId(spec.taskId());
+    }
+
+    private static boolean survivalScopedId(String id) {
+        return id != null && (id.startsWith("survival.") || id.startsWith("combat.")
+                || id.equals("navigation.safe-waypoint") || id.equals("navigation.reach-waypoint"));
     }
 
     private static ResultEnvelope invokeWithTransientRetry(GoalInvoker invoker, String capability,
@@ -336,9 +367,11 @@ public final class GoalEngine {
     private GoalRunReport report(String planId, GoalSpec spec, GoalStatus status, String message, long started,
                                  int completedSteps, int completedSegments, List<Map<String, Object>> trace,
                                  Map<String, Object> state) {
+        var selectedModel = spec.mode() == GoalMode.REALTIME
+                ? spec.intelligence().modelReplanningEnabled() ? modelProvider.id() : "deterministic-realtime"
+                : "script-interpreter";
         return new GoalRunReport(UUID.randomUUID().toString(), planId, spec.goal(), spec.mode(), status, message,
-                elapsedMs(started), completedSteps, completedSegments,
-                spec.mode() == GoalMode.REALTIME ? modelProvider.id() : "script-interpreter", trace, state);
+                elapsedMs(started), completedSteps, completedSegments, selectedModel, trace, state);
     }
 
     private static long elapsedMs(long started) {

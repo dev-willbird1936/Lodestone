@@ -55,7 +55,8 @@ public final class GoalTaskCatalog {
         public Map<String, Object> toMap() {
             return Map.of("id", id, "category", category, "description", description,
                     "gameMode", gameMode, "requiredCapabilities", requiredCapabilities,
-                    "successContract", successContract);
+                    "successContract", successContract,
+                    "defaultMaxDurationMs", GoalSpec.defaultMaxDurationMs(description, id));
         }
     }
 

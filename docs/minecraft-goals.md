@@ -16,10 +16,17 @@ and segment checkpoints.
 
 Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Arbitrary shell, JavaScript, or Python is never executed by a plan.
 
-Script mode runs segments in declared order. Realtime mode asks the selected provider for one candidate step, invokes it, then reads fresh UI, server, or player state after every action. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
+If `maxDurationMs` is omitted, short bounded tasks use 120 seconds. The native wool-tree,
+wooden-axe tree, collect-wood, and Nether workflows use 480 seconds so normal movement, hand
+mining, visible crafting, and terminal readback are not cut off mid-prerequisite. An explicit
+caller budget still wins and remains capped at 600 seconds.
 
-Realtime reports retain `model-decision` trace entries with candidate index and rationale; native
-goal actors remain deterministic low-level executors beneath those high-level decisions.
+Script mode runs segments in declared order. Guarded realtime follows that declared order while still observing after each action. Adaptive realtime asks the selected provider for one candidate step, invokes it, then reads fresh UI, server, or player state before selecting again. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
+
+Adaptive realtime reports retain `model-decision` trace entries with candidate index and rationale;
+guarded realtime reports `deterministic-selection`. Native goal actors remain deterministic
+low-level executors beneath those high-level decisions, with their terminal output still subject to
+goal assertions.
 
 Command execution is denied by default through `allowCommands=false`. Survival Nether and tree
 goals do not use commands; the creative wool-tree fixture declares only its bounded setup commands

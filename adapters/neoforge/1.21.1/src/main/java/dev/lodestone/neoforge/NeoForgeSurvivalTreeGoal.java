@@ -165,6 +165,9 @@ final class NeoForgeSurvivalTreeGoal {
         var server = client.getSingleplayerServer();
         if (server != null && server.getWorldData() != null) worldName = server.getWorldData().getLevelName();
         if (!survival) throw new IllegalStateException("goal world is not survival");
+        if (policy.allowCommands()) {
+            throw new IllegalStateException("survival wooden-axe workflow refuses allowCommands=true");
+        }
         if (!policy.allowBlockBreaking() || !policy.allowBlockPlacing()) {
             throw new IllegalStateException("survival wooden-axe workflow requires block breaking and placing permissions");
         }
@@ -618,6 +621,10 @@ final class NeoForgeSurvivalTreeGoal {
 
     private void verify(Minecraft client) {
         stopAttack(client);
+        var player = requirePlayer(client);
+        if (!player.isAlive() || player.getHealth() <= 0.0F) {
+            throw new IllegalStateException("player died before wooden-axe tree terminal readback");
+        }
         var remaining = (int) targetTree.logs().stream()
                 .filter(position -> client.level.getBlockState(position).is(BlockTags.LOGS)).count();
         if (remaining != 0 || targetMinedLogs != targetTree.logs().size()) {
@@ -646,6 +653,8 @@ final class NeoForgeSurvivalTreeGoal {
                 Map.entry("targetTreeMinedLogs", targetMinedLogs), Map.entry("targetTreeRemainingLogs", remaining),
                 Map.entry("fullTreeMined", remaining == 0 && targetMinedLogs == targetTree.logs().size()),
                 Map.entry("allTargetLogsMinedWithWoodenAxe", allTargetLogsMinedWithWoodenAxe),
+                Map.entry("playerAlive", requirePlayer(client).isAlive() && requirePlayer(client).getHealth() > 0.0F),
+                Map.entry("healthAtEnd", requirePlayer(client).getHealth()),
                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
                 Map.entry("intelligence", policy.intelligence().id()), Map.entry("safety", policy.safety().id()),
                 Map.entry("policyMode", policy.mode()), Map.entry("toolPrerequisiteGuard", policy.toolPrerequisiteGuardEnabled()),

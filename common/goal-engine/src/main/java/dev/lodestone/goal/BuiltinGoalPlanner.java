@@ -85,6 +85,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 new GoalAssertion("steps.survival-workflow.targetTreeRemainingLogs", "equals", 0),
                 new GoalAssertion("steps.survival-workflow.fullTreeMined", "equals", true),
                 new GoalAssertion("steps.survival-workflow.allTargetLogsMinedWithWoodenAxe", "equals", true),
+                new GoalAssertion("steps.survival-workflow.playerAlive", "equals", true),
                 new GoalAssertion("steps.survival-workflow.commandsUsed", "equals", false),
                 new GoalAssertion("steps.survival-workflow.directMutationUsed", "equals", false));
         return new GoalPlan("survival.wooden-axe-mine-tree", goal, List.of(
@@ -96,7 +97,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         List.of(createWorld), List.of()),
                 new GoalSegment("survival-gameplay", "Use normal look, movement, attack, inventory, and crafting-table input until the full predicate is proven.",
                         List.of(workflow), List.of())),
-                Map.of("taskId", "survival.wooden-axe-mine-tree", "craftingRequired", true,
+                Map.of("taskId", "survival.wooden-axe-mine-tree", "gameMode", "survival",
+                        "craftingRequired", true,
                         "adaptiveTreeTraversalRequired", true, "authenticPlayerInputRequired", true,
                         "completionPredicateReady", true));
     }
@@ -141,7 +143,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         List.of(createWorld), List.of()),
                 new GoalSegment("nether-gameplay", "Use normal portal placement, ignition, movement, and dimension readback until the Nether predicate is proven.",
                         List.of(workflow), List.of())),
-                Map.of("taskId", "survival.reach-nether", "realtimePreferred", true,
+                Map.of("taskId", "survival.reach-nether", "gameMode", "survival",
+                        "realtimePreferred", true,
                         "randomFreshWorldRequired", true, "naturalPortalChestOptional", true,
                         "manualPortalInputRequired", true,
                         "completionPredicateReady", true));
@@ -216,7 +219,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 "combatPolicy", spec.controls().combatPolicy(),
                 "allowBlockBreaking", spec.controls().allowBlockBreaking(),
                 "allowBlockPlacing", spec.controls().allowBlockPlacing(),
-                "allowCommands", allowCommands || spec.controls().allowCommands());
+                "allowCommands", allowCommands);
     }
 
     private static GoalPlan blockPlan(String id, String goal, String block, String description) {
@@ -283,7 +286,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         "observation", "${observation}", "combatPolicy", "${combatPolicy}",
                         "allowBlockBreaking", "${allowBlockBreaking}",
                         "allowBlockPlacing", "${allowBlockPlacing}",
-                        "allowCommands", "${allowCommands}"), true,
+                        "allowCommands", false), true,
                 new GoalAssertion("steps.attack-nearest.targetObserved", "equals", true),
                 new GoalAssertion("steps.attack-nearest.targetKilled", "equals", true),
                 new GoalAssertion("steps.attack-nearest.playerAlive", "equals", true));
@@ -329,12 +332,14 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                     new GoalAssertion("steps.wood-workflow.woodenAxeCrafted", "equals", true),
                     new GoalAssertion("steps.wood-workflow.woodenAxeEquipped", "equals", true),
                     new GoalAssertion("steps.wood-workflow.targetTreeRemainingLogs", "equals", 0),
+                    new GoalAssertion("steps.wood-workflow.playerAlive", "equals", true),
                     new GoalAssertion("steps.wood-workflow.commandsUsed", "equals", false),
                     new GoalAssertion("steps.wood-workflow.directMutationUsed", "equals", false));
             return new GoalPlan("survival.collect-wood", goal, List.of(
                     new GoalSegment("intelligent-wood", "Acquire the minimum wooden tools through visible crafting before collecting the target tree.",
                             List.of(workflow), List.of())),
-                    Map.of("taskId", "survival.collect-wood", "toolPrerequisitePlanning", true,
+                    Map.of("taskId", "survival.collect-wood", "gameMode", "survival",
+                            "toolPrerequisitePlanning", true,
                             "requiresCrafting", true, "ordinaryInputOnly", true,
                             "completionPredicateReady", true));
         }
@@ -349,7 +354,8 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         return new GoalPlan("survival.collect-wood", goal, List.of(
                 new GoalSegment("find", "Read player state and bounded nearby blocks before acting.", List.of(state, scan), List.of()),
                 new GoalSegment("act", "Approach and queue bounded mining input; a live agent must adapt aim and repeat.", List.of(move, attack), List.of())),
-                Map.of("taskId", "survival.collect-wood", "adaptiveLoopRequired", true, "completionPredicateReady", false));
+                Map.of("taskId", "survival.collect-wood", "gameMode", "survival",
+                        "adaptiveLoopRequired", true, "completionPredicateReady", false));
     }
 
     private static GoalPlan staleUiPlan(String goal) {

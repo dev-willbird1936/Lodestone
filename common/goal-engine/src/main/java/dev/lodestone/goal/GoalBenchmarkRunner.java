@@ -33,9 +33,11 @@ public final class GoalBenchmarkRunner {
                 continue;
             }
             var script = engine.run(new GoalSpec(task.get().description(), GoalMode.SCRIPT, taskId,
-                    256, 120_000, dryRun, null, false, intelligence, safety, controls), invoker);
+                    256, GoalSpec.defaultMaxDurationMs(task.get().description(), taskId), dryRun, null,
+                    false, intelligence, safety, controls), invoker);
             var realtime = engine.run(new GoalSpec(task.get().description(), GoalMode.REALTIME, taskId,
-                    256, 120_000, dryRun, null, false, intelligence, safety, controls), invoker);
+                    256, GoalSpec.defaultMaxDurationMs(task.get().description(), taskId), dryRun, null,
+                    false, intelligence, safety, controls), invoker);
             results.add(new BenchmarkCase(taskId, script, realtime, compare(script, realtime), Map.of(
                     "correctnessPriority", "status and false-success first",
                     "sameTask", true,
