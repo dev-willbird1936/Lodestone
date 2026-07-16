@@ -262,9 +262,7 @@ final class NeoForgeNetherGoal {
         var player = requirePlayer(client);
         player.setYRot(player.getYRot() + 45.0F);
         player.setYHeadRot(player.getYRot());
-        client.options.keyUp.setDown(true);
-        client.options.keySprint.setDown(true);
-        inputActions.add("move:key.forward:natural-portal-search");
+        exploreSafely(client, "natural-portal-search");
         waitTicks = 20;
     }
 
@@ -328,7 +326,7 @@ final class NeoForgeNetherGoal {
             player.setYHeadRot(player.getYRot());
             inputActions.add("look:visible-tree-search-sweep");
         }
-        setMovement(client, true, true, requirePlayer(client).onGround() && stageTicks % 30 < 4);
+        exploreSafely(client, "natural-tree-search");
         if (stageTicks >= 140) {
             stopMovement(client);
             if (searchAttempts > MAX_SEARCH_ATTEMPTS) {
@@ -1201,12 +1199,38 @@ final class NeoForgeNetherGoal {
             player.setYHeadRot(player.getYRot());
             inputActions.add("look:visible-search-sweep:" + label.replace(' ', '-'));
         }
-        setMovement(client, true, true, player.onGround() && stageTicks % 32 < 4);
+        if (policy.actionSegmentReplanningEnabled()) {
+            exploreSafely(client, label);
+        } else {
+            setMovement(client, true, true, player.onGround() && stageTicks % 32 < 4);
+        }
         inputActions.add("move:explore-for-" + label.replace(' ', '-'));
         if (stageTicks >= 150) {
             stopMovement(client);
             transition(stage, 15);
         }
+    }
+
+    /** Explore loaded terrain with normal movement while rejecting holes and fluids. */
+    private void exploreSafely(Minecraft client, String label) {
+        var player = requirePlayer(client);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var forward = Direction.fromYRot(player.getYRot());
+        var front = player.blockPosition().relative(forward);
+        if (snapshot.walkable(front)) {
+            setMovement(client, true, false, false);
+            inputActions.add("move:safe-observation-step:" + label.replace(' ', '-'));
+            return;
+        }
+        if (player.onGround() && snapshot.walkable(front.above())) {
+            setMovement(client, true, false, true);
+            inputActions.add("move:safe-observation-step-up:" + label.replace(' ', '-'));
+            return;
+        }
+        stopMovement(client);
+        player.setYRot(player.getYRot() + 43.0F);
+        player.setYHeadRot(player.getYRot());
+        inputActions.add("look:safe-observation-detour:" + label.replace(' ', '-'));
     }
 
     private List<BlockPos> scanVisibleBlocks(Minecraft client,
