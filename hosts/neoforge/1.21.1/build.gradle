@@ -10,6 +10,7 @@ def adapterProject = project(':adapters:neoforge:mc1_21_1')
 def keepFocusArtifactPath = System.getProperty('keepFocusArtifact',
         System.getenv('KEEPFOCUS_ARTIFACT') ?: '../KeepFocus/build/libs/keep_focus-1.0.0+1.21.1.jar')
 def keepFocusArtifact = rootProject.file(keepFocusArtifactPath)
+def keepFocusRunDirectory = System.getProperty('lodestone.runDirectory', 'runs/keepfocus-client')
 
 base {
     archivesName = mod_id
@@ -49,7 +50,7 @@ runs {
     }
     keepFocusClient {
         run 'client'
-        workingDirectory project.file('runs/keepfocus-client')
+        workingDirectory project.file(keepFocusRunDirectory)
         systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37828')
         systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
@@ -65,7 +66,7 @@ runs {
 
 tasks.register('stageKeepFocusClient', Copy) {
     from keepFocusArtifact
-    into layout.projectDirectory.dir('runs/keepfocus-client/mods')
+    into layout.projectDirectory.dir("${keepFocusRunDirectory}/mods")
     doFirst {
         if (!keepFocusArtifact.isFile()) {
             throw new GradleException("KeepFocus artifact is required: ${keepFocusArtifact}")

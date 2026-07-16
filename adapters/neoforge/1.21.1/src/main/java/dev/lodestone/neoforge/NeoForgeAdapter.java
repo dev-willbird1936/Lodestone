@@ -82,7 +82,9 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.ui.text.insert",
             "minecraft.chat.read",
             "minecraft.goal.survival.wooden-axe-tree",
-            "minecraft.goal.creative.wool-tree-zombie-defense");
+            "minecraft.goal.creative.wool-tree-zombie-defense",
+            "minecraft.goal.survival.reach-nether",
+            "minecraft.goal.navigation.safe-waypoint");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search", "minecraft.server.info.read",
             "minecraft.client.screenshot.capture",
@@ -94,7 +96,9 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.entity.interact", "minecraft.ui.state.read", "minecraft.ui.click",
             "minecraft.ui.key", "minecraft.ui.text.insert", "minecraft.chat.read",
             "minecraft.goal.survival.wooden-axe-tree",
-            "minecraft.goal.creative.wool-tree-zombie-defense");
+            "minecraft.goal.creative.wool-tree-zombie-defense",
+            "minecraft.goal.survival.reach-nether",
+            "minecraft.goal.navigation.safe-waypoint");
     private static volatile NeoForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -165,6 +169,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.chat.read", this::clientCall);
         handlers.put("minecraft.goal.survival.wooden-axe-tree", this::clientCall);
         handlers.put("minecraft.goal.creative.wool-tree-zombie-defense", this::clientCall);
+        handlers.put("minecraft.goal.survival.reach-nether", this::clientCall);
+        handlers.put("minecraft.goal.navigation.safe-waypoint", this::clientCall);
         return Map.copyOf(handlers);
     }
 

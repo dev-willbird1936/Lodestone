@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public final class BuiltinGoalPlanner implements GoalPlanner {
     @Override
@@ -48,6 +49,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             case "creative.place-pillar" -> blockPlan("creative.place-pillar", goal, "minecraft:stone", "pillar must be stone");
             case "creative.clear-pillar" -> blockPlan("creative.clear-pillar", goal, "minecraft:air", "pillar must be air");
             case "navigation.reach-waypoint" -> navigationPlan(goal);
+            case "navigation.safe-waypoint" -> safeNavigationPlan(spec);
             case "combat.attack-nearest" -> combatPlan(goal);
             case "commands.set-day" -> commandPlan(goal);
             case "tools.inspect-nearby" -> inspectPlan(goal);
@@ -236,6 +238,34 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 new GoalSegment("move", "Move under a finite lease; realtime mode observes immediately after.", List.of(before, move, after, assertAfter), List.of())),
                 Map.of("taskId", "navigation.reach-waypoint", "requiresWaypointFixture", true,
                         "completionPredicateReady", false));
+    }
+
+    private static GoalPlan safeNavigationPlan(GoalSpec spec) {
+        var goal = spec.goal();
+        var input = new LinkedHashMap<String, Object>(workflowInput(spec));
+        input.remove("suppressInGameMessages");
+        input.put("targetX", coordinate(goal, "x"));
+        input.put("targetY", coordinate(goal, "y"));
+        input.put("targetZ", coordinate(goal, "z"));
+        var before = GoalStep.observe("before", "minecraft.player.state.read", Map.of());
+        var navigate = GoalStep.invoke("safe-navigation", "minecraft.goal.navigation.safe-waypoint", "1.0",
+                input, true,
+                new GoalAssertion("steps.safe-navigation.reachedTarget", "equals", true),
+                new GoalAssertion("steps.safe-navigation.playerAlive", "equals", true));
+        var after = GoalStep.observe("after", "minecraft.player.state.read", Map.of());
+        return new GoalPlan("navigation.safe-waypoint", goal, List.of(
+                new GoalSegment("safe-navigation", "Read player state, plan against loaded chunks, and reach the requested waypoint with ordinary movement input.",
+                        List.of(before, navigate, after), List.of())),
+                Map.of("taskId", "navigation.safe-waypoint", "targetEncodedInGoal", true,
+                        "loadedChunkPlanner", true, "completionPredicateReady", true));
+    }
+
+    private static int coordinate(String goal, String axis) {
+        var matcher = Pattern.compile("(?i)(?:target\\s*)?" + axis + "\\s*[:=]\\s*(-?\\d+)").matcher(goal);
+        if (!matcher.find()) {
+            throw new IllegalArgumentException("navigation.safe-waypoint goal must encode " + axis + "=<integer>");
+        }
+        return Integer.parseInt(matcher.group(1));
     }
 
     private static GoalPlan combatPlan(String goal) {

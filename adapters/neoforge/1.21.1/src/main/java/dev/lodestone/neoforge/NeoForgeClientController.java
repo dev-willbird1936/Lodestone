@@ -85,6 +85,8 @@ public final class NeoForgeClientController {
         BRIDGE.releaseExpiredInput(monotonicMillis());
         BRIDGE.tickSurvivalTreeGoal();
         BRIDGE.tickWoolTreeZombieGoal();
+        BRIDGE.tickNetherGoal();
+        BRIDGE.tickNavigationGoal();
         var adapter = NeoForgeAdapter.active();
         if (adapter == null) {
             return;
@@ -211,6 +213,8 @@ public final class NeoForgeClientController {
         private String currentScreenToken = "neo121-0";
         private NeoForgeSurvivalTreeGoal survivalTreeGoal;
         private NeoForgeWoolTreeZombieGoal woolTreeZombieGoal;
+        private NeoForgeNetherGoal netherGoal;
+        private NeoForgeNavigationGoal navigationGoal;
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -238,7 +242,9 @@ public final class NeoForgeClientController {
                         "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
                         "minecraft.ui.state.read",
                         "minecraft.chat.read", "minecraft.goal.survival.wooden-axe-tree",
-                        "minecraft.goal.creative.wool-tree-zombie-defense" -> true;
+                        "minecraft.goal.creative.wool-tree-zombie-defense",
+                        "minecraft.goal.survival.reach-nether",
+                        "minecraft.goal.navigation.safe-waypoint" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
@@ -255,6 +261,12 @@ public final class NeoForgeClientController {
             }
             if ("minecraft.goal.creative.wool-tree-zombie-defense".equals(capability)) {
                 return startWoolTreeZombieGoal(invocation);
+            }
+            if ("minecraft.goal.survival.reach-nether".equals(capability)) {
+                return startNetherGoal(invocation);
+            }
+            if ("minecraft.goal.navigation.safe-waypoint".equals(capability)) {
+                return startNavigationGoal(invocation);
             }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
@@ -334,6 +346,59 @@ public final class NeoForgeClientController {
             if (current == null) return;
             current.tick(Minecraft.getInstance());
             if (current.done()) woolTreeZombieGoal = null;
+        }
+
+        private CompletionStage<Map<String, Object>> startNetherGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if ((survivalTreeGoal != null && !survivalTreeGoal.done())
+                            || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
+                            || (netherGoal != null && !netherGoal.done())) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    netherGoal = new NeoForgeNetherGoal(invocation, result);
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickNetherGoal() {
+            var current = netherGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) netherGoal = null;
+        }
+
+        private CompletionStage<Map<String, Object>> startNavigationGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if ((survivalTreeGoal != null && !survivalTreeGoal.done())
+                            || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
+                            || (netherGoal != null && !netherGoal.done())
+                            || (navigationGoal != null && !navigationGoal.done())) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    navigationGoal = new NeoForgeNavigationGoal(invocation, result);
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickNavigationGoal() {
+            var current = navigationGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) navigationGoal = null;
         }
 
         private static Map<String, Object> screenshot(

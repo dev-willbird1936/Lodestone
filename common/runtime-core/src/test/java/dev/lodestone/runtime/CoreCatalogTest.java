@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(51, CoreCatalog.load().size());
+        assertEquals(53, CoreCatalog.load().size());
     }
 
     @Test
@@ -94,6 +94,44 @@ final class CoreCatalogTest {
         output.put("inputActions", java.util.List.of("place:key.use", "defense:key.attack-reactive"));
         output.put("buildOrigin", Map.of("x", 2, "y", 64, "z", 2));
         output.put("awayPosition", Map.of("x", -6, "y", 64, "z", 2));
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), output).isEmpty());
+    }
+
+    @Test
+    void netherGoalRequiresManualPortalInputAndDimensionReadback() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.reach-nether"))
+                .findFirst().orElseThrow();
+        assertTrue(capability.featureFlags().contains("manual-portal-input"));
+        assertTrue(capability.featureFlags().contains("terminal-dimension-readback"));
+        assertTrue(capability.featureFlags().contains("no-direct-world-mutation"));
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("suppressInGameMessages", true)).isEmpty());
+        var output = new java.util.LinkedHashMap<String, Object>();
+        output.put("freshWorld", true);
+        output.put("survival", true);
+        output.put("worldName", "New World");
+        output.put("worldGameTimeAtStart", 20);
+        output.put("initialDimension", "minecraft:overworld");
+        output.put("finalDimension", "minecraft:the_nether");
+        output.put("portalBase", Map.of("x", 0, "y", 64, "z", 0));
+        output.put("teleportedToBuildSite", true);
+        output.put("setupCommandsUsed", true);
+        output.put("setupCommandCount", 4);
+        output.put("setupCommands", java.util.List.of("give @s minecraft:obsidian 10"));
+        output.put("commandFeedbackSuppressed", true);
+        output.put("manualPortalBuilt", true);
+        output.put("portalFrameBlocksPlaced", 10);
+        output.put("portalLit", true);
+        output.put("portalBlocksObserved", true);
+        output.put("enteredPortal", true);
+        output.put("reachedNether", true);
+        output.put("playerAlive", true);
+        output.put("healthAtEnd", 20.0);
+        output.put("suppressInGameMessages", true);
+        output.put("inGameMessagesEmitted", 0);
+        output.put("directMutationUsed", false);
+        output.put("inputActions", java.util.List.of("place:key.use:obsidian", "portal:key.use:flint-and-steel", "move:key.forward-into-portal"));
         assertTrue(SchemaValidator.validate(capability.outputSchema(), output).isEmpty());
     }
 
