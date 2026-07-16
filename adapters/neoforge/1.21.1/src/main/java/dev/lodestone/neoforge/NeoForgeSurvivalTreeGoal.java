@@ -631,6 +631,7 @@ final class NeoForgeSurvivalTreeGoal {
                 Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
                 Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
                 Map.entry("allowBlockPlacing", policy.allowBlockPlacing()),
+                Map.entry("allowCommands", policy.allowCommands()),
                 Map.entry("suppressInGameMessages", suppressInGameMessages),
                 Map.entry("inGameMessagesEmitted", inGameMessagesEmitted),
                 Map.entry("navigationDiagnostics", List.copyOf(navigationDiagnostics)),

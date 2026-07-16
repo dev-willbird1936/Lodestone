@@ -309,7 +309,7 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Raw preserves legacy behavior; guarded adds deterministic survival supervision; adaptive uses the pinned GPT-5.4 mini executor for high-level replanning.", schema(Map.ofEntries(
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety. Raw preserves legacy behavior; adaptive is the highest profile and uses a low-latency model for realtime high-level replanning.", schema(Map.ofEntries(
                     Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
                     Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
                     Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
@@ -323,6 +323,7 @@ public final class McpGateway {
                     Map.entry("combatPolicy", Map.of("type", "string", "enum", List.of("defensive", "avoid", "none"))),
                     Map.entry("allowBlockBreaking", Map.of("type", "boolean")),
                     Map.entry("allowBlockPlacing", Map.of("type", "boolean")),
+                    Map.entry("allowCommands", Map.of("type", "boolean")),
                     Map.entry("plan", Map.of("type", "object")))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
                     "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
@@ -334,7 +335,8 @@ public final class McpGateway {
                     "observation", Map.of("type", "string", "enum", List.of("loaded-chunks")),
                     "combatPolicy", Map.of("type", "string", "enum", List.of("defensive", "avoid", "none")),
                     "allowBlockBreaking", Map.of("type", "boolean"),
-                    "allowBlockPlacing", Map.of("type", "boolean")))));
+                    "allowBlockPlacing", Map.of("type", "boolean"),
+                    "allowCommands", Map.of("type", "boolean")))));
         }
         tools.add(tool("lodestone_events_subscribe", "Subscribe to a bounded event stream; sensitive raw input events are redacted.", schema(Map.of(
                 "eventPrefix", Map.of("type", "string", "maxLength", 256),
@@ -978,11 +980,12 @@ public final class McpGateway {
         var maxDurationMs = boundedLongArgument(args, "maxDurationMs", 120_000L, 100L, 600_000L);
         try {
             var customPlan = GoalService.parsePlan(args.get("plan"));
-            var intelligence = GoalIntelligence.parse(text(args, "intelligence", "raw-v1"));
-            var safety = GoalSafety.parse(text(args, "safety", "low"));
+            var intelligence = GoalIntelligence.parse(text(args, "intelligence", "guarded-v1"));
+            var safety = GoalSafety.parse(text(args, "safety", "balanced"));
             var controls = new GoalControls(text(args, "observation", "loaded-chunks"),
                     text(args, "combatPolicy", "defensive"),
-                    bool(args, "allowBlockBreaking", true), bool(args, "allowBlockPlacing", true));
+                    bool(args, "allowBlockBreaking", true), bool(args, "allowBlockPlacing", true),
+                    bool(args, "allowCommands", false));
             var report = goalService.run(goal, mode, text(args, "taskId", null), maxSteps, maxDurationMs,
                     bool(args, "dryRun", false), customPlan,
                     bool(args, "suppressInGameMessages", false), intelligence, safety,
@@ -1029,7 +1032,7 @@ public final class McpGateway {
         }
         var controls = new GoalControls(text(args, "observation", "loaded-chunks"),
                 text(args, "combatPolicy", "defensive"), bool(args, "allowBlockBreaking", true),
-                bool(args, "allowBlockPlacing", true));
+                bool(args, "allowBlockPlacing", true), bool(args, "allowCommands", false));
         var descriptor = runtime.handshake().adapter();
         return toolResult(Map.of("minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader(), "results",
                 goalService.benchmark(taskIds, bool(args, "dryRun", false), intelligence, safety, controls,

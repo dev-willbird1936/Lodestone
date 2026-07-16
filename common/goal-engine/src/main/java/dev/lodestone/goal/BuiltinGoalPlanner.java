@@ -185,7 +185,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         }
         var workflow = new GoalStep("wool-tree-defense", GoalStepKind.INVOKE,
                 "minecraft.goal.creative.wool-tree-zombie-defense", "1.0",
-                workflowInput(spec), assertions, true);
+                workflowInput(spec, true), assertions, true);
         return new GoalPlan("creative.wool-tree-zombie-defense", spec.goal(), List.of(
                 new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
                         List.of(open), List.of()),
@@ -202,12 +202,17 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
     }
 
     private static Map<String, Object> workflowInput(GoalSpec spec) {
+        return workflowInput(spec, false);
+    }
+
+    private static Map<String, Object> workflowInput(GoalSpec spec, boolean allowCommands) {
         return Map.of("suppressInGameMessages", spec.suppressInGameMessages(),
                 "intelligence", spec.intelligence().id(), "safety", spec.safety().id(),
                 "observation", spec.controls().observation(),
                 "combatPolicy", spec.controls().combatPolicy(),
                 "allowBlockBreaking", spec.controls().allowBlockBreaking(),
-                "allowBlockPlacing", spec.controls().allowBlockPlacing());
+                "allowBlockPlacing", spec.controls().allowBlockPlacing(),
+                "allowCommands", allowCommands || spec.controls().allowCommands());
     }
 
     private static GoalPlan blockPlan(String id, String goal, String block, String description) {

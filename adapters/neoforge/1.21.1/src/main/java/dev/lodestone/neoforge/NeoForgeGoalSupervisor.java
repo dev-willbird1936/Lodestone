@@ -57,7 +57,7 @@ final class NeoForgeGoalSupervisor {
             return true;
         }
 
-        if (player.isInLava() || player.isOnFire() || player.isInWater()) {
+        if (policy.hazardAvoidanceEnabled() && (player.isInLava() || player.isOnFire() || player.isInWater())) {
             var target = NeoForgeWorldSnapshot.capture(client.level, policy)
                     .nearestSafeSurface(player.blockPosition(), policy.highSafety() ? 12 : 8);
             if (target != null) {
@@ -75,7 +75,8 @@ final class NeoForgeGoalSupervisor {
         }
 
         var threat = findThreat(player);
-        if (threat != null && (!policy.combatPolicy().equals("none") || policy.highSafety())) {
+        if (policy.threatPreemptionEnabled() && threat != null
+                && (!policy.combatPolicy().equals("none") || policy.highSafety())) {
             if (recoveryTicks > 0) recoveryTicks--;
             if (policy.combatPolicy().equals("avoid") || policy.combatPolicy().equals("none")) {
                 retreat(client, player, threat);

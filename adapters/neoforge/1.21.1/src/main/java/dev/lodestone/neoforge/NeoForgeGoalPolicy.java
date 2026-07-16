@@ -6,7 +6,8 @@ import java.util.Map;
 
 /** Loader-local projection of common goal policy fields. */
 record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String observation,
-                          String combatPolicy, boolean allowBlockBreaking, boolean allowBlockPlacing) {
+                          String combatPolicy, boolean allowBlockBreaking, boolean allowBlockPlacing,
+                          boolean allowCommands) {
     enum Intelligence {
         RAW_V1("raw-v1"), GUARDED_V1("guarded-v1"), ADAPTIVE_V1("adaptive-v1");
 
@@ -40,7 +41,8 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return new NeoForgeGoalPolicy(parseIntelligence(input.get("intelligence")),
                 parseSafety(input.get("safety")), observation, combatPolicy,
                 !Boolean.FALSE.equals(input.get("allowBlockBreaking")),
-                !Boolean.FALSE.equals(input.get("allowBlockPlacing")));
+                !Boolean.FALSE.equals(input.get("allowBlockPlacing")),
+                Boolean.TRUE.equals(input.get("allowCommands")));
     }
 
     boolean supervisorEnabled() {
@@ -48,7 +50,7 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
     }
 
     boolean smartNavigation() {
-        return supervisorEnabled();
+        return safeNavigationPlanningEnabled() || safety != Safety.LOW;
     }
 
     boolean obstructionRecoveryEnabled() {
@@ -56,6 +58,10 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
     }
 
     boolean prerequisitePlanningEnabled() {
+        return intelligence != Intelligence.RAW_V1;
+    }
+
+    boolean safeNavigationPlanningEnabled() {
         return intelligence != Intelligence.RAW_V1;
     }
 
@@ -70,6 +76,14 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
 
     boolean highSafety() {
         return safety == Safety.HIGH;
+    }
+
+    boolean hazardAvoidanceEnabled() {
+        return safety != Safety.LOW;
+    }
+
+    boolean threatPreemptionEnabled() {
+        return safety != Safety.LOW;
     }
 
     boolean fallProtectionEnabled() {

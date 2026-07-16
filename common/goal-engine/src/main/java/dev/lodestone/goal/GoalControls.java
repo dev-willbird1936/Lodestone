@@ -5,7 +5,13 @@ import java.util.Locale;
 
 /** Explicit observation and mutation controls passed to native goal actors. */
 public record GoalControls(String observation, String combatPolicy,
-                           boolean allowBlockBreaking, boolean allowBlockPlacing) {
+                           boolean allowBlockBreaking, boolean allowBlockPlacing,
+                           boolean allowCommands) {
+    public GoalControls(String observation, String combatPolicy,
+                        boolean allowBlockBreaking, boolean allowBlockPlacing) {
+        this(observation, combatPolicy, allowBlockBreaking, allowBlockPlacing, false);
+    }
+
     public GoalControls {
         observation = normalize(observation, "loaded-chunks");
         combatPolicy = normalize(combatPolicy, "defensive");
@@ -19,7 +25,7 @@ public record GoalControls(String observation, String combatPolicy,
     }
 
     public static GoalControls defaults() {
-        return new GoalControls("loaded-chunks", "defensive", true, true);
+        return new GoalControls("loaded-chunks", "defensive", true, true, false);
     }
 
     private static String normalize(String value, String fallback) {

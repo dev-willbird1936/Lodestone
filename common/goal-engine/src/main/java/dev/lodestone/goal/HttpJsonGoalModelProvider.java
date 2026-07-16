@@ -21,14 +21,17 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
     private final URI endpoint;
     private final String apiKey;
     private final long p95Ms;
+    private final String reasoningEffort;
     private final HttpClient client;
     private final Duration timeout;
 
-    private HttpJsonGoalModelProvider(String id, URI endpoint, String apiKey, long p95Ms, Duration timeout) {
+    private HttpJsonGoalModelProvider(String id, URI endpoint, String apiKey, long p95Ms,
+                                      String reasoningEffort, Duration timeout) {
         this.id = id;
         this.endpoint = endpoint;
         this.apiKey = apiKey;
         this.p95Ms = p95Ms;
+        this.reasoningEffort = reasoningEffort;
         this.timeout = timeout;
         this.client = HttpClient.newBuilder().connectTimeout(timeout).build();
     }
@@ -39,9 +42,11 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
         try {
             var p95 = longEnv("LODESTONE_GOAL_MODEL_P95_MS", 150);
             var timeoutMs = Math.max(100, longEnv("LODESTONE_GOAL_MODEL_TIMEOUT_MS", 1_500));
+            var reasoningEffort = effortEnv("LODESTONE_GOAL_MODEL_REASONING_EFFORT", "low");
             return Optional.of(new HttpJsonGoalModelProvider(
                     env("LODESTONE_GOAL_MODEL_ID", GoalModelProviders.EXECUTOR_MODEL_ID), URI.create(url.trim()),
-                    System.getenv("LODESTONE_GOAL_MODEL_API_KEY"), p95, Duration.ofMillis(timeoutMs)));
+                    System.getenv("LODESTONE_GOAL_MODEL_API_KEY"), p95, reasoningEffort,
+                    Duration.ofMillis(timeoutMs)));
         } catch (RuntimeException invalid) {
             return Optional.empty();
         }
@@ -55,6 +60,11 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
     @Override
     public long measuredP95LatencyMs() {
         return p95Ms;
+    }
+
+    @Override
+    public String reasoningEffort() {
+        return reasoningEffort;
     }
 
     @Override
@@ -72,10 +82,12 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                 "candidates", request.candidates().stream().map(step -> Map.of(
                         "id", step.id(), "kind", step.kind().toString(),
                         "capability", step.capability() == null ? "" : step.capability(),
-                        "input", step.input())).toList(),
+                        "input", step.input(), "observeAfter", step.observeAfter(),
+                        "assertionCount", step.assertions().size())).toList(),
                 "response", "Return JSON only: {candidateIndex: integer, rationale: string}."));
         var body = JsonSupport.MAPPER.toJson(Map.of(
-                "model", GoalModelProviders.EXECUTOR_MODEL_ID,
+                "model", id,
+                "reasoning_effort", reasoningEffort,
                 "temperature", 0,
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
                 "response_format", Map.of("type", "json_object")));
@@ -114,5 +126,13 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
         } catch (NumberFormatException invalid) {
             return fallback;
         }
+    }
+
+    private static String effortEnv(String name, String fallback) {
+        var value = env(name, fallback).toLowerCase(java.util.Locale.ROOT);
+        return switch (value) {
+            case "low", "medium", "high" -> value;
+            default -> fallback;
+        };
     }
 }

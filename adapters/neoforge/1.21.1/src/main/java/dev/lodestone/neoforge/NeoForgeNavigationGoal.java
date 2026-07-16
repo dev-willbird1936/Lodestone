@@ -162,6 +162,7 @@ final class NeoForgeNavigationGoal {
                 Map.entry("toolPrerequisiteGuard", policy.toolPrerequisiteGuardEnabled()),
                 Map.entry("observation", policy.observation()),
                 Map.entry("combatPolicy", policy.combatPolicy()),
+                Map.entry("allowCommands", policy.allowCommands()),
                 Map.entry("replans", replans),
                 Map.entry("plannedPathLength", path.size()),
                 Map.entry("pathNodesVisited", pathNodesVisited),

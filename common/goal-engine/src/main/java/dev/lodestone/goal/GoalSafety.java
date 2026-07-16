@@ -13,6 +13,15 @@ public enum GoalSafety {
 
     public String id() { return id; }
 
+    /** Safety policies are explicit sub-policies, not hidden intelligence side effects. */
+    public boolean hazardAvoidanceEnabled() { return this != LOW; }
+
+    public boolean fallProtectionEnabled() { return this != LOW; }
+
+    public boolean threatPreemptionEnabled() { return this != LOW; }
+
+    public boolean progressMayBePreempted() { return this == HIGH; }
+
     public static GoalSafety parse(String value) {
         if (value == null || value.isBlank()) return LOW;
         var normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');

@@ -35,7 +35,7 @@ public final class GoalEngine {
         var plan = planned.plan();
         if (spec.intelligence().requiresModel(spec.mode()) && modelProvider.fallback()) {
             return report(plan.id(), spec, GoalStatus.UNSUPPORTED,
-                    "adaptive-v1 requires the pinned GPT-5.4 mini executor; no matching provider is available",
+                    "adaptive-v1 requires a realtime low-latency model provider; none is available",
                     started, 0, 0, List.of(), Map.of(
                             "intelligence", spec.intelligence().id(),
                             "safety", spec.safety().id(),
@@ -47,15 +47,24 @@ public final class GoalEngine {
         state.put("intelligence", spec.intelligence().id());
         state.put("planningDepth", spec.intelligence().planningDepth());
         state.put("prerequisitePlanning", spec.intelligence().prerequisitePlanningEnabled());
+        state.put("toolPrerequisitePlanning", spec.intelligence().toolPrerequisitePlanningEnabled());
+        state.put("safeNavigationPlanning", spec.intelligence().safeNavigationPlanningEnabled());
+        state.put("obstructionRecovery", spec.intelligence().obstructionRecoveryEnabled());
         state.put("actionSegmentReplanning", spec.intelligence().actionSegmentReplanningEnabled());
         state.put("scriptSegmentObservation", spec.intelligence().scriptSegmentObservationEnabled());
         state.put("modelRequired", spec.intelligence().requiresModel(spec.mode()));
         state.put("safety", spec.safety().id());
+        state.put("hazardAvoidance", spec.safety().hazardAvoidanceEnabled());
+        state.put("fallProtection", spec.safety().fallProtectionEnabled());
+        state.put("threatPreemption", spec.safety().threatPreemptionEnabled());
+        state.put("safetyPriority", spec.safety().progressMayBePreempted());
         state.put("observation", spec.controls().observation());
         state.put("combatPolicy", spec.controls().combatPolicy());
         state.put("allowBlockBreaking", spec.controls().allowBlockBreaking());
         state.put("allowBlockPlacing", spec.controls().allowBlockPlacing());
+        state.put("allowCommands", spec.controls().allowCommands());
         state.put("executorModel", modelProvider.id());
+        state.put("reasoningEffort", modelProvider.reasoningEffort());
         state.put("planId", plan.id());
         var steps = new LinkedHashMap<String, Object>();
         state.put("steps", steps);
@@ -68,6 +77,7 @@ public final class GoalEngine {
         GoalRunReport finalReport;
         try {
             for (var segment : plan.segments()) {
+                state.put("activeSegment", segment.id());
                 var pending = new ArrayList<>(segment.steps());
                 while (!pending.isEmpty()) {
                     if (completedSteps >= spec.maxSteps() || elapsedMs(started) >= spec.maxDurationMs()) {
@@ -86,6 +96,12 @@ public final class GoalEngine {
                     ResultEnvelope result;
                     if (selected.kind() == GoalStepKind.ASSERT) {
                         result = ResultEnvelope.ok(selected.id(), Map.of("asserted", true));
+                    } else if (selected.capability() != null
+                            && selected.capability().startsWith("minecraft.command.")
+                            && !spec.controls().allowCommands()) {
+                        result = ResultEnvelope.error(selected.id(), ResultEnvelope.Status.ERROR,
+                                StructuredError.of("COMMANDS_DISABLED",
+                                        "goal command execution is disabled by allowCommands=false", false));
                     } else {
                         var input = resolve(selected.input(), state);
                         result = invokeWithTransientRetry(invoker, selected.capability(), selected.capabilityVersion(),
@@ -138,6 +154,7 @@ public final class GoalEngine {
                     break;
                 }
                 completedSegments++;
+                state.put("lastCompletedSegment", segment.id());
             }
             if (pendingFailure == null) {
                 if (!plan.completionPredicateReady()) {

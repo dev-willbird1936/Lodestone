@@ -12,6 +12,10 @@ public interface GoalModelProvider {
         return 0;
     }
 
+    default String reasoningEffort() {
+        return "low";
+    }
+
     default boolean fallback() {
         return false;
     }

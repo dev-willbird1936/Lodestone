@@ -9,9 +9,18 @@ NeoForge 1.21.1 exposes three goal tools through the MCP gateway:
 - `minecraft_goal_tasks`: list built-in tasks, required capabilities, and success contracts.
 - `minecraft_goal_benchmark`: run matched script/realtime cases and compare correctness before elapsed time.
 
+`minecraft_goal` defaults to `guarded-v1` with `balanced` safety. Select `raw-v1` explicitly for
+legacy action order, or `adaptive-v1` for highest prerequisite/replanning behavior. Adaptive
+realtime requires an available model provider; adaptive script uses deterministic native planning
+and segment checkpoints.
+
 Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`. Arbitrary shell, JavaScript, or Python is never executed by a plan.
 
 Script mode runs segments in declared order. Realtime mode asks the selected provider for one candidate step, invokes it, performs a fresh `minecraft.player.state.read` after action steps marked `observeAfter`, and continues. It always attempts `minecraft.input.release-all` during realtime cleanup. Both modes stop before the next action when their step or elapsed-duration budget is exhausted; a capability that returns after the elapsed budget makes the run `TIMED_OUT`.
+
+Command execution is denied by default through `allowCommands=false`. Survival Nether and tree
+goals do not use commands; the creative wool-tree fixture declares only its bounded setup commands
+inside its task plan.
 
 Goal success is stricter than MCP invocation success. A native `ok` result only means that one capability completed. The goal reports `SUCCEEDED` only after its assertions pass and the plan explicitly declares `metadata.completionPredicateReady=true`. Other terminal states are `FAILED`, `UNSUPPORTED`, `CANCELLED`, `TIMED_OUT`, and `INDETERMINATE`.
 
@@ -25,10 +34,10 @@ Realtime provider selection is environment-driven:
 
 1. load `GoalModelProvider` implementations through Java `ServiceLoader`;
 2. add the optional OpenAI-compatible provider when `LODESTONE_GOAL_MODEL_URL` is configured;
-3. choose the lowest configured measured p95 latency;
+3. choose the lowest configured measured p95 latency, preferring the pinned GPT-5.4 mini on ties;
 4. use deterministic plan order if no provider is available.
 
-Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, and `LODESTONE_GOAL_MODEL_TIMEOUT_MS`. Credentials are never included in reports. The provider should return JSON with `candidateIndex` and `rationale`.
+Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, `LODESTONE_GOAL_MODEL_TIMEOUT_MS`, and `LODESTONE_GOAL_MODEL_REASONING_EFFORT` (`low` by default). Credentials are never included in reports. The provider should return JSON with `candidateIndex` and `rationale`.
 
 ## KeepFocus profile
 

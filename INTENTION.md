@@ -41,6 +41,10 @@ every Minecraft environment.
 - Loader-neutral bounded Minecraft goal engine added with declarative segmented script execution,
   realtime observe-after-action execution, strict terminal predicates, model-provider selection,
   task catalog, matched benchmark reporting, and MCP gateway tools for NeoForge 1.21.1.
+- Goal execution now keeps intelligence and safety as separate, inspectable policy axes: adaptive
+  script checkpoints are supported, realtime providers are selected by measured latency with low
+  reasoning effort by default, intelligent actors veto tool-required bare-hand mining, and command
+  execution is explicitly denied unless a goal request or bounded creative setup authorizes it.
 - NeoForge 1.21.1 now proves the survival wooden-axe tree goal in both script and realtime modes
   through visible normal player input: hand gathering, inventory/container crafting, table placement,
   axe equipping, navigation, and full-tree mining, with commands and direct mutation prohibited.

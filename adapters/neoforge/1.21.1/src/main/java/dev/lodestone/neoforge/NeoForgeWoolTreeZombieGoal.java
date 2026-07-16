@@ -113,6 +113,9 @@ final class NeoForgeWoolTreeZombieGoal {
             if (stage == Stage.WAIT_WORLD && (!policy.allowBlockBreaking() || !policy.allowBlockPlacing())) {
                 throw new IllegalStateException("wool-tree defense workflow requires block breaking and placing permissions");
             }
+            if (stage == Stage.WAIT_WORLD && !policy.allowCommands()) {
+                throw new IllegalStateException("creative wool-tree setup requires explicit allowCommands=true");
+            }
             if (waitTicks > 0) {
                 waitTicks--;
                 return;
@@ -537,6 +540,7 @@ final class NeoForgeWoolTreeZombieGoal {
                 Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
                 Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
                 Map.entry("allowBlockPlacing", policy.allowBlockPlacing()),
+                Map.entry("allowCommands", policy.allowCommands()),
                 Map.entry("setupCommandsUsed", !setupCommands.isEmpty()),
                 Map.entry("setupCommandCount", setupCommands.size()),
                 Map.entry("setupCommands", List.copyOf(setupCommands)),

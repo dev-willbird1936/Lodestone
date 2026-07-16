@@ -30,8 +30,14 @@ public enum GoalIntelligence {
     /** Number of prerequisite/action layers the native executor must preserve. */
     public int planningDepth() { return planningDepth; }
 
+    public boolean toolPrerequisitePlanningEnabled() { return planningDepth >= 1; }
+
+    public boolean safeNavigationPlanningEnabled() { return guardrailsEnabled(); }
+
+    public boolean obstructionRecoveryEnabled() { return guardrailsEnabled(); }
+
     /** Highest profiles must acquire required tools before attempting dependent work. */
-    public boolean prerequisitePlanningEnabled() { return planningDepth >= 1; }
+    public boolean prerequisitePlanningEnabled() { return toolPrerequisitePlanningEnabled(); }
 
     /** Adaptive profiles may replan from fresh observations after each action segment. */
     public boolean actionSegmentReplanningEnabled() { return planningDepth >= 3; }

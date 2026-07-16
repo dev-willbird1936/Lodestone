@@ -9,9 +9,9 @@ param(
     [string] $ModelId = 'gpt-5.4-mini',
     [int] $ModelPort = 37842,
     [ValidateSet('raw-v1', 'guarded-v1', 'adaptive-v1')]
-    [string] $Intelligence = 'raw-v1',
+    [string] $Intelligence = 'adaptive-v1',
     [ValidateSet('low', 'balanced', 'high')]
-    [string] $Safety = 'low'
+    [string] $Safety = 'balanced'
 )
 
 $ErrorActionPreference = 'Stop'
