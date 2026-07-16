@@ -328,7 +328,13 @@ public final class McpGateway {
                     "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
             tools.add(tool("minecraft_goal_benchmark", "Run matched script and realtime task cases and compare correctness before elapsed time. Use dryRun only where the capability documents dry-run support; otherwise use an isolated fixture.", schema(Map.of(
                     "taskIds", Map.of("type", "array", "maxItems", 32, "items", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
-                    "dryRun", Map.of("type", "boolean")))));
+                    "dryRun", Map.of("type", "boolean"),
+                    "intelligence", Map.of("type", "string", "enum", List.of("raw-v1", "guarded-v1", "adaptive-v1")),
+                    "safety", Map.of("type", "string", "enum", List.of("low", "balanced", "high")),
+                    "observation", Map.of("type", "string", "enum", List.of("loaded-chunks")),
+                    "combatPolicy", Map.of("type", "string", "enum", List.of("defensive", "avoid", "none")),
+                    "allowBlockBreaking", Map.of("type", "boolean"),
+                    "allowBlockPlacing", Map.of("type", "boolean")))));
         }
         tools.add(tool("lodestone_events_subscribe", "Subscribe to a bounded event stream; sensitive raw input events are redacted.", schema(Map.of(
                 "eventPrefix", Map.of("type", "string", "maxLength", 256),
@@ -993,8 +999,14 @@ public final class McpGateway {
         return toolResult(Map.of("tasks", goalService.tasks(text(args, "category", "")),
                 "modelProviders", goalService.modelProviders(),
                 "executorModel", dev.lodestone.goal.GoalModelProviders.EXECUTOR_MODEL_ID,
-                "intelligenceLevels", List.of("raw-v1", "guarded-v1", "adaptive-v1"),
-                "safetyPolicies", List.of("low", "balanced", "high"),
+                "intelligenceLevels", List.of(
+                        Map.of("id", "raw-v1", "behavior", "legacy action order; no prerequisite or safety intervention"),
+                        Map.of("id", "guarded-v1", "behavior", "deterministic prerequisite/tool checks, safe navigation, obstruction and threat recovery"),
+                        Map.of("id", "adaptive-v1", "behavior", "layered prerequisites, loaded-chunk replanning, segment checkpoints, and realtime model selection")),
+                "safetyPolicies", List.of(
+                        Map.of("id", "low", "behavior", "goal progress with minimal intervention"),
+                        Map.of("id", "balanced", "avoid fluids and damaging routes; recover visible hazards"),
+                        Map.of("id", "high", "player safety preempts progress; avoid unsafe drops and hostile threats")),
                 "minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader()));
     }
 
@@ -1007,9 +1019,22 @@ public final class McpGateway {
             }
             taskIdNode.getAsJsonArray().forEach(value -> taskIds.add(value.getAsString()));
         }
+        final GoalIntelligence intelligence;
+        final GoalSafety safety;
+        try {
+            intelligence = GoalIntelligence.parse(text(args, "intelligence", "guarded-v1"));
+            safety = GoalSafety.parse(text(args, "safety", "balanced"));
+        } catch (IllegalArgumentException invalid) {
+            throw new GatewayException(-32602, invalid.getMessage());
+        }
+        var controls = new GoalControls(text(args, "observation", "loaded-chunks"),
+                text(args, "combatPolicy", "defensive"), bool(args, "allowBlockBreaking", true),
+                bool(args, "allowBlockPlacing", true));
         var descriptor = runtime.handshake().adapter();
         return toolResult(Map.of("minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader(), "results",
-                goalService.benchmark(taskIds, bool(args, "dryRun", false), session().id, session().authorization)));
+                goalService.benchmark(taskIds, bool(args, "dryRun", false), intelligence, safety, controls,
+                        session().id, session().authorization),
+                "intelligence", intelligence.id(), "safety", safety.id()));
     }
 
     private boolean supportsNeoForgeGoals() {

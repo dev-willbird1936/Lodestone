@@ -533,6 +533,7 @@ final class NeoForgeWoolTreeZombieGoal {
                 Map.entry("intelligence", policy.intelligence().id()),
                 Map.entry("safety", policy.safety().id()),
                 Map.entry("policyMode", policy.mode()),
+                Map.entry("toolPrerequisiteGuard", policy.toolPrerequisiteGuardEnabled()),
                 Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
                 Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
                 Map.entry("allowBlockPlacing", policy.allowBlockPlacing()),

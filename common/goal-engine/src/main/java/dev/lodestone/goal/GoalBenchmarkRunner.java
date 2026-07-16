@@ -17,6 +17,11 @@ public final class GoalBenchmarkRunner {
     }
 
     public List<BenchmarkCase> run(List<String> taskIds, GoalInvoker invoker, boolean dryRun) {
+        return run(taskIds, invoker, dryRun, GoalIntelligence.RAW_V1, GoalSafety.LOW, GoalControls.defaults());
+    }
+
+    public List<BenchmarkCase> run(List<String> taskIds, GoalInvoker invoker, boolean dryRun,
+                                   GoalIntelligence intelligence, GoalSafety safety, GoalControls controls) {
         var selected = taskIds == null || taskIds.isEmpty()
                 ? GoalTaskCatalog.tasks().stream().map(GoalTaskCatalog.TaskDefinition::id).toList()
                 : List.copyOf(taskIds);
@@ -27,12 +32,16 @@ public final class GoalBenchmarkRunner {
                 results.add(new BenchmarkCase(taskId, null, null, "unknown task", Map.of()));
                 continue;
             }
-            var script = engine.run(GoalSpec.of(task.get().description(), GoalMode.SCRIPT, taskId, dryRun), invoker);
-            var realtime = engine.run(GoalSpec.of(task.get().description(), GoalMode.REALTIME, taskId, dryRun), invoker);
+            var script = engine.run(new GoalSpec(task.get().description(), GoalMode.SCRIPT, taskId,
+                    256, 120_000, dryRun, null, false, intelligence, safety, controls), invoker);
+            var realtime = engine.run(new GoalSpec(task.get().description(), GoalMode.REALTIME, taskId,
+                    256, 120_000, dryRun, null, false, intelligence, safety, controls), invoker);
             results.add(new BenchmarkCase(taskId, script, realtime, compare(script, realtime), Map.of(
                     "correctnessPriority", "status and false-success first",
                     "sameTask", true,
-                    "speedMetric", "elapsedMs")));
+                    "speedMetric", "elapsedMs",
+                    "intelligence", intelligence.id(),
+                    "safety", safety.id())));
         }
         return List.copyOf(results);
     }

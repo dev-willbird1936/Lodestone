@@ -61,7 +61,16 @@ public final class GoalService {
 
     public List<GoalBenchmarkRunner.BenchmarkCase> benchmark(List<String> taskIds, boolean dryRun,
                                                              String callerSessionId, AuthorizationPolicy authorization) {
-        return benchmarks.run(taskIds, invoker(callerSessionId, authorization), dryRun);
+        return benchmark(taskIds, dryRun, GoalIntelligence.RAW_V1, GoalSafety.LOW, GoalControls.defaults(),
+                callerSessionId, authorization);
+    }
+
+    public List<GoalBenchmarkRunner.BenchmarkCase> benchmark(List<String> taskIds, boolean dryRun,
+                                                             GoalIntelligence intelligence, GoalSafety safety,
+                                                             GoalControls controls, String callerSessionId,
+                                                             AuthorizationPolicy authorization) {
+        return benchmarks.run(taskIds, invoker(callerSessionId, authorization), dryRun,
+                intelligence, safety, controls);
     }
 
     public List<Map<String, Object>> tasks(String category) {

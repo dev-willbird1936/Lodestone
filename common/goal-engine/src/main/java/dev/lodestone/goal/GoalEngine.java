@@ -33,7 +33,7 @@ public final class GoalEngine {
                     0, 0, List.of(), Map.of());
         }
         var plan = planned.plan();
-        if (spec.intelligence().modelReplanningEnabled() && modelProvider.fallback()) {
+        if (spec.intelligence().requiresModel(spec.mode()) && modelProvider.fallback()) {
             return report(plan.id(), spec, GoalStatus.UNSUPPORTED,
                     "adaptive-v1 requires the pinned GPT-5.4 mini executor; no matching provider is available",
                     started, 0, 0, List.of(), Map.of(
@@ -48,6 +48,8 @@ public final class GoalEngine {
         state.put("planningDepth", spec.intelligence().planningDepth());
         state.put("prerequisitePlanning", spec.intelligence().prerequisitePlanningEnabled());
         state.put("actionSegmentReplanning", spec.intelligence().actionSegmentReplanningEnabled());
+        state.put("scriptSegmentObservation", spec.intelligence().scriptSegmentObservationEnabled());
+        state.put("modelRequired", spec.intelligence().requiresModel(spec.mode()));
         state.put("safety", spec.safety().id());
         state.put("observation", spec.controls().observation());
         state.put("combatPolicy", spec.controls().combatPolicy());
@@ -107,8 +109,7 @@ public final class GoalEngine {
                         pendingFailure = new ExecutionFailure(GoalStatus.FAILED, "step postcondition failed: " + selected.id());
                         break;
                     }
-                    if (spec.mode() == GoalMode.REALTIME && selected.kind() == GoalStepKind.INVOKE
-                            && selected.observeAfter() && !"minecraft.player.state.read".equals(selected.capability())) {
+                    if (shouldObserveAfter(spec, selected)) {
                         if (completedSteps >= spec.maxSteps()) {
                             pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "no budget for realtime post-action observation");
                             break;
@@ -179,7 +180,7 @@ public final class GoalEngine {
 
     private GoalStep selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
         var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, pending)).orElseGet(() -> {
-            if (spec.intelligence().modelReplanningEnabled()) {
+            if (spec.intelligence().requiresModel(spec.mode())) {
                 throw new IllegalStateException("adaptive-v1 executor returned no decision");
             }
             return new GoalDecision(0, "provider returned no decision");
@@ -188,6 +189,20 @@ public final class GoalEngine {
             throw new IllegalArgumentException("realtime model selected an invalid candidate index");
         }
         return pending.get(decision.candidateIndex());
+    }
+
+    private static boolean shouldObserveAfter(GoalSpec spec, GoalStep selected) {
+        if (selected.kind() != GoalStepKind.INVOKE
+                || "minecraft.player.state.read".equals(selected.capability())) return false;
+        if (selected.observeAfter()) return true;
+        if (spec.mode() != GoalMode.SCRIPT || !spec.intelligence().scriptSegmentObservationEnabled()) return false;
+        // UI transitions can legitimately leave no player/world available. Restrict the
+        // automatic script checkpoint to gameplay capabilities with a stable observation.
+        var capability = selected.capability();
+        return capability != null && (capability.startsWith("minecraft.player.")
+                || capability.startsWith("minecraft.world.")
+                || capability.startsWith("minecraft.entity.")
+                || capability.startsWith("minecraft.goal."));
     }
 
     private static ResultEnvelope invokeWithTransientRetry(GoalInvoker invoker, String capability,

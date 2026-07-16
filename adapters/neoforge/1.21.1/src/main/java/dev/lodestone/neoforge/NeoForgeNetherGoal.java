@@ -1681,6 +1681,7 @@ final class NeoForgeNetherGoal {
                 Map.entry("intelligence", policy.intelligence().id()),
                 Map.entry("safety", policy.safety().id()),
                 Map.entry("policyMode", policy.mode()),
+                Map.entry("toolPrerequisiteGuard", policy.toolPrerequisiteGuardEnabled()),
                 Map.entry("prerequisitePlanning", policy.prerequisitePlanningEnabled()),
                 Map.entry("actionSegmentReplanning", policy.actionSegmentReplanningEnabled()),
                 Map.entry("safetyInterventions", List.copyOf(safetyDiagnostics)),

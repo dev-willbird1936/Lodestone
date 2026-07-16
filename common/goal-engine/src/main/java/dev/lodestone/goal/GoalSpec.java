@@ -38,9 +38,6 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
         intelligence = intelligence == null ? GoalIntelligence.RAW_V1 : intelligence;
         safety = safety == null ? GoalSafety.LOW : safety;
         controls = controls == null ? GoalControls.defaults() : controls;
-        if (intelligence == GoalIntelligence.ADAPTIVE_V1 && mode != GoalMode.REALTIME) {
-            throw new IllegalArgumentException("adaptive-v1 intelligence requires realtime mode");
-        }
         if (maxSteps < 1 || maxSteps > 1_000) {
             throw new IllegalArgumentException("maxSteps must be between 1 and 1000");
         }

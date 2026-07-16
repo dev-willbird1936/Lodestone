@@ -36,6 +36,14 @@ public enum GoalIntelligence {
     /** Adaptive profiles may replan from fresh observations after each action segment. */
     public boolean actionSegmentReplanningEnabled() { return planningDepth >= 3; }
 
+    /** Script mode uses deterministic segment replanning; realtime mode may additionally use the model. */
+    public boolean scriptSegmentObservationEnabled() { return planningDepth >= 3; }
+
+    /** Only realtime adaptive execution requires the pinned low-latency model provider. */
+    public boolean requiresModel(GoalMode mode) {
+        return modelReplanning && mode == GoalMode.REALTIME;
+    }
+
     public static GoalIntelligence parse(String value) {
         if (value == null || value.isBlank()) return RAW_V1;
         var normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');

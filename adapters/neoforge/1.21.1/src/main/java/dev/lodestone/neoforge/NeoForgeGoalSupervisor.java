@@ -37,6 +37,8 @@ final class NeoForgeGoalSupervisor {
                 || client.screen != null) return false;
         var player = client.player;
 
+        if (preventBareHandToolMining(client, player)) return true;
+
         if (recoverObstructionOrStall(client, player)) return true;
 
         if (brakeTicks > 0) {
@@ -87,6 +89,29 @@ final class NeoForgeGoalSupervisor {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Intelligent execution owns prerequisite planning. Stop an unsafe low-level attack
+     * before it turns into a long stone/dirt tunnel; bootstrap wood and foliage remain valid
+     * bare-hand resources for survival plans.
+     */
+    private boolean preventBareHandToolMining(Minecraft client, LocalPlayer player) {
+        if (!policy.toolPrerequisiteGuardEnabled() || !client.options.keyAttack.isDown()) return false;
+        var hit = player.pick(5.0F, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit)) return false;
+        var state = client.level.getBlockState(blockHit.getBlockPos());
+        if (state.isAir() || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES)
+                || (state.getFluidState().isEmpty() && player.getMainHandItem().isCorrectToolForDrops(state))) {
+            return false;
+        }
+        client.options.keyAttack.setDown(false);
+        client.options.keyUp.setDown(false);
+        client.options.keySprint.setDown(false);
+        client.options.keyJump.setDown(false);
+        actions.add("intelligence:defer-tool-required-block");
+        diagnostics.add("prerequisite-recovery:tool-required-block:" + state.getBlock().getName().getString());
+        return true;
     }
 
     /** Normal-input recovery for a player wedged in terrain, foliage, or a visible block. */

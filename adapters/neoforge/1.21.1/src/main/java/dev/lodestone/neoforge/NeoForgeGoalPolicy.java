@@ -59,6 +59,11 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return intelligence != Intelligence.RAW_V1;
     }
 
+    /** Intelligent actors must not spend goal budget punching tool-required terrain. */
+    boolean toolPrerequisiteGuardEnabled() {
+        return prerequisitePlanningEnabled();
+    }
+
     boolean actionSegmentReplanningEnabled() {
         return intelligence == Intelligence.ADAPTIVE_V1;
     }
