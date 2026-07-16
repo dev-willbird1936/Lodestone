@@ -149,7 +149,10 @@ final class NeoForgeNetherGoal {
             if (++totalTicks > MAX_TOTAL_TICKS) {
                 throw new IllegalStateException("Nether goal exceeded its bounded input budget");
             }
-            if (supervisor.tick(client)) return;
+            // Startup validation must own the tick until the player/world contract is proven.
+            // Otherwise a stale movement lease from the UI transition can let the safety
+            // supervisor preempt WAIT_WORLD forever, leaving the actor visibly idle at spawn.
+            if (stage != Stage.WAIT_WORLD && supervisor.tick(client)) return;
             if (!clicks.isEmpty() || clicksComplete != null) {
                 tickClicks(client);
                 return;
