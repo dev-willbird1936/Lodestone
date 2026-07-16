@@ -349,7 +349,12 @@ final class NeoForgeNetherGoal {
         }
         var player = requirePlayer(client);
         if (!player.getMainHandItem().isEmpty()) {
-            throw new IllegalStateException("hand-mining began with an item equipped");
+            var emptySlot = emptyHotbarSlot(player);
+            if (emptySlot < 0) throw new IllegalStateException(
+                    "hand-mining began with an item equipped and no empty hotbar slot was observed");
+            selectHotbar(client, emptySlot);
+            inputActions.add("select:empty-hotbar-slot-for-hand-mining");
+            return;
         }
         var target = resourceTree.logs().get(mineIndex);
         if (!client.level.getBlockState(target).is(BlockTags.LOGS)) {
@@ -1837,6 +1842,13 @@ final class NeoForgeNetherGoal {
     private static int hotbarSlot(LocalPlayer player, Item item) {
         for (int slot = 0; slot < 9; slot++) {
             if (player.getInventory().getItem(slot).is(item)) return slot;
+        }
+        return -1;
+    }
+
+    private static int emptyHotbarSlot(LocalPlayer player) {
+        for (int slot = 0; slot < 9; slot++) {
+            if (player.getInventory().getItem(slot).isEmpty()) return slot;
         }
         return -1;
     }
