@@ -422,6 +422,38 @@ final class NeoForgeNetherGoal {
         return null;
     }
 
+    private boolean prepareMiningTarget(Minecraft client, BlockPos target, String label) {
+        var player = requirePlayer(client);
+        lookAt(player, Vec3.atCenterOf(target));
+        var hit = player.pick(5.0F, 0.0F, false);
+        if (hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target)) return true;
+        var vantage = findMiningVantage(client, target);
+        if (vantage == null) return false;
+        if (!navigateTo(client, vantage, 1.2, "mining-vantage:" + label)) return false;
+        lookAt(player, Vec3.atCenterOf(target));
+        return player.pick(5.0F, 0.0F, false) instanceof BlockHitResult blockHit
+                && blockHit.getBlockPos().equals(target);
+    }
+
+    private BlockPos findMiningVantage(Minecraft client, BlockPos target) {
+        for (var direction : List.of(Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST)) {
+            for (int distance = 1; distance <= 3; distance++) {
+                for (int yOffset = -1; yOffset <= 2; yOffset++) {
+                    var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
+                    if (!standable(client, candidate)) continue;
+                    var eye = new Vec3(candidate.getX() + 0.5, candidate.getY() + 1.62,
+                            candidate.getZ() + 0.5);
+                    var clip = client.level.clip(new ClipContext(eye, Vec3.atCenterOf(target),
+                            ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, requirePlayer(client)));
+                    if (clip instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target)) {
+                        return candidate.immutable();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     private void collectTree(Minecraft client) {
         var player = requirePlayer(client);
         if (countLogs(player) >= Math.min(LOGS_REQUIRED, resourceTree.logs().size())) {
@@ -790,7 +822,15 @@ final class NeoForgeNetherGoal {
             waitTicks = 8;
             return;
         }
-        lookAt(player, Vec3.atCenterOf(target));
+        if (!prepareMiningTarget(client, target, "stone")) {
+            if (stageTicks > 90) {
+                stopAttack(client);
+                safetyDiagnostics.add("mining-replan:skip-unreachable-stone:" + target);
+                stoneMineIndex++;
+                stageTicks = 0;
+            }
+            return;
+        }
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-with-wooden-pickaxe");
         if (stageTicks > 420) throw new IllegalStateException("wooden pickaxe failed to mine observed stone");
@@ -830,7 +870,15 @@ final class NeoForgeNetherGoal {
             waitTicks = 10;
             return;
         }
-        lookAt(player, Vec3.atCenterOf(target));
+        if (!prepareMiningTarget(client, target, "iron ore")) {
+            if (stageTicks > 90) {
+                stopAttack(client);
+                safetyDiagnostics.add("mining-replan:skip-unreachable-iron:" + target);
+                ironMineIndex++;
+                stageTicks = 0;
+            }
+            return;
+        }
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-with-stone-pickaxe");
         if (stageTicks > 520) throw new IllegalStateException("stone pickaxe failed to mine observed iron ore");
@@ -869,7 +917,15 @@ final class NeoForgeNetherGoal {
             waitTicks = 8;
             return;
         }
-        lookAt(player, Vec3.atCenterOf(target));
+        if (!prepareMiningTarget(client, target, "gravel")) {
+            if (stageTicks > 90) {
+                stopAttack(client);
+                safetyDiagnostics.add("mining-replan:skip-unreachable-gravel:" + target);
+                gravelMineIndex++;
+                stageTicks = 0;
+            }
+            return;
+        }
         client.options.keyAttack.setDown(true);
         inputActions.add("attack:key.attack-held-for-flint-gravel");
         if (stageTicks > 320) throw new IllegalStateException("gravel mining failed");
