@@ -313,14 +313,19 @@ final class NeoForgeNetherGoal {
     }
 
     private void findTree(Minecraft client) {
-        var trees = scanTreePlans(client);
-        if (!trees.isEmpty()) {
-            resourceTree = trees.getFirst();
-            resetNavigation();
-            announce(client, "Observed a natural tree at " + resourceTree.base()
-                    + "; walking there to gather wood by hand");
-            transition(Stage.NAVIGATE_TREE, 15);
-            return;
+        // Chunk reads are authoritative but intentionally periodic. A full local tree scan is
+        // hundreds of thousands of block reads; doing it every render tick starves the normal
+        // movement input that is needed to discover the next chunk.
+        if (stageTicks == 1 || stageTicks % 20 == 1) {
+            var trees = scanTreePlans(client);
+            if (!trees.isEmpty()) {
+                resourceTree = trees.getFirst();
+                resetNavigation();
+                announce(client, "Observed a natural tree at " + resourceTree.base()
+                        + "; walking there to gather wood by hand");
+                transition(Stage.NAVIGATE_TREE, 15);
+                return;
+            }
         }
         if (stageTicks == 1) {
             searchAttempts++;
