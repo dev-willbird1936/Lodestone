@@ -8,6 +8,10 @@ verification/evidence/**
 !verification/evidence/forge-1.20.1-flow-main-menu-20260714T215732Z.json
 !verification/evidence/forge-1.20.1-flow-world-20260714T215815Z.json
 !verification/evidence/forge-1.20.1-flow-shutdown-20260714T215827Z.json
+# Phase 1 judgment report and benchmark aggregate summaries are durable deliverables, not
+# disposable per-run output (per-seed logs/reports under timestamped subfolders stay ignored).
+!verification/evidence/other-repos-intelligence-layer-judgment-2026-07-17.md
+!verification/evidence/*/aggregate.json
 **/build/
 **/.gradle/
 **/run/
