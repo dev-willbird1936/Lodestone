@@ -4,6 +4,7 @@ package dev.lodestone.neoforge;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
@@ -207,6 +208,58 @@ final class NeoForgeSafePathPlanner {
             }
         }
         return List.of();
+    }
+
+    /**
+     * Escape graph for a player already touching lava or fire. Normal A* rejects a hazardous
+     * origin by design, so this deliberately permits only the current cell and a small connected
+     * band of empty/lava cells until a fully buffered dry surface is reached.
+     */
+    static List<BlockPos> findHazardRetreat(ClientLevel level, BlockPos start,
+                                             NeoForgeGoalPolicy policy) {
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var origin = start.immutable();
+        var queue = new ArrayDeque<BlockPos>();
+        var previous = new HashMap<Long, Long>();
+        var depth = new HashMap<Long, Integer>();
+        queue.add(origin);
+        previous.put(origin.asLong(), Long.MIN_VALUE);
+        depth.put(origin.asLong(), 0);
+
+        while (!queue.isEmpty()) {
+            var current = queue.removeFirst();
+            var currentDepth = depth.get(current.asLong());
+            if (currentDepth > 0 && snapshot.bufferedWalkable(current)) {
+                return reconstruct(previous, current);
+            }
+            if (currentDepth >= 24) continue;
+            var candidates = new ArrayList<BlockPos>(5);
+            candidates.add(current.above());
+            for (var direction : Direction.Plane.HORIZONTAL) candidates.add(current.relative(direction));
+            for (var candidate : candidates) {
+                if (previous.containsKey(candidate.asLong())
+                        || Math.abs(candidate.getX() - origin.getX()) > 12
+                        || Math.abs(candidate.getZ() - origin.getZ()) > 12
+                        || Math.abs(candidate.getY() - origin.getY()) > 8
+                        || !hazardEscapePassable(level, candidate, snapshot)) continue;
+                previous.put(candidate.asLong(), current.asLong());
+                depth.put(candidate.asLong(), currentDepth + 1);
+                queue.addLast(candidate.immutable());
+            }
+        }
+        return List.of();
+    }
+
+    private static boolean hazardEscapePassable(ClientLevel level, BlockPos candidate,
+                                                NeoForgeWorldSnapshot snapshot) {
+        if (snapshot.bufferedWalkable(candidate)) return true;
+        var head = candidate.above();
+        if (!level.hasChunkAt(candidate) || !level.hasChunkAt(head)) return false;
+        if (!level.getBlockState(candidate).getCollisionShape(level, candidate).isEmpty()
+                || !level.getBlockState(head).getCollisionShape(level, head).isEmpty()) return false;
+        var feetFluid = level.getFluidState(candidate);
+        var supportFluid = level.getFluidState(candidate.below());
+        return feetFluid.is(FluidTags.LAVA) || supportFluid.is(FluidTags.LAVA);
     }
 
     private static List<BlockPos> reconstruct(HashMap<Long, Long> previous, BlockPos reached) {

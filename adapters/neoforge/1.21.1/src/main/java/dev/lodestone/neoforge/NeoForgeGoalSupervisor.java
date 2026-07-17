@@ -70,6 +70,10 @@ final class NeoForgeGoalSupervisor {
         var player = client.player;
         updateMovementIntent(player, movementExpected, intent);
 
+        if (policy.hazardAvoidanceEnabled() && (player.isInLava() || player.isOnFire())) {
+            return escapeFireOrLava(client, player);
+        }
+
         if (tickImmediateSurvival(client)) return true;
 
         if (obstructionClearTarget != null) return tickObstructionClear(client, player);
@@ -104,23 +108,6 @@ final class NeoForgeGoalSupervisor {
             return true;
         }
 
-        if (policy.hazardAvoidanceEnabled() && (player.isInLava() || player.isOnFire())) {
-            var target = NeoForgeWorldSnapshot.capture(client.level, policy)
-                    .nearestSafeSurface(player.blockPosition(), policy.highSafety() ? 12 : 8);
-            if (target != null) {
-                lookAt(player, target);
-                setRecoveryMovement(client, true);
-                actions.add("safety:escape-fire-or-lava");
-                diagnostics.add("hazard-recovery:" + target);
-            } else {
-                setRecoveryMovement(client, true);
-                actions.add("safety:emergency-jump");
-                diagnostics.add("hazard-recovery:no-safe-surface-observed");
-            }
-            recoveryTicks = 10;
-            return true;
-        }
-
         var threat = findThreat(player);
         if (policy.threatPreemptionEnabled() && threat != null
                 && (!policy.combatPolicy().equals("none") || policy.highSafety())) {
@@ -144,6 +131,7 @@ final class NeoForgeGoalSupervisor {
         if (!policy.supervisorEnabled() || !policy.hazardAvoidanceEnabled()
                 || client.level == null || client.player == null) return false;
         var player = client.player;
+        if (player.isInLava() || player.isOnFire()) return escapeFireOrLava(client, player);
         var decision = NeoForgeSurvivalInvariant.decide(player.isDeadOrDying(), player.getHealth(),
                 false, player.isInWater(), player.getAirSupply(), player.getMaxAirSupply());
         if (decision != NeoForgeSurvivalInvariant.Action.WATER_RETREAT) {
@@ -185,6 +173,31 @@ final class NeoForgeGoalSupervisor {
             }
         }
         recoveryTicks = 0;
+        return true;
+    }
+
+    private boolean escapeFireOrLava(Minecraft client, LocalPlayer player) {
+        var route = NeoForgeSafePathPlanner.findHazardRetreat(client.level, player.blockPosition(), policy);
+        if (route.size() >= 2) {
+            lookAt(player, route.get(1));
+            setRecoveryMovement(client, true);
+            actions.add("safety:escape-fire-or-lava");
+            if (recoveryTicks++ % 10 == 0) {
+                diagnostics.add("hazard-recovery:route=" + route.getLast()
+                        + ":edges=" + (route.size() - 1));
+            }
+        } else {
+            client.options.keyAttack.setDown(false);
+            client.options.keyUse.setDown(false);
+            client.options.keyUp.setDown(false);
+            client.options.keySprint.setDown(false);
+            client.options.keyLeft.setDown(false);
+            client.options.keyRight.setDown(false);
+            client.options.keyShift.setDown(false);
+            client.options.keyJump.setDown(true);
+            actions.add("safety:emergency-jump");
+            if (recoveryTicks++ % 10 == 0) diagnostics.add("hazard-recovery:no-safe-route-observed");
+        }
         return true;
     }
 
