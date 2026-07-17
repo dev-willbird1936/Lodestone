@@ -166,6 +166,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private BlockPos resourceRejectionAnchor;
     private int localResourceVantageRejections;
     private final HashSet<UUID> rejectedCollectibles = new HashSet<>();
+    private final HashSet<Long> rejectedCollectibleVantages = new HashSet<>();
     private UUID collectibleTargetId;
     private BlockPos collectibleSupportBlock;
     private BlockPos miningVantageTarget;
@@ -554,6 +555,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 resourceApproachOnly = false;
                 rejectedResourceVantages.clear();
                 rejectedCollectibles.clear();
+                rejectedCollectibleVantages.clear();
                 collectibleTargetId = null;
                 collectibleSupportBlock = null;
                 handMinedLogs = 0;
@@ -1089,12 +1091,27 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         switch (alternative) {
             case SAFE_VANTAGE -> {
                 stopAttack(client);
-                if (navigateTo(client, vantage, 0.55, "equivalent-collectible-safe-vantage")) {
-                    lookAt(player, target.position());
-                    stopMovement(client);
-                    client.options.keyJump.setDown(player.onGround() && target.getY() > player.getY() + 0.7);
+                var rejected = false;
+                try {
+                    if (navigateTo(client, vantage, 0.55, "equivalent-collectible-safe-vantage")) {
+                        lookAt(player, target.position());
+                        stopMovement(client);
+                        client.options.keyJump.setDown(player.onGround() && target.getY() > player.getY() + 0.7);
+                    } else if (stageTicks > 180) {
+                        rejectCollectibleVantage(client, vantage, "bounded-stall");
+                        rejected = true;
+                    }
+                } catch (IllegalStateException failure) {
+                    var message = String.valueOf(failure.getMessage());
+                    if (!message.startsWith("safe intelligent path unavailable before reaching ")
+                            && !message.startsWith("safe intelligent navigation could not continue toward ")
+                            && !message.startsWith("safe intelligent navigation remained blocked during ")) {
+                        throw failure;
+                    }
+                    rejectCollectibleVantage(client, vantage, "route-failure=" + message);
+                    rejected = true;
                 }
-                inputActions.add("move:equivalent-collectible-safe-vantage:" + target.getUUID());
+                if (!rejected) inputActions.add("move:equivalent-collectible-safe-vantage:" + target.getUUID());
             }
             case DIRECT_PICKUP_ORIGIN -> {
                 stopAttack(client);
@@ -1128,8 +1145,23 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 stageTicks = Math.min(stageTicks, 500);
                 safetyDiagnostics.add("collectible-replan:retarget-equivalent:" + target.getUUID());
             }
-            case EXHAUSTED -> abandonStarterResource(client, "collectible-local-scope-exhausted");
+            case EXHAUSTED -> {
+                resetNavigation();
+                stopMovement(client);
+                stageTicks = Math.min(stageTicks, 650);
+                safetyDiagnostics.add("collectible-replan:visible-drop-no-safe-route:" + target.getUUID());
+                inputActions.add("observe:retain-visible-collectible-for-bounded-replan:" + target.getUUID());
+            }
         }
+    }
+
+    private void rejectCollectibleVantage(Minecraft client, BlockPos vantage, String reason) {
+        rejectedCollectibleVantages.add(vantage.asLong());
+        resetNavigation();
+        stopMovement(client);
+        stageTicks = Math.min(stageTicks, 120);
+        safetyDiagnostics.add("collectible-replan:reject-safe-vantage:" + vantage + ":reason=" + reason);
+        inputActions.add("observe:collectible-safe-vantage-rejected:" + vantage + ":reason=" + reason);
     }
 
     private BlockPos findDirectCollectiblePickupOrigin(Minecraft client, Vec3 collectible) {
@@ -1159,6 +1191,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             for (var dz = -3; dz <= 3; dz++) {
                 for (var dy = -3; dy <= 1; dy++) {
                     var candidate = target.offset(dx, dy, dz);
+                    if (rejectedCollectibleVantages.contains(candidate.asLong())) continue;
                     var pickupPoint = new Vec3(candidate.getX() + 0.5, candidate.getY() + 1.0,
                             candidate.getZ() + 0.5);
                     if (pickupPoint.distanceTo(collectible) > 1.65 || !snapshot.bufferedWalkable(candidate)) continue;
@@ -1322,6 +1355,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         collectibleTargetId = null;
         collectibleSupportBlock = null;
         rejectedCollectibles.clear();
+        rejectedCollectibleVantages.clear();
         handMinedLogs = 0;
         mineIndex = 0;
         resetNavigation();
