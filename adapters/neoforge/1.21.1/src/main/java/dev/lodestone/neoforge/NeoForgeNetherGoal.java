@@ -553,6 +553,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 rejectedCollectibles.clear();
                 collectibleTargetId = null;
                 collectibleSupportBlock = null;
+                handMinedLogs = 0;
                 resetNavigation();
                 announce(client, "Observed a starter wood source at " + resourceSource.anchor()
                         + " (" + resourceSource.provenance() + "); walking there to gather wood by hand");
@@ -655,7 +656,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     }
 
     private void mineStarterResource(Minecraft client) {
-        if (mineIndex >= Math.min(resourceBlocksToMine, resourceSource.blocks().size())) {
+        if (handMinedLogs >= resourceBlocksToMine || mineIndex >= resourceSource.blocks().size()) {
             stopAttack(client);
             transition(Stage.COLLECT_STARTER_RESOURCE, 0);
             return;
@@ -706,8 +707,14 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     lookAt(player, Vec3.atCenterOf(blocker.getBlockPos()));
                     clickAndHoldAttack(client, "clear-resource-foliage");
                     inputActions.add("attack:key.attack-held-clear-resource-foliage");
-                    if (stageTicks > 420) throw new IllegalStateException(
-                            "starter resource remained occluded by natural foliage at " + target);
+                    if (stageTicks > 120) {
+                        stopAttack(client);
+                        safetyDiagnostics.add("mining-replan:skip-occluded-resource-target:" + target
+                                + ":blocker=" + blocker.getBlockPos());
+                        mineIndex++;
+                        stageTicks = 0;
+                        waitTicks = 5;
+                    }
                     return;
                 }
             }
@@ -1259,6 +1266,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         collectibleTargetId = null;
         collectibleSupportBlock = null;
         rejectedCollectibles.clear();
+        handMinedLogs = 0;
         mineIndex = 0;
         resetNavigation();
         transition(Stage.FIND_STARTER_RESOURCE, 15);
