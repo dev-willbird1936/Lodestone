@@ -54,6 +54,15 @@ final class NeoForgeFrontierWatchdog {
         return active;
     }
 
+    void reset() {
+        frontierId = 0L;
+        bestDistance = Double.POSITIVE_INFINITY;
+        noProgressTicks = 0;
+        totalTicks = 0;
+        failures = 0;
+        active = false;
+    }
+
     int failures() {
         return failures;
     }

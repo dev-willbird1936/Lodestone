@@ -266,6 +266,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             livenessTelemetry = frontierWatchdog.active() ? null : tickLiveness(client);
             if (livenessTelemetry != null
                     && livenessTelemetry.action() == NeoForgeLivenessWatchdog.Action.LIVENESS_EXHAUSTED) {
+                if (continueAdaptiveResourceSearch(client)) return;
                 throw new IllegalStateException("LIVENESS_EXHAUSTED: no displacement, inventory/stage progress, "
                         + "new geometry, or reachable safe frontier after "
                         + livenessTelemetry.recoveryCount() + " bounded recoveries");
@@ -321,6 +322,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                         .distanceToSqr(Vec3.atCenterOf(livenessFrontier.waypoint())));
                 var frontierAction = frontierWatchdog.tick(frontierId, frontierDistance);
                 if (frontierAction != NeoForgeFrontierWatchdog.Action.NONE) {
+                    if (frontierAction == NeoForgeFrontierWatchdog.Action.EXHAUSTED
+                            && continueAdaptiveResourceSearch(client)) return;
                     rejectLivenessFrontier(client, frontierAction);
                     return;
                 }
@@ -2702,6 +2705,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     + ":recovery=" + livenessWatchdog.recoveryCount()
                     + ":frontierFailures=" + frontierWatchdog.failures());
             if (action == NeoForgeFrontierWatchdog.Action.EXHAUSTED) {
+                if (continueAdaptiveResourceSearch(client)) return;
                 throw new IllegalStateException("LIVENESS_EXHAUSTED: no verified safe frontier after "
                         + frontierWatchdog.failures() + " bounded frontier failures");
             }
@@ -2731,6 +2735,32 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             throw new IllegalStateException("LIVENESS_EXHAUSTED: three verified safe frontiers made no positional progress");
         }
         scheduleLivenessRecovery(client);
+    }
+
+    /** Keep searching for indispensable starter wood; do not confuse local frontier exhaustion
+     * with proof that the world contains no reachable natural or structural logs. */
+    private boolean continueAdaptiveResourceSearch(Minecraft client) {
+        if (policy.intelligence() != NeoForgeGoalPolicy.Intelligence.ADAPTIVE_V1
+                || stage != Stage.FIND_STARTER_RESOURCE
+                || searchAttempts >= MAX_SEARCH_ATTEMPTS || client.player == null) return false;
+        frontierWatchdog.reset();
+        livenessFrontier = null;
+        resetNavigation();
+        stopMovement(client);
+        client.player.setYRot(client.player.getYRot() + 73.0F);
+        client.player.setYHeadRot(client.player.getYRot());
+        searchAttempts++;
+        stageTicks = 0;
+        explorationProgressAnchor = null;
+        explorationLastPosition = null;
+        explorationNoProgressTicks = 0;
+        explorationWaypoint = null;
+        safetyDiagnostics.add("resource-search:continue-after-frontier-exhaustion:attempt="
+                + searchAttempts);
+        inputActions.add("observe:resource-search-widened-recovery");
+        var sample = livenessSample(client);
+        if (sample != null) livenessWatchdog.restartAfterFrontier(sample);
+        return true;
     }
 
     private SafeFrontier findSafeFrontier(Minecraft client) {
