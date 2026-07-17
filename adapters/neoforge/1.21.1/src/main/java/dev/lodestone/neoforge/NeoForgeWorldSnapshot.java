@@ -57,6 +57,11 @@ final class NeoForgeWorldSnapshot {
         return new NeoForgeWorldSnapshot(level, policy, player);
     }
 
+    /** So callers building an {@code EdgeContext} don't need a separate raw level parameter. */
+    ClientLevel level() {
+        return level;
+    }
+
     /** Feather Falling level on any currently equipped item (boots in vanilla), 0 if none. */
     int featherFallingLevel() {
         return featherFallingLevel;

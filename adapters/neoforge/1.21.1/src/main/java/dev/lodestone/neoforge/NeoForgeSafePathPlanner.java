@@ -32,6 +32,25 @@ final class NeoForgeSafePathPlanner {
 
     private NeoForgeSafePathPlanner() { }
 
+    /** Whether reaching a path step requires mining or placing a block first. */
+    enum MutationKind { NONE, MINE, PLACE }
+
+    /**
+     * One step of a planned route. {@code mutationTargets} is a list rather than a single position
+     * because clearing a destination for a 2-tall hitbox can require breaking both the feet and
+     * head cells; it is empty whenever {@code kind} is {@link MutationKind#NONE}.
+     */
+    record PathStep(BlockPos position, MutationKind kind, List<BlockPos> mutationTargets) {
+        static PathStep move(BlockPos position) {
+            return new PathStep(position, MutationKind.NONE, List.of());
+        }
+    }
+
+    /** Everything a path-edge cost extension needs, without depending on A*'s own internal state. */
+    record EdgeContext(ClientLevel level, NeoForgeWorldSnapshot snapshot, LocalPlayer player,
+                        BlockPos from, BlockPos to, MutationKind mutationKind,
+                        List<BlockPos> mutationTargets, NeoForgeGoalPolicy policy) { }
+
     static List<BlockPos> find(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                NeoForgeGoalPolicy policy) {
         return find(level, player, start, target, policy, new ArrivalSpec(3.0, 5.0));
@@ -39,7 +58,17 @@ final class NeoForgeSafePathPlanner {
 
     static List<BlockPos> find(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
-        return findToAny(level, player, start, List.of(target), policy, arrival);
+        return toPositions(findToAnySteps(level, player, start, List.of(target), policy, arrival));
+    }
+
+    static List<PathStep> findSteps(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
+                                    NeoForgeGoalPolicy policy) {
+        return findSteps(level, player, start, target, policy, new ArrivalSpec(3.0, 5.0));
+    }
+
+    static List<PathStep> findSteps(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
+                                    NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        return findToAnySteps(level, player, start, List.of(target), policy, arrival);
     }
 
     /**
@@ -50,6 +79,12 @@ final class NeoForgeSafePathPlanner {
     static List<BlockPos> findToAny(ClientLevel level, LocalPlayer player, BlockPos start,
                                     Collection<BlockPos> targets,
                                     NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        return toPositions(findToAnySteps(level, player, start, targets, policy, arrival));
+    }
+
+    static List<PathStep> findToAnySteps(ClientLevel level, LocalPlayer player, BlockPos start,
+                                         Collection<BlockPos> targets,
+                                         NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
         return findToAny(level, player, start, targets, policy, arrival, false, MAX_VISITED);
     }
 
@@ -61,6 +96,12 @@ final class NeoForgeSafePathPlanner {
     static List<BlockPos> findFromWalkableOrigin(ClientLevel level, LocalPlayer player, BlockPos start,
                                                   Collection<BlockPos> targets,
                                                   NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        return toPositions(findFromWalkableOriginSteps(level, player, start, targets, policy, arrival));
+    }
+
+    static List<PathStep> findFromWalkableOriginSteps(ClientLevel level, LocalPlayer player, BlockPos start,
+                                                      Collection<BlockPos> targets,
+                                                      NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
         return findToAny(level, player, start, targets, policy, arrival, true, MAX_VISITED);
     }
 
@@ -72,11 +113,15 @@ final class NeoForgeSafePathPlanner {
      */
     static List<BlockPos> probe(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                 NeoForgeGoalPolicy policy, int maxVisited) {
-        return findToAny(level, player, start, List.of(target), policy, new ArrivalSpec(3.0, 5.0),
-                false, Math.min(maxVisited, MAX_VISITED));
+        return toPositions(findToAny(level, player, start, List.of(target), policy, new ArrivalSpec(3.0, 5.0),
+                false, Math.min(maxVisited, MAX_VISITED)));
     }
 
-    private static List<BlockPos> findToAny(ClientLevel level, LocalPlayer player, BlockPos start,
+    private static List<BlockPos> toPositions(List<PathStep> steps) {
+        return steps.stream().map(PathStep::position).toList();
+    }
+
+    private static List<PathStep> findToAny(ClientLevel level, LocalPlayer player, BlockPos start,
                                             Collection<BlockPos> targets,
                                             NeoForgeGoalPolicy policy, ArrivalSpec arrival,
                                             boolean allowWalkableOrigin, int maxVisited) {
@@ -97,6 +142,8 @@ final class NeoForgeSafePathPlanner {
         var queue = new PriorityQueue<Node>();
         var previous = new HashMap<Long, Long>();
         var cost = new HashMap<Long, Double>();
+        var incomingKind = new HashMap<Long, MutationKind>();
+        var incomingTargets = new HashMap<Long, List<BlockPos>>();
         queue.add(new Node(origin, 0.0, heuristic(origin, targets)));
         previous.put(origin.asLong(), Long.MIN_VALUE);
         cost.put(origin.asLong(), 0.0);
@@ -114,8 +161,8 @@ final class NeoForgeSafePathPlanner {
             for (var direction : Direction.Plane.HORIZONTAL) {
                 var horizontal = current.position().relative(direction);
                 for (var dy : DY_OFFSETS) {
-                    relaxNeighbor(current.position(), horizontal, dy, origin, policy, snapshot,
-                            targets, cost, previous, queue);
+                    relaxNeighbor(current.position(), horizontal, dy, origin, policy, snapshot, player,
+                            targets, cost, previous, incomingKind, incomingTargets, queue);
                 }
             }
             // Medium+ intelligence also considers the 4 diagonal directions (a client can move
@@ -131,8 +178,8 @@ final class NeoForgeSafePathPlanner {
                     if (!cornerClear(flankA, flankB, policy, snapshot)) continue;
                     var diagonal = flankA.relative(pair[1]);
                     for (var dy : DY_OFFSETS) {
-                        relaxNeighbor(current.position(), diagonal, dy, origin, policy, snapshot,
-                                targets, cost, previous, queue);
+                        relaxNeighbor(current.position(), diagonal, dy, origin, policy, snapshot, player,
+                                targets, cost, previous, incomingKind, incomingTargets, queue);
                     }
                 }
             }
@@ -146,27 +193,31 @@ final class NeoForgeSafePathPlanner {
             cursor = previous.getOrDefault(cursor, Long.MIN_VALUE);
         }
         Collections.reverse(path);
-        if (path.size() < 2) return List.copyOf(path);
-        var expanded = new ArrayList<BlockPos>(path.size() + 4);
-        expanded.add(path.getFirst());
+        if (path.size() < 2) return List.of(PathStep.move(path.getFirst()));
+        var expanded = new ArrayList<PathStep>(path.size() + 4);
+        expanded.add(PathStep.move(path.getFirst()));
         for (int index = 1; index < path.size(); index++) {
             var from = path.get(index - 1);
             var to = path.get(index);
             if (from.getY() != to.getY()
                     && (from.getX() != to.getX() || from.getZ() != to.getZ())) {
                 var transit = new BlockPos(to.getX(), from.getY(), to.getZ()).immutable();
-                if (!expanded.getLast().equals(transit)) expanded.add(transit);
+                if (!expanded.getLast().position().equals(transit)) expanded.add(PathStep.move(transit));
             }
-            if (!expanded.getLast().equals(to)) expanded.add(to);
+            if (!expanded.getLast().position().equals(to)) {
+                expanded.add(new PathStep(to, incomingKind.getOrDefault(to.asLong(), MutationKind.NONE),
+                        incomingTargets.getOrDefault(to.asLong(), List.of())));
+            }
         }
         return List.copyOf(expanded);
     }
 
     /** Shared A* relax step for both the cardinal and diagonal neighbor loops in {@link #findToAny}. */
     private static void relaxNeighbor(BlockPos current, BlockPos horizontal, int dy, BlockPos origin,
-                                       NeoForgeGoalPolicy policy, NeoForgeWorldSnapshot snapshot,
+                                       NeoForgeGoalPolicy policy, NeoForgeWorldSnapshot snapshot, LocalPlayer player,
                                        Collection<BlockPos> targets, HashMap<Long, Double> cost,
-                                       HashMap<Long, Long> previous, PriorityQueue<Node> queue) {
+                                       HashMap<Long, Long> previous, HashMap<Long, MutationKind> incomingKind,
+                                       HashMap<Long, List<BlockPos>> incomingTargets, PriorityQueue<Node> queue) {
         var candidate = new BlockPos(horizontal.getX(), current.getY() + dy, horizontal.getZ());
         if (!withinBounds(origin, candidate)
                 || policy.highSafety() && !snapshot.bufferedWalkable(candidate)
@@ -183,10 +234,14 @@ final class NeoForgeSafePathPlanner {
         // navigation. Adaptive intelligence keeps this rule even with balanced safety so
         // planning quality cannot trade health for a shorter route.
         if (current.getY() - candidate.getY() > 1) return;
-        var nextCost = cost.get(current.asLong()) + edgeCost(current, candidate, policy, snapshot);
+        var nextCost = cost.get(current.asLong()) + edgeCost(current, candidate, policy, snapshot, player);
         if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) return;
         cost.put(candidate.asLong(), nextCost);
         previous.put(candidate.asLong(), current.asLong());
+        // Plain movement only for now; mine/place candidate edges are a later, separate addition
+        // once the real cost formulas that make them meaningful exist (NeoForgePathCostExtensions).
+        incomingKind.put(candidate.asLong(), MutationKind.NONE);
+        incomingTargets.put(candidate.asLong(), List.of());
         queue.add(new Node(candidate.immutable(), nextCost, nextCost + heuristic(candidate, targets)));
     }
 
@@ -261,7 +316,7 @@ final class NeoForgeSafePathPlanner {
                             || Math.abs(candidate.getY() - origin.getY()) > 24
                             || !snapshot.bufferedWalkable(candidate)
                             || position.getY() - candidate.getY() > 1) continue;
-                    var nextCost = current.cost() + edgeCost(position, candidate, policy, snapshot);
+                    var nextCost = current.cost() + edgeCost(position, candidate, policy, snapshot, player);
                     if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) continue;
                     cost.put(candidate.asLong(), nextCost);
                     previous.put(candidate.asLong(), position.asLong());
@@ -272,12 +327,12 @@ final class NeoForgeSafePathPlanner {
             if (snapshot.bufferedWalkable(directBelow)
                     && directBelow.getY() < origin.getY()
                     && !rejected.contains(directBelow.asLong())
-                    && current.cost() + edgeCost(position, directBelow, policy, snapshot)
+                    && current.cost() + edgeCost(position, directBelow, policy, snapshot, player)
                     < cost.getOrDefault(directBelow.asLong(), Double.POSITIVE_INFINITY)) {
-                cost.put(directBelow.asLong(), current.cost() + edgeCost(position, directBelow, policy, snapshot));
+                cost.put(directBelow.asLong(), current.cost() + edgeCost(position, directBelow, policy, snapshot, player));
                 previous.put(directBelow.asLong(), position.asLong());
-                queue.add(new Node(directBelow.immutable(), current.cost() + edgeCost(position, directBelow, policy, snapshot),
-                        current.cost() + edgeCost(position, directBelow, policy, snapshot)));
+                queue.add(new Node(directBelow.immutable(), current.cost() + edgeCost(position, directBelow, policy, snapshot, player),
+                        current.cost() + edgeCost(position, directBelow, policy, snapshot, player)));
             }
         }
         if (best == null) return List.of();
@@ -443,10 +498,23 @@ final class NeoForgeSafePathPlanner {
         return raw * (1.0 - protectionValue * 0.04);
     }
 
-    /** Convenience overload layering real fall-damage cost on top of the pure geometry/tier cost. */
+    /** Convenience overload for the common case: a plain move, no mutation involved. */
     private static double edgeCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy,
-                                    NeoForgeWorldSnapshot snapshot) {
-        return edgeCost(from, to, policy) + fallDamageCost(from, to, policy, snapshot);
+                                    NeoForgeWorldSnapshot snapshot, LocalPlayer player) {
+        return edgeCost(from, to, policy, snapshot, player, MutationKind.NONE, List.of());
+    }
+
+    /**
+     * Full edge cost: pure geometry/tier cost, plus real fall-damage cost, plus whatever
+     * {@link NeoForgePathCostExtensions} adds for mob/lava proximity or a mine/place mutation.
+     * Filling in those extension formulas never needs another change here.
+     */
+    private static double edgeCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy,
+                                    NeoForgeWorldSnapshot snapshot, LocalPlayer player,
+                                    MutationKind kind, List<BlockPos> mutationTargets) {
+        var ctx = new EdgeContext(snapshot.level(), snapshot, player, from, to, kind, mutationTargets, policy);
+        return edgeCost(from, to, policy) + fallDamageCost(from, to, policy, snapshot)
+                + NeoForgePathCostExtensions.additionalCost(ctx);
     }
 
     private static double heuristic(BlockPos from, BlockPos target) {
