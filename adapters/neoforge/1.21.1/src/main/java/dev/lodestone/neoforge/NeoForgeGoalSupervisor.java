@@ -45,6 +45,8 @@ final class NeoForgeGoalSupervisor {
     private final Set<Long> latchedEscapeTargets = new HashSet<>();
     private boolean obstructionClearUsedInCluster;
     private int waterRecoveryTicks;
+    private final NeoForgeSuffocationReflex suffocationReflex = new NeoForgeSuffocationReflex();
+    private int suffocationEscapeTicks;
 
     NeoForgeGoalSupervisor(NeoForgeGoalPolicy policy, Collection<String> actions,
                            Collection<String> diagnostics) {
@@ -132,6 +134,7 @@ final class NeoForgeGoalSupervisor {
                 || client.level == null || client.player == null) return false;
         var player = client.player;
         if (player.isInLava() || player.isOnFire()) return escapeFireOrLava(client, player);
+        if (tickSuffocationEscape(client, player)) return true;
         var decision = NeoForgeSurvivalInvariant.decide(player.isDeadOrDying(), player.getHealth(),
                 false, player.isInWater(), player.getAirSupply(), player.getMaxAirSupply());
         if (decision != NeoForgeSurvivalInvariant.Action.WATER_RETREAT) {
@@ -173,6 +176,77 @@ final class NeoForgeGoalSupervisor {
             }
         }
         recoveryTicks = 0;
+        return true;
+    }
+
+    /**
+     * Debounced escape for a player embedded in solid terrain. Suffocation damage is
+     * independent of water/air state, so this must run even while no movement is expected
+     * (stationary mining was exactly the observed death). Escape uses only ordinary input:
+     * walk out to an adjacent free cell when one exists, otherwise mine the embedding
+     * block. Tool preservation deliberately loses here — a bare hand against stone is
+     * still better than dying in a wall.
+     */
+    private boolean tickSuffocationEscape(Minecraft client, LocalPlayer player) {
+        var action = suffocationReflex.tick(!player.isSpectator() && player.isInWall());
+        switch (action) {
+            case NONE -> {
+                return false;
+            }
+            case ESCAPED -> {
+                stopMovement(client);
+                client.options.keyAttack.setDown(false);
+                actions.add("safety:suffocation-escaped");
+                diagnostics.add("suffocation-escape:escaped-at:" + player.blockPosition());
+                suffocationEscapeTicks = 0;
+                navigationReplanEpoch++;
+                return true;
+            }
+            case BUDGET_EXPIRED -> {
+                stopMovement(client);
+                client.options.keyAttack.setDown(false);
+                actions.add("safety:suffocation-escape-budget-expired");
+                diagnostics.add("suffocation-escape:budget-expired-at:" + player.blockPosition());
+                suffocationEscapeTicks = 0;
+                navigationReplanEpoch++;
+                return true;
+            }
+            case ESCAPE -> {
+                // fall through to the active escape below
+            }
+        }
+        client.options.keyUse.setDown(false);
+        client.options.keySprint.setDown(false);
+        client.options.keyShift.setDown(false);
+        if (suffocationEscapeTicks == 0) {
+            actions.add("safety:escape-suffocation");
+            diagnostics.add("suffocation-escape:in-wall-at:" + player.blockPosition());
+        }
+        suffocationEscapeTicks++;
+        var exit = adjacentSafeEscape(client, player);
+        if (exit != null) {
+            client.options.keyAttack.setDown(false);
+            lookAt(player, exit);
+            setRecoveryMovement(client, exit.getY() > player.getY() + 0.35);
+            return true;
+        }
+        stopMovement(client);
+        var feet = player.blockPosition();
+        var head = feet.above();
+        var target = !client.level.getBlockState(head).getCollisionShape(client.level, head).isEmpty()
+                ? head : feet;
+        var state = client.level.getBlockState(target);
+        if (state.isAir() || !state.getFluidState().isEmpty()) {
+            client.options.keyAttack.setDown(false);
+            return true;
+        }
+        lookAt(player, Vec3.atCenterOf(target));
+        if (suffocationEscapeTicks % 10 == 1) KeyMapping.click(client.options.keyAttack.getKey());
+        client.options.keyAttack.setDown(true);
+        if (suffocationEscapeTicks % 20 == 1) {
+            diagnostics.add("suffocation-escape:mine:" + state.getBlock().getName().getString()
+                    + ":" + target);
+        }
         return true;
     }
 
