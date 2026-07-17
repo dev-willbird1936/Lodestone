@@ -74,6 +74,24 @@ final class NeoForgeGoalPolicyCapabilityTest {
         assertTrue(adaptiveBreakingDisabled.highSafety());
     }
 
+    @Test
+    void obstructionPlacementIsSymmetricToObstructionMiningGatedOnAdaptiveIntelligenceAndItsOwnAllowFlag() {
+        var adaptive = policy("adaptive-v1", "balanced");
+        assertTrue(adaptive.obstructionMiningEnabled());
+        assertTrue(adaptive.obstructionPlacementEnabled());
+
+        for (var intelligence : new String[] {"raw-v1", "guarded-v1"}) {
+            var lowerTier = policy(intelligence, "balanced");
+            assertFalse(lowerTier.obstructionMiningEnabled());
+            assertFalse(lowerTier.obstructionPlacementEnabled());
+        }
+
+        var placingDisabled = NeoForgeGoalPolicy.from(Map.of("intelligence", "adaptive-v1",
+                "safety", "balanced", "allowBlockPlacing", false));
+        assertTrue(placingDisabled.obstructionMiningEnabled());
+        assertFalse(placingDisabled.obstructionPlacementEnabled());
+    }
+
     private static NeoForgeGoalPolicy policy(String intelligence, String safety) {
         return NeoForgeGoalPolicy.from(Map.of("intelligence", intelligence, "safety", safety,
                 "observation", "loaded-chunks", "combatPolicy", "defensive"));

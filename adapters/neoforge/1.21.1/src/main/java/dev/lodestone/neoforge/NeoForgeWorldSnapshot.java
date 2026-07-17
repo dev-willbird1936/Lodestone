@@ -4,6 +4,7 @@ package dev.lodestone.neoforge;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.effect.MobEffects;
@@ -232,10 +233,18 @@ final class NeoForgeWorldSnapshot {
                 && breakExposureSafe(target) && hazardFreeRay(eye, aim);
     }
 
-    /** Placement target and support must remain inside the same conservative hazard buffer. */
+    /**
+     * Placement target and support must remain inside the same conservative hazard buffer, the
+     * target itself must actually be a collision-empty gap (not solid rock already there), and the
+     * support block must present a sturdy up-facing face to click against - the same real check
+     * {@code NeoForgeNetherGoal}'s prerequisite-staircase placement already relies on.
+     */
     boolean safePlacementSite(BlockPos target) {
-        if (!level.hasChunkAt(target) || !level.hasChunkAt(target.below())) return false;
-        if (hazard(target) || hazard(target.below())) return false;
+        var support = target.below();
+        if (!level.hasChunkAt(target) || !level.hasChunkAt(support)) return false;
+        if (hazard(target) || hazard(support)) return false;
+        if (!level.getBlockState(target).getCollisionShape(level, target).isEmpty()) return false;
+        if (!level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)) return false;
         for (var x = target.getX() - 1; x <= target.getX() + 1; x++) {
             for (var z = target.getZ() - 1; z <= target.getZ() + 1; z++) {
                 for (var y = target.getY() - 1; y <= target.getY() + 2; y++) {

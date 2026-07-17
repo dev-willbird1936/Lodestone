@@ -62,6 +62,11 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return intelligence == Intelligence.ADAPTIVE_V1 && allowBlockBreaking;
     }
 
+    /** Symmetric to {@link #obstructionMiningEnabled()}: adaptive may place a support block. */
+    boolean obstructionPlacementEnabled() {
+        return intelligence == Intelligence.ADAPTIVE_V1 && allowBlockPlacing;
+    }
+
     boolean prerequisitePlanningEnabled() {
         return intelligence != Intelligence.RAW_V1;
     }
