@@ -163,6 +163,7 @@ public final class NeoForgeClientController {
 
     @SubscribeEvent
     public static void onKey(InputEvent.Key event) {
+        BRIDGE.recordPhysicalKey(event.getKey(), event.getScanCode(), event.getAction());
         publish("minecraft.input.key.received", Map.of(
                 "key", event.getKey(), "scanCode", event.getScanCode(),
                 "action", event.getAction(), "modifiers", event.getModifiers()));
@@ -209,6 +210,8 @@ public final class NeoForgeClientController {
         private final Map<String, KeyMapping> ownedMappings = new LinkedHashMap<>();
         private final Set<String> directlyOwnedMappings = new LinkedHashSet<>();
         private final Set<String> leasedMappings = new LinkedHashSet<>();
+        /** Physical keys currently held by the player, kept separate from agent-owned leases. */
+        private final Set<String> physicallyHeldMappings = new LinkedHashSet<>();
         private Screen tokenScreen;
         private boolean tokenInitialized;
         private long screenSequence;
@@ -549,14 +552,25 @@ public final class NeoForgeClientController {
         }
 
         private Map<String, Object> releaseAllInput() {
-            var released = new ArrayList<>(ownedMappings.keySet());
-            for (var mapping : ownedMappings.values()) mapping.setDown(false);
+            var released = new ArrayList<String>();
+            var preserved = new ArrayList<String>();
+            for (var entry : ownedMappings.entrySet()) {
+                // Never synthesize a release over a real player-held key. The next physical
+                // release event will update the mapping normally after the agent lease ends.
+                if (physicallyHeldMappings.contains(entry.getKey())) {
+                    preserved.add(entry.getKey());
+                } else {
+                    entry.getValue().setDown(false);
+                    released.add(entry.getKey());
+                }
+            }
             ownedMappings.clear();
             directlyOwnedMappings.clear();
             leasedMappings.clear();
             movementLease.releaseAll();
             released.sort(String::compareTo);
-            return Map.of("released", released, "count", released.size(),
+            preserved.sort(String::compareTo);
+            return Map.of("released", released, "preservedPhysicalInput", preserved, "count", released.size(),
                     "leaseGeneration", movementLease.generation());
         }
 
@@ -569,9 +583,20 @@ public final class NeoForgeClientController {
                 leasedMappings.remove(name);
                 var mapping = ownedMappings.get(name);
                 if (mapping != null && !directlyOwnedMappings.contains(name)) {
-                    mapping.setDown(false);
+                    if (!physicallyHeldMappings.contains(name)) mapping.setDown(false);
                     ownedMappings.remove(name);
                 }
+            }
+        }
+
+        private void recordPhysicalKey(int key, int scanCode, int action) {
+            var pressed = action != 0;
+            var inputKey = InputConstants.getKey(key, scanCode);
+            var mappings = Minecraft.getInstance().options.keyMappings;
+            for (var mapping : mappings) {
+                if (!mapping.getKey().equals(inputKey)) continue;
+                if (pressed) physicallyHeldMappings.add(mapping.getName());
+                else physicallyHeldMappings.remove(mapping.getName());
             }
         }
 

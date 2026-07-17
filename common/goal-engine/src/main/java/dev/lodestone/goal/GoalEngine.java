@@ -29,11 +29,12 @@ public final class GoalEngine {
         var started = System.nanoTime();
         var planned = planner.plan(spec);
         var modelGeneratedPlan = false;
-        if (!planned.supported() && spec.intelligence() == GoalIntelligence.ADAPTIVE_V1
+        // Gated by planning depth (modelPlanSynthesisEnabled), not enum identity, so deliberate-v1
+        // keeps every adaptive-v1 capability including synthesizing a plan for an unsupported task.
+        if (!planned.supported() && spec.intelligence().modelPlanSynthesisEnabled()
                 && !modelProvider.fallback()) {
             try {
-                var generated = modelProvider.plan(new GoalPlanRequest(spec, GoalTaskCatalog.tasks().stream()
-                        .map(GoalTaskCatalog.TaskDefinition::toMap).toList()));
+                var generated = modelProvider.plan(new GoalPlanRequest(spec, builtInTaskMaps()));
                 if (generated.isPresent()) {
                     var validationFailure = validateGeneratedPlan(generated.get(), spec);
                     if (validationFailure == null) {
@@ -93,9 +94,12 @@ public final class GoalEngine {
         state.put("reasoningEffort", modelProvider.reasoningEffort());
         state.put("modelMeasuredP95Ms", modelProvider.measuredP95LatencyMs());
         state.put("planId", plan.id());
+        state.put("verifiedActionBoundary", true);
+        state.put("recoveryLayer", "bounded-typed-v1");
         var steps = new LinkedHashMap<String, Object>();
         state.put("steps", steps);
         var trace = new ArrayList<Map<String, Object>>();
+        var recoveryCoordinator = new GoalRecoveryCoordinator();
         var completedSteps = 0;
         var completedSegments = 0;
         var actionCount = 0;
@@ -105,6 +109,7 @@ public final class GoalEngine {
         try {
             for (var segment : plan.segments()) {
                 state.put("activeSegment", segment.id());
+                consultRealtimeLookaheadPlan(spec, state);
                 var pending = new ArrayList<>(segment.steps());
                 while (!pending.isEmpty()) {
                     if (completedSteps >= spec.maxSteps() || elapsedMs(started) >= spec.maxDurationMs()) {
@@ -142,9 +147,16 @@ public final class GoalEngine {
                     }
                     pending.remove(selected);
                     var stepStarted = System.nanoTime();
+                    var actionBoundary = GoalActionBoundary.check(spec, plan, selected);
+                    state.put("lastActionContract", Map.of("step", selected.id(),
+                            "kind", actionBoundary.kind().toString(), "allowed", actionBoundary.allowed(),
+                            "reason", actionBoundary.reason()));
                     ResultEnvelope result;
                     if (selected.kind() == GoalStepKind.ASSERT) {
                         result = ResultEnvelope.ok(selected.id(), Map.of("asserted", true));
+                    } else if (!actionBoundary.allowed()) {
+                        result = ResultEnvelope.error(selected.id(), ResultEnvelope.Status.ERROR,
+                                StructuredError.of("ACTION_CONTRACT_REJECTED", actionBoundary.reason(), false));
                     } else if (survivalCheatCapability(plan, spec, selected.capability())) {
                         result = ResultEnvelope.error(selected.id(), ResultEnvelope.Status.ERROR,
                                 StructuredError.of("SURVIVAL_POLICY_DENIED",
@@ -163,6 +175,26 @@ public final class GoalEngine {
                         actionCount++;
                     }
                     if (result.status() != ResultEnvelope.Status.OK) {
+                        var failureKind = GoalRecoveryCoordinator.classify(result);
+                        var recovery = recoveryCoordinator.decide(selected.id(), failureKind,
+                                !pending.isEmpty(), spec.mode() == GoalMode.REALTIME
+                                        && spec.intelligence().actionSegmentReplanningEnabled());
+                        state.put("lastRecovery", recoveryMap(selected, recovery));
+                        trace.add(Map.of("step", "recovery." + selected.id(),
+                                "kind", "bounded-recovery", "decision", recovery.decision().toString(),
+                                "failure", recovery.failure().toString(), "attempt", recovery.attempt(),
+                                "rationale", recovery.rationale()));
+                        if (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.RETRY_ONCE) {
+                            // ArrayList#addFirst is a Java 21 SequencedCollection method; this module
+                            // compiles with --release 17, so use the equivalent indexed insert instead.
+                            pending.add(0, selected);
+                            continue;
+                        }
+                        if ((recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.REPLAN_LOCAL
+                                || recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.TRY_DECLARED_ALTERNATIVE)
+                                && spec.mode() == GoalMode.REALTIME && !pending.isEmpty()) {
+                            continue;
+                        }
                         pendingFailure = failureFor(result);
                         trace.add(trace(selected, result, elapsedMs(stepStarted)));
                         break;
@@ -176,7 +208,22 @@ public final class GoalEngine {
                         break;
                     }
                     if (!assertionsPass(selected.assertions(), state)) {
-                        pendingFailure = new ExecutionFailure(GoalStatus.FAILED, "step postcondition failed: " + selected.id());
+                        var failureKind = GoalFailureKind.POSTCONDITION_FAILED;
+                        var recovery = recoveryCoordinator.decide(selected.id(), failureKind,
+                                !pending.isEmpty(), spec.mode() == GoalMode.REALTIME
+                                        && spec.intelligence().actionSegmentReplanningEnabled());
+                        state.put("lastRecovery", recoveryMap(selected, recovery));
+                        trace.add(Map.of("step", "recovery." + selected.id(),
+                                "kind", "bounded-recovery", "decision", recovery.decision().toString(),
+                                "failure", failureKind.toString(), "attempt", recovery.attempt(),
+                                "rationale", recovery.rationale()));
+                        if ((recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.REPLAN_LOCAL
+                                || recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.TRY_DECLARED_ALTERNATIVE)
+                                && spec.mode() == GoalMode.REALTIME && !pending.isEmpty()) {
+                            continue;
+                        }
+                        pendingFailure = new ExecutionFailure(GoalStatus.FAILED,
+                                "step postcondition failed: " + selected.id());
                         break;
                     }
                     var postObservation = postObservationCapability(spec, selected);
@@ -270,8 +317,49 @@ public final class GoalEngine {
         if (decision.candidateIndex() >= eligible.size()) {
             throw new IllegalArgumentException("realtime model selected an invalid candidate index");
         }
+        // Additional, per-decision observability field: the base "reasoningEffort" state entry set
+        // once in run() stays the provider's configured default. This records what a DELIBERATE_V1
+        // situational deliberation budget (or any other provider) actually used for this one step.
+        state.put("lastDecisionReasoningEffort",
+                decision.reasoningEffort() != null ? decision.reasoningEffort() : modelProvider.reasoningEffort());
         return new StepSelection(eligible.get(decision.candidateIndex()), decision.rationale(),
                 decision.candidateIndex());
+    }
+
+    /**
+     * Only the top deliberate tier also consults the model's bounded lookahead planner at realtime
+     * segment boundaries, even though the native/declared task is already supported, so its
+     * per-step choices are informed by a short-lived strategy rather than being purely greedy. This
+     * is deliberately cheap: it runs once per segment boundary (never per step), and a provider that
+     * cannot or does not synthesize a plan simply leaves no lookahead behind - the goal still runs.
+     */
+    private void consultRealtimeLookaheadPlan(GoalSpec spec, Map<String, Object> state) {
+        state.remove("lookaheadPlan");
+        if (spec.mode() != GoalMode.REALTIME || !spec.intelligence().realtimePlanConsultationEnabled()) {
+            return;
+        }
+        try {
+            modelProvider.plan(new GoalPlanRequest(spec, builtInTaskMaps()))
+                    .ifPresent(generated -> state.put("lookaheadPlan", summarizeLookaheadPlan(generated)));
+        } catch (RuntimeException ignored) {
+            // Best-effort strategy hint only; deliberate-v1 must still work with a plan()-less or
+            // failing provider, so a lookahead failure never fails the goal itself.
+        }
+    }
+
+    /** Key fields only - segment/step ids and a short description, never the verbose plan object. */
+    private static Map<String, Object> summarizeLookaheadPlan(GoalPlan generated) {
+        var segments = generated.segments().stream()
+                .map(segment -> (Map<String, Object>) Map.of(
+                        "segment", segment.id(),
+                        "description", segment.description(),
+                        "steps", segment.steps().stream().map(GoalStep::id).toList()))
+                .toList();
+        return Map.of("planId", generated.id(), "goal", generated.goal(), "segments", segments);
+    }
+
+    private static List<Map<String, Object>> builtInTaskMaps() {
+        return GoalTaskCatalog.tasks().stream().map(GoalTaskCatalog.TaskDefinition::toMap).toList();
     }
 
     private static String postObservationCapability(GoalSpec spec, GoalStep selected) {
@@ -319,6 +407,12 @@ public final class GoalEngine {
         decorated.putIfAbsent("intelligence", spec.intelligence().id());
         decorated.putIfAbsent("safety", spec.safety().id());
         return decorated;
+    }
+
+    private static Map<String, Object> recoveryMap(GoalStep step, GoalRecoveryCoordinator.Decision recovery) {
+        return Map.of("step", step.id(), "decision", recovery.decision().toString(),
+                "failure", recovery.failure().toString(), "attempt", recovery.attempt(),
+                "rationale", recovery.rationale());
     }
 
     private static boolean survivalCheatCapability(GoalPlan plan, GoalSpec spec, String capability) {
@@ -412,6 +506,9 @@ public final class GoalEngine {
                 if (capability != null && capability.length() > 256) {
                     return "model generated an oversized capability id";
                 }
+                var actionBoundary = GoalActionBoundary.check(spec, plan, step);
+                if (!actionBoundary.allowed()) return "model generated an action rejected by the verified boundary: "
+                        + actionBoundary.reason();
                 if (survivalScoped(plan, spec) && survivalUnsafeGeneratedCapability(plan, spec, capability)) {
                     return "model generated an unsafe command, text, or raw-input action for a survival-scoped goal";
                 }

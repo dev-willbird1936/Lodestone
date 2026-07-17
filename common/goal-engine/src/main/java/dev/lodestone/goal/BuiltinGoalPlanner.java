@@ -88,7 +88,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 new GoalAssertion("commandsUsed", "equals", false),
                 new GoalAssertion("directMutationUsed", "equals", false)};
         var workflowSteps = new ArrayList<GoalStep>();
-        if (spec.intelligence() == GoalIntelligence.ADAPTIVE_V1) {
+        if (spec.intelligence().checkpointedWorkflowEnabled()) {
             var gatherInput = new LinkedHashMap<>(workflowInput(spec));
             gatherInput.put("checkpoint", "resource-gather");
             workflowSteps.add(GoalStep.invoke("gather-resource", "minecraft.goal.survival.wooden-axe-tree", "1.0",
@@ -182,7 +182,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 new GoalAssertion("commandFeedbackSuppressed", "equals", true),
                 new GoalAssertion("directMutationUsed", "equals", false));
         var workflowSteps = new ArrayList<GoalStep>();
-        if (spec.intelligence() == GoalIntelligence.ADAPTIVE_V1) {
+        if (spec.intelligence().checkpointedWorkflowEnabled()) {
             var starterInput = new LinkedHashMap<>(workflowInput(spec));
             starterInput.put("checkpoint", "starter-tools");
             workflowSteps.add(GoalStep.invoke("gather-starter-tools", "minecraft.goal.survival.reach-nether", "1.0",
@@ -223,7 +223,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         }
         var assertions = new ArrayList<GoalAssertion>();
         if (spec.suppressInGameMessages()) {
-            var stepId = spec.intelligence() == GoalIntelligence.ADAPTIVE_V1 ? "enter-nether" : "nether-workflow";
+            var stepId = spec.intelligence().checkpointedWorkflowEnabled() ? "enter-nether" : "nether-workflow";
             assertions.add(new GoalAssertion("steps." + stepId + ".suppressInGameMessages", "equals", true));
             assertions.add(new GoalAssertion("steps." + stepId + ".inGameMessagesEmitted", "equals", 0));
         }
@@ -435,7 +435,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                     new GoalAssertion("commandsUsed", "equals", false),
                     new GoalAssertion("directMutationUsed", "equals", false));
             var workflowSteps = new ArrayList<GoalStep>();
-            if (spec.intelligence() == GoalIntelligence.ADAPTIVE_V1) {
+            if (spec.intelligence().checkpointedWorkflowEnabled()) {
                 var gatherInput = new LinkedHashMap<>(workflowInput(spec));
                 gatherInput.put("checkpoint", "resource-gather");
                 workflowSteps.add(GoalStep.invoke("gather-resource", "minecraft.goal.survival.wooden-axe-tree", "1.0",

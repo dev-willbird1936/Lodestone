@@ -1,6 +1,6 @@
 **/run-artifact-client/
 verification/neoforge-artifact-client/run/
-verification/evidence/*.json
+verification/evidence/**
 # Durable post-v1 ordered client-flow reports are explicit evidence, not disposable run output.
 !verification/evidence/fabric-26.2-flow-main-menu-20260714T210730Z.json
 !verification/evidence/fabric-26.2-flow-world-20260714T210800Z.json
@@ -17,3 +17,17 @@ libraries/
 *.jar.log
 verification/curseforge-profiles/*.zip
 verification/curseforge-profiles/*/overrides/
+
+# Local comparison repositories; never include third-party source in Lodestone uploads.
+other-repos/
+
+# Build/IDE/crash artifacts; never meaningful to commit.
+**/bin/
+**/.eclipse/
+.cache/
+.serena/
+hs_err_pid*.log
+replay_pid*.log
+
+# In-progress local demo capture sessions; curated output is published separately.
+demo-videos/

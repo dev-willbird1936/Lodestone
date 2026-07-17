@@ -2,7 +2,7 @@
   "manifestType": "minecraftModpack",
   "manifestVersion": 1,
   "name": "Lodestone Compatibility - Fabric 1.18.2",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Lodestone contributors",
   "projectVersion": "local-build",
   "minecraft": {

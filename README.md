@@ -21,7 +21,7 @@ adapter that reports what it can actually do for the running game.
 | Legacy Forge | Native Java 8 bridges for 1.7.10, 1.8.9, and 1.12.2, plus authenticated RCON fallback |
 | Server plugins | Paper 1.21.1, Spigot 1.21.1, Folia 1.21.4 |
 | Profiles | Thirteen local CurseForge-compatible profiles with byte-identical embedded host artifacts |
-| Security | Loopback token authentication, default-deny mutations, typed capability discovery, and honest unavailable/restricted states |
+| Security | Hardened against basic attacks |
 
 Read the full [compatibility matrix](docs/compatibility-matrix.md) before choosing an asset.
 
@@ -53,13 +53,8 @@ continues with the same verification kernel. See [Minecraft goals](docs/minecraf
 
 ## Safety model
 
-- The MCP gateway is loader-neutral and binds loopback only.
-- Authentication tokens are owner-only by default.
-- Mutation, chat, and server administration require explicit permissions.
-- Capability discovery distinguishes `available`, `unavailable`, `restricted`, and `degraded`.
-- Existing block entities are rejected before mutation until an NBT-safe restoration contract exists.
-
-See the [security model](docs/security-model.md) for threat boundaries and configuration details.
+Lodestone is hardened against basic attacks. See the [security model](docs/security-model.md) for
+threat boundaries and configuration details.
 
 ## Build from source
 

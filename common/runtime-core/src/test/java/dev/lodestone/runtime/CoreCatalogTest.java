@@ -19,6 +19,17 @@ final class CoreCatalogTest {
     }
 
     @Test
+    void netherCheckpointWorkflowHasExactlyThreeAdmissionsPerGoalWindow() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.reach-nether"))
+                .findFirst().orElseThrow();
+
+        assertEquals(3, capability.rateLimit().permits());
+        assertEquals(600_000, capability.rateLimit().windowMs());
+        assertEquals(3, capability.rateLimit().burst());
+    }
+
+    @Test
     void survivalTreeGoalRequiresAuthenticClientInputAndTerminalProof() {
         var capability = CoreCatalog.load().stream()
                 .filter(candidate -> candidate.id().equals("minecraft.goal.survival.wooden-axe-tree"))
@@ -336,6 +347,8 @@ final class CoreCatalogTest {
         assertEquals(click.outputSchema(), navigateProperties.get("click"));
         assertEquals(uiState.outputSchema(), navigateProperties.get("after"));
         assertTrue(SchemaValidator.validate(navigate.inputSchema(), Map.of("target", "singleplayer")).isEmpty());
+        assertTrue(SchemaValidator.validate(navigate.inputSchema(), Map.of("target", "world_tab")).isEmpty());
+        assertTrue(SchemaValidator.validate(navigate.inputSchema(), Map.of("target", "world_seed")).isEmpty());
         assertFalse(SchemaValidator.validate(navigate.inputSchema(), Map.of("target", "inventory")).isEmpty());
         assertTrue(SchemaValidator.validate(navigate.outputSchema(), Map.ofEntries(
                 Map.entry("target", "singleplayer"), Map.entry("label", "Singleplayer"),

@@ -57,15 +57,23 @@ def artifactClientBundledRoots = [
     rootProject.file('common').toPath().toAbsolutePath().normalize(),
     rootProject.file('gateway').toPath().toAbsolutePath().normalize()
 ]
+def artifactClientMode = providers.gradleProperty('artifactClientMode').orElse('mapped').get()
+def artifactClientTaskName = artifactClientMode == 'production' ? 'reobfJar' : 'jar'
 tasks.register('stageArtifactClient', Copy) {
-    // runArtifactClient uses ForgeGradle's mapped userdev runtime. Stage the
-    // mapped jar task output here; the reobfuscated jar is for installed Forge
-    // profiles and references production names unavailable in userdev.
-    dependsOn tasks.named('jar')
-    from tasks.named('jar').flatMap { it.archiveFile }
+    // Default remains mapped userdev for development. Production mode stages
+    // the exact reobfuscated output used by the installed Forge profile.
+    dependsOn artifactClientTaskName
+    from { artifactClientMode == 'production'
+            ? file("${buildDir}/reobfJar/output.jar")
+            : tasks.named('jar').get().archiveFile.get().asFile }
     into layout.projectDirectory.dir('run-artifact-client/mods')
     outputs.upToDateWhen { false }
-    doFirst { if (!tasks.named('jar').get().archiveFile.get().asFile.isFile()) { throw new GradleException("Mapped Lodestone artifact is required before runArtifactClient") } }
+    doFirst {
+        def expected = artifactClientMode == 'production'
+                ? file("${buildDir}/reobfJar/output.jar")
+                : tasks.named('jar').get().archiveFile.get().asFile
+        if (!expected.isFile()) { throw new GradleException("Forge artifact is required before runArtifactClient: ${expected}") }
+    }
 }
 tasks.named('jar') { outputs.upToDateWhen { false } }
 tasks.matching { it.name == 'runArtifactClient' }.configureEach {

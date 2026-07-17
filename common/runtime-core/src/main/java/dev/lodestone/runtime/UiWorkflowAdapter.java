@@ -160,6 +160,8 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
             case "cancel" -> "Cancel";
             case "done" -> "Done";
             case "create_new_world", "create_world" -> "Create New World";
+            case "world_tab" -> "World";
+            case "world_seed" -> "Seed for the World Generator";
             case "play_selected_world" -> "Play Selected World";
             case "join_server" -> "Join Server";
             case "direct_connect" -> "Direct Connection";

@@ -62,9 +62,11 @@ public final class GoalTaskCatalog {
             result.put("successContract", successContract);
             result.put("defaultMaxDurationMs", GoalSpec.defaultMaxDurationMs(description, id));
             result.put("executionModes", List.of("script", "realtime"));
-            result.put("intelligenceProfiles", List.of("raw-v1", "guarded-v1", "adaptive-v1"));
+            result.put("intelligenceProfiles", List.of("raw-v1", "guarded-v1", "adaptive-v1", "deliberate-v1"));
             result.put("safetyPolicies", List.of("low", "balanced", "high"));
             result.put("adaptiveRealtimeRequiresModel", true);
+            result.put("verifiedActionBoundary", "typed-survival-actions-with-postconditions");
+            result.put("recoveryLayer", "bounded-typed-v1");
             result.put("preconditionContract", preconditionContract());
             return Map.copyOf(result);
         }

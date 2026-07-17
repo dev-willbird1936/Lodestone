@@ -11,10 +11,39 @@ NeoForge 1.21.1 exposes three goal tools through the MCP gateway:
 - `minecraft_goal_benchmark`: run matched script/realtime cases and compare correctness before elapsed time.
 
 `minecraft_goal` defaults to `guarded-v1` with `balanced` safety. Select `raw-v1` explicitly for
-legacy action order, or `adaptive-v1` for highest prerequisite/replanning behavior. Adaptive
-realtime requires an available model provider. Adaptive script uses deterministic native planning
-for known tasks and can ask the same low-latency provider to synthesize a bounded declarative plan
-when no built-in task matches.
+legacy action order, `adaptive-v1` for prerequisite/replanning behavior, or `deliberate-v1` for the
+top tier described below. Adaptive and deliberate realtime both require an available model
+provider. Adaptive/deliberate script use deterministic native planning for known tasks and can ask
+the same low-latency provider to synthesize a bounded declarative plan when no built-in task
+matches.
+
+### `deliberate-v1`: the top intelligence tier
+
+`deliberate-v1` (aliases: `deliberate`, `deliberate-v1`, `perfect`, `xhigh`) sits above `adaptive-v1`
+and inherits every one of its guardrails, prerequisite planning, obstruction mining, and
+action-segment replanning behavior unchanged. It adds two things on top:
+
+- **Realtime lookahead-plan consultation.** At every realtime segment boundary (not per step),
+  `deliberate-v1` also asks the selected model provider for a bounded declarative plan even when
+  the native/declared task is already supported, and stashes a short summary of that plan (segment
+  and step ids plus each segment's description, never the full verbose plan object) into the
+  decision state the model sees for its next per-step choice. This gives per-step decisions a
+  short-lived strategy instead of being purely greedy. A provider that cannot or does not
+  synthesize a plan simply leaves no lookahead behind; the goal still runs normally.
+- **Situational deliberation budget.** A perfect player thinks longer when it is safe to stand
+  still and reacts fast when it is not. When `deliberate-v1` is running and the current decision is
+  not hazardous (no fire/lava/water contact, no forward drop risk, no mob actively targeting the
+  player, no active fall, health not critically low), the realtime executor's HTTP provider may
+  request the `xhigh` reasoning effort and a wider timeout for that one decision instead of its
+  fast configured default. The moment a hazard is observed, or for any other intelligence tier, the
+  fast configured effort/timeout is used so a threatened player is never slowed down. The base
+  `reasoningEffort` recorded once per run stays the provider's configured default; a separate
+  `lastDecisionReasoningEffort` value records what was actually requested for the most recent
+  realtime decision.
+
+**Backward compatibility note:** `highest` remains a legacy alias frozen at `adaptive-v1` for
+existing MCP callers — it does **not** resolve to `deliberate-v1`. Use `deliberate`,
+`deliberate-v1`, `perfect`, or `xhigh` explicitly to opt into the new top tier.
 
 Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`; automatic post-action observations are available under `steps.postObserve.<step-id>`. Custom invoke steps may also declare assertion-shaped `preconditions`; realtime excludes steps whose inputs or preconditions are not satisfied, while script mode fails closed before invoking an invalid step. The selected low-latency model receives those preconditions with each candidate. Arbitrary shell, JavaScript, or Python is never executed by a plan.
 
@@ -99,7 +128,7 @@ Realtime provider selection is environment-driven:
 3. choose the lowest configured measured p95 latency, preferring the pinned GPT-5.4 mini on ties;
 4. use deterministic plan order if no provider is available.
 
-Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, `LODESTONE_GOAL_MODEL_TIMEOUT_MS`, and `LODESTONE_GOAL_MODEL_REASONING_EFFORT` (`low` by default). Credentials are never included in reports. The provider returns JSON with `candidateIndex` and `rationale` for realtime decisions, or the bounded plan object for adaptive plan synthesis.
+Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, `LODESTONE_GOAL_MODEL_TIMEOUT_MS`, and `LODESTONE_GOAL_MODEL_REASONING_EFFORT` (`low`, `medium`, `high`, or `xhigh`; `low` by default). Credentials are never included in reports. The provider returns JSON with `candidateIndex` and `rationale` for realtime decisions, or the bounded plan object for adaptive/deliberate plan synthesis. This configured value is the provider's *base* effort; `deliberate-v1`'s situational deliberation budget (above) may still request a higher effort for an individual safe decision regardless of this setting.
 
 ## KeepFocus profile
 

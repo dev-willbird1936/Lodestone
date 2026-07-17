@@ -7,12 +7,217 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GoalEngineTest {
+    @Test
+    void deliberateIntelligenceParsesNewAliasesAndKeepsHighestFrozenAtAdaptive() {
+        assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("deliberate"));
+        assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("deliberate-v1"));
+        assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("perfect"));
+        assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("xhigh"));
+        // "highest" is a legacy alias frozen at adaptive-v1 for backward compatibility.
+        assertEquals(GoalIntelligence.ADAPTIVE_V1, GoalIntelligence.parse("highest"));
+    }
+
+    @Test
+    void deliberateIntelligenceInheritsEveryAdaptiveGateAndAddsRealtimePlanConsultation() {
+        assertTrue(GoalIntelligence.DELIBERATE_V1.guardrailsEnabled());
+        assertTrue(GoalIntelligence.DELIBERATE_V1.modelReplanningEnabled());
+        assertTrue(GoalIntelligence.DELIBERATE_V1.obstructionMiningEnabled());
+        assertTrue(GoalIntelligence.DELIBERATE_V1.actionSegmentReplanningEnabled());
+        assertTrue(GoalIntelligence.DELIBERATE_V1.modelPlanSynthesisEnabled());
+        assertTrue(GoalIntelligence.DELIBERATE_V1.checkpointedWorkflowEnabled());
+        assertTrue(GoalIntelligence.DELIBERATE_V1.requiresModel(GoalMode.REALTIME));
+
+        assertTrue(GoalIntelligence.DELIBERATE_V1.realtimePlanConsultationEnabled());
+        assertFalse(GoalIntelligence.ADAPTIVE_V1.realtimePlanConsultationEnabled());
+        assertFalse(GoalIntelligence.GUARDED_V1.realtimePlanConsultationEnabled());
+        assertFalse(GoalIntelligence.RAW_V1.realtimePlanConsultationEnabled());
+    }
+
+    @Test
+    void reachNetherPhasedCheckpointWorkflowMatchesForAdaptiveAndDeliberateIntelligence() {
+        for (var intelligence : List.of(GoalIntelligence.ADAPTIVE_V1, GoalIntelligence.DELIBERATE_V1)) {
+            var spec = new GoalSpec("load into a fresh survival world and get to the Nether",
+                    GoalMode.REALTIME, "survival.reach-nether", 256, 480_000, false, null, true,
+                    intelligence, GoalSafety.HIGH);
+            var plan = new BuiltinGoalPlanner().plan(spec).plan();
+            var workflowSteps = plan.segments().stream()
+                    .filter(segment -> "nether-gameplay".equals(segment.id()))
+                    .flatMap(segment -> segment.steps().stream())
+                    .toList();
+
+            assertEquals(List.of("gather-starter-tools", "craft-portal-tools", "enter-nether"),
+                    workflowSteps.stream().map(GoalStep::id).toList(),
+                    "checkpointed step shape mismatch for " + intelligence);
+            assertEquals("starter-tools", workflowSteps.get(0).input().get("checkpoint"));
+            assertEquals("portal-tools", workflowSteps.get(1).input().get("checkpoint"));
+            assertEquals("complete", workflowSteps.get(2).input().get("checkpoint"));
+            assertTrue(workflowSteps.get(1).preconditions().stream().anyMatch(assertion ->
+                    assertion.path().equals("steps.gather-starter-tools.checkpointComplete")
+                            && Boolean.TRUE.equals(assertion.expected())),
+                    "missing continuation precondition for " + intelligence);
+            assertTrue(workflowSteps.get(2).preconditions().stream().anyMatch(assertion ->
+                    assertion.path().equals("steps.craft-portal-tools.checkpointComplete")
+                            && Boolean.TRUE.equals(assertion.expected())),
+                    "missing continuation precondition for " + intelligence);
+        }
+
+        // Contrast: a tier below the checkpoint threshold still gets one monolithic step, proving
+        // the shape really is threshold-gated rather than always phased.
+        var guardedSpec = new GoalSpec("load into a fresh survival world and get to the Nether",
+                GoalMode.REALTIME, "survival.reach-nether", 256, 480_000, false, null, true,
+                GoalIntelligence.GUARDED_V1, GoalSafety.HIGH);
+        var guardedSteps = new BuiltinGoalPlanner().plan(guardedSpec).plan().segments().stream()
+                .filter(segment -> "nether-gameplay".equals(segment.id()))
+                .flatMap(segment -> segment.steps().stream())
+                .toList();
+        assertEquals(List.of("nether-workflow"), guardedSteps.stream().map(GoalStep::id).toList());
+    }
+
+    @Test
+    void deliberateRealtimeConsultsLookaheadPlanAtEverySegmentBoundaryOnly() {
+        var planCalls = new AtomicInteger();
+        GoalModelProvider fakeProvider = new GoalModelProvider() {
+            @Override
+            public Optional<GoalDecision> choose(GoalDecisionRequest request) {
+                return Optional.of(new GoalDecision(0, "test"));
+            }
+
+            @Override
+            public Optional<GoalPlan> plan(GoalPlanRequest request) {
+                planCalls.incrementAndGet();
+                return Optional.of(new GoalPlan("lookahead-plan", "lookahead", List.of(
+                        new GoalSegment("scout", "scout ahead", List.of(
+                                GoalStep.observe("scout-probe", "test.observe", Map.of())), List.of())),
+                        Map.of("completionPredicateReady", true)));
+            }
+        };
+        var plan = new GoalPlan("two-segments", "test", List.of(
+                new GoalSegment("first", "first", List.of(
+                        GoalStep.invoke("first-action", "test.action", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.first-action.accepted", "equals", true))), List.of()),
+                new GoalSegment("second", "second", List.of(
+                        GoalStep.invoke("second-action", "test.action", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.second-action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), fakeProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 20, 10_000, false, plan, false,
+                        GoalIntelligence.DELIBERATE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals(2, planCalls.get());
+        @SuppressWarnings("unchecked")
+        var lookaheadPlan = (Map<String, Object>) report.state().get("lookaheadPlan");
+        assertEquals("lookahead-plan", lookaheadPlan.get("planId"));
+        var firstSegment = (Map<?, ?>) ((List<?>) lookaheadPlan.get("segments")).get(0);
+        assertEquals("scout", firstSegment.get("segment"));
+        assertEquals(List.of("scout-probe"), firstSegment.get("steps"));
+    }
+
+    @Test
+    void onlyDeliberateIntelligenceConsultsRealtimeLookaheadPlan() {
+        var planCalls = new AtomicInteger();
+        GoalModelProvider fakeProvider = new GoalModelProvider() {
+            @Override
+            public Optional<GoalDecision> choose(GoalDecisionRequest request) {
+                return Optional.of(new GoalDecision(0, "test"));
+            }
+
+            @Override
+            public Optional<GoalPlan> plan(GoalPlanRequest request) {
+                planCalls.incrementAndGet();
+                return Optional.of(new GoalPlan("lookahead-plan", "lookahead", List.of(
+                        new GoalSegment("scout", "scout ahead", List.of(
+                                GoalStep.observe("scout-probe", "test.observe", Map.of())), List.of())),
+                        Map.of("completionPredicateReady", true)));
+            }
+        };
+        var plan = new GoalPlan("adaptive-realtime", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), fakeProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, plan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals(0, planCalls.get());
+        assertFalse(report.state().containsKey("lookaheadPlan"));
+    }
+
+    @Test
+    void deliberateRealtimeToleratesAPlanLessOrFailingProviderWithoutFailingTheGoal() {
+        GoalModelProvider planLessProvider = request -> Optional.of(new GoalDecision(0, "test"));
+        GoalModelProvider failingPlanProvider = new GoalModelProvider() {
+            @Override
+            public Optional<GoalDecision> choose(GoalDecisionRequest request) {
+                return Optional.of(new GoalDecision(0, "test"));
+            }
+
+            @Override
+            public Optional<GoalPlan> plan(GoalPlanRequest request) {
+                throw new IllegalStateException("lookahead synthesis unavailable");
+            }
+        };
+        var plan = new GoalPlan("deliberate-no-lookahead", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        for (var provider : List.of(planLessProvider, failingPlanProvider)) {
+            var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), provider)
+                    .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, plan, false,
+                            GoalIntelligence.DELIBERATE_V1, GoalSafety.BALANCED), invoker);
+
+            assertEquals(GoalStatus.SUCCEEDED, report.status());
+            assertFalse(report.state().containsKey("lookaheadPlan"));
+        }
+    }
+
+    @Test
+    void realtimeDecisionRecordsPerStepReasoningEffortSeparatelyFromBaseProviderEffort() {
+        GoalModelProvider fakeProvider = new GoalModelProvider() {
+            @Override
+            public String reasoningEffort() {
+                return "medium";
+            }
+
+            @Override
+            public Optional<GoalDecision> choose(GoalDecisionRequest request) {
+                return Optional.of(new GoalDecision(0, "test", "xhigh"));
+            }
+        };
+        var plan = new GoalPlan("effort", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), fakeProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, plan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals("medium", report.state().get("reasoningEffort"));
+        assertEquals("xhigh", report.state().get("lastDecisionReasoningEffort"));
+    }
+
     @Test
     void intelligenceAndSafetyAreIndependentAndReachNativeWorkflow() {
         var spec = new GoalSpec("get a wooden axe and mine an entire tree", GoalMode.REALTIME,

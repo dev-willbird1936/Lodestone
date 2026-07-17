@@ -8,7 +8,7 @@ param(
     [ValidateSet('gpt-5.4-mini')]
     [string] $ModelId = 'gpt-5.4-mini',
     [int] $ModelPort = 37842,
-    [ValidateSet('raw-v1', 'guarded-v1', 'adaptive-v1')]
+    [ValidateSet('raw-v1', 'guarded-v1', 'adaptive-v1', 'deliberate-v1')]
     [string] $Intelligence = 'adaptive-v1',
     [ValidateSet('low', 'balanced', 'high')]
     [string] $Safety = 'balanced',
@@ -247,18 +247,22 @@ try {
     $env:Path = "$JavaHome\bin;$env:Path"
     $env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
     $permissions = 'observe,communicate,control-player,modify-world,administer-server,capture-screen'
-    $command = "gradlew.bat --no-daemon --console=plain -PincludeFabric262=false -Dlodestone.port=$Port -Dlodestone.token=$token -Dlodestone.permissions=$permissions :hosts:neoforge:mc1_21_1:runKeepFocusClient"
+    # Bare "gradlew.bat" relies on cmd.exe searching the current directory, which some machines
+    # disable (NoDefaultCurrentDirectoryInExePath-style hardening); ".\" makes the path explicit.
+    $command = ".\gradlew.bat --no-daemon --console=plain -PincludeFabric262=false -Dlodestone.port=$Port -Dlodestone.token=$token -Dlodestone.permissions=$permissions :hosts:neoforge:mc1_21_1:runKeepFocusClient"
     $report.launchCommand = $command -replace [regex]::Escape($token), '<redacted>'
     $launcher = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', $command -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog -PassThru
     $report.launcherPid = [int] $launcher.Id
 
-    for ($attempt = 0; $attempt -lt 300; $attempt++) {
+    # A cold NeoForge neoFormRecompile (uncached vanilla-MC recompile) can take well over five
+    # minutes on a resource-constrained machine; 1500s (25 min) tolerates a cold build.
+    for ($attempt = 0; $attempt -lt 1500; $attempt++) {
         $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
         if ($listener) { $clientJavaPid = [int] $listener.OwningProcess; break }
         if ($launcher.HasExited) { throw "client launcher exited before MCP opened: $($launcher.ExitCode)" }
         Start-Sleep -Seconds 1
     }
-    if (-not $clientJavaPid) { throw "MCP endpoint did not open on port $Port within five minutes" }
+    if (-not $clientJavaPid) { throw "MCP endpoint did not open on port $Port within 25 minutes" }
     $report.clientJavaPid = $clientJavaPid
 
     $windowTitle = ''

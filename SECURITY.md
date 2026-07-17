@@ -1,6 +1,6 @@
 # Security policy
 
-Lodestone defaults to loopback-only communication and default-deny mutation capabilities.
+Lodestone is hardened against basic attacks.
 
 Report vulnerabilities privately through the repository's
 [GitHub Security Advisory form](https://github.com/dev-willbird1936/Lodestone/security/advisories/new).
