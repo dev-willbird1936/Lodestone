@@ -53,8 +53,9 @@ New-Item -ItemType Directory -Force -Path $runDir | Out-Null
 $runDir = (Resolve-Path $runDir).Path
 
 function New-HttpClient {
+    param([int] $TimeoutBaseMs = $GoalMaxDurationMs)
     $client = [System.Net.Http.HttpClient]::new()
-    $client.Timeout = [TimeSpan]::FromMilliseconds($GoalMaxDurationMs + 30000)
+    $client.Timeout = [TimeSpan]::FromMilliseconds($TimeoutBaseMs + 30000)
     return $client
 }
 
@@ -89,6 +90,169 @@ function Convert-ToolResponse {
     [pscustomobject]@{ status = if ($payload.status) { [string] $payload.status } else { 'ok' }; error = $null; output = $payload }
 }
 
+# A brand-new isolated run directory has no options.txt, so a fresh client shows a genuine
+# first-launch AccessibilityOnboardingScreen instead of going straight to the title screen - the
+# title-screen wait below only recognizes TitleScreen and would otherwise time out waiting for a
+# screen that never arrives. Seeding the same options.txt the proven interactive keepfocus-client
+# run directory already carries (onboardAccessibility:false, tutorialStep:none, default
+# keybindings that this adapter's simulated input depends on) skips that screen entirely. Written
+# fresh before every launch so a run directory can never drift from this known-good state.
+$knownGoodOptionsTxt = @'
+version:3955
+ao:true
+biomeBlendRadius:2
+enableVsync:true
+entityDistanceScaling:1.0
+entityShadows:true
+forceUnicodeFont:false
+japaneseGlyphVariants:false
+fov:0.0
+fovEffectScale:1.0
+darknessEffectScale:1.0
+glintSpeed:0.5
+glintStrength:0.75
+prioritizeChunkUpdates:0
+fullscreen:false
+gamma:0.5
+graphicsMode:1
+guiScale:0
+maxFps:120
+mipmapLevels:4
+narrator:0
+particles:0
+reducedDebugInfo:false
+renderClouds:"true"
+renderDistance:12
+simulationDistance:12
+screenEffectScale:1.0
+soundDevice:""
+autoJump:false
+operatorItemsTab:false
+autoSuggestions:true
+chatColors:true
+chatLinks:true
+chatLinksPrompt:true
+discrete_mouse_scroll:false
+invertYMouse:false
+realmsNotifications:true
+showSubtitles:false
+directionalAudio:false
+touchscreen:false
+bobView:true
+toggleCrouch:false
+toggleSprint:false
+darkMojangStudiosBackground:false
+hideLightningFlashes:false
+hideSplashTexts:false
+mouseSensitivity:0.5
+damageTiltStrength:1.0
+highContrast:false
+narratorHotkey:true
+resourcePacks:[]
+incompatibleResourcePacks:[]
+lastServer:
+lang:en_us
+chatVisibility:0
+chatOpacity:1.0
+chatLineSpacing:0.0
+textBackgroundOpacity:0.5
+backgroundForChatOnly:true
+hideServerAddress:false
+advancedItemTooltips:false
+pauseOnLostFocus:false
+overrideWidth:0
+overrideHeight:0
+chatHeightFocused:1.0
+chatDelay:0.0
+chatHeightUnfocused:0.4375
+chatScale:1.0
+chatWidth:1.0
+notificationDisplayTime:1.0
+useNativeTransport:true
+mainHand:"right"
+attackIndicator:1
+tutorialStep:none
+mouseWheelSensitivity:1.0
+rawMouseInput:true
+glDebugVerbosity:1
+skipMultiplayerWarning:false
+hideMatchedNames:true
+joinedFirstServer:false
+hideBundleTutorial:false
+syncChunkWrites:true
+showAutosaveIndicator:true
+allowServerListing:true
+onlyShowSecureChat:false
+panoramaScrollSpeed:1.0
+telemetryOptInExtra:false
+onboardAccessibility:false
+menuBackgroundBlurriness:5
+key_key.attack:key.mouse.left
+key_key.use:key.mouse.right
+key_key.forward:key.keyboard.w
+key_key.left:key.keyboard.a
+key_key.back:key.keyboard.s
+key_key.right:key.keyboard.d
+key_key.jump:key.keyboard.space
+key_key.sneak:key.keyboard.left.shift
+key_key.sprint:key.keyboard.left.control
+key_key.drop:key.keyboard.q
+key_key.inventory:key.keyboard.e
+key_key.chat:key.keyboard.t
+key_key.playerlist:key.keyboard.tab
+key_key.pickItem:key.mouse.middle
+key_key.command:key.keyboard.slash
+key_key.socialInteractions:key.keyboard.p
+key_key.screenshot:key.keyboard.f2
+key_key.togglePerspective:key.keyboard.f5
+key_key.smoothCamera:key.keyboard.unknown
+key_key.fullscreen:key.keyboard.f11
+key_key.spectatorOutlines:key.keyboard.unknown
+key_key.swapOffhand:key.keyboard.f
+key_key.saveToolbarActivator:key.keyboard.c
+key_key.loadToolbarActivator:key.keyboard.x
+key_key.advancements:key.keyboard.l
+key_key.hotbar.1:key.keyboard.1
+key_key.hotbar.2:key.keyboard.2
+key_key.hotbar.3:key.keyboard.3
+key_key.hotbar.4:key.keyboard.4
+key_key.hotbar.5:key.keyboard.5
+key_key.hotbar.6:key.keyboard.6
+key_key.hotbar.7:key.keyboard.7
+key_key.hotbar.8:key.keyboard.8
+key_key.hotbar.9:key.keyboard.9
+soundCategory_master:0.0
+soundCategory_music:1.0
+soundCategory_record:1.0
+soundCategory_weather:1.0
+soundCategory_block:1.0
+soundCategory_hostile:1.0
+soundCategory_neutral:1.0
+soundCategory_player:1.0
+soundCategory_ambient:1.0
+soundCategory_voice:1.0
+modelPart_cape:true
+modelPart_jacket:true
+modelPart_left_sleeve:true
+modelPart_right_sleeve:true
+modelPart_left_pants_leg:true
+modelPart_right_pants_leg:true
+modelPart_hat:true
+'@
+
+function Set-KnownGoodOptions {
+    param([string] $TargetRunDirectory)
+    $hostProjectDir = Join-Path $repoRoot 'hosts\neoforge\1.21.1'
+    $resolvedRunDir = Join-Path $hostProjectDir $TargetRunDirectory
+    New-Item -ItemType Directory -Force -Path $resolvedRunDir | Out-Null
+    # Windows PowerShell 5.1's -Encoding UTF8 always emits a BOM, which the proven
+    # keepfocus-client options.txt does not have; a leading BOM corrupts the first
+    # "version:<n>" line and Minecraft silently falls back to defaults (onboarding screen and
+    # all), so this writes plain BOM-less UTF-8 directly instead of using Set-Content -Encoding.
+    $noBomUtf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText((Join-Path $resolvedRunDir 'options.txt'), $knownGoodOptionsTxt, $noBomUtf8)
+}
+
 function Stop-BenchmarkClient {
     param($Launcher)
     if (-not $Launcher) { return }
@@ -102,7 +266,8 @@ function Stop-BenchmarkClient {
 # goal once, tear the client down. Returns a result record; never throws for a goal-level
 # failure (that IS the recorded result) but does throw for infra faults so the caller can retry.
 function Invoke-SeedRun {
-    param([string] $Seed, [string] $StdoutLog, [string] $StderrLog)
+    param([string] $Seed, [string] $StdoutLog, [string] $StderrLog, [int] $MaxDurationMsOverride = 0)
+    $effectiveGoalMaxDurationMs = if ($MaxDurationMsOverride -gt 0) { $MaxDurationMsOverride } else { $GoalMaxDurationMs }
 
     $javaExecutable = Join-Path $JavaHome 'bin\java.exe'
     if (-not (Test-Path -LiteralPath $javaExecutable)) { throw "INFRA:java-missing: Java 21 executable not found: $javaExecutable" }
@@ -110,12 +275,13 @@ function Invoke-SeedRun {
         throw "INFRA:port-occupied: port $Port already has a listener; refusing to attach to a non-harness process"
     }
 
+    Set-KnownGoodOptions -TargetRunDirectory $RunDirectory
     $env:JAVA_HOME = $JavaHome
     $env:Path = "$JavaHome\bin;$env:Path"
     $env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
     $token = [guid]::NewGuid().ToString('N')
     $permissions = 'observe,communicate,control-player,modify-world,administer-server,capture-screen'
-    $command = ".\gradlew.bat --no-daemon --console=plain -PincludeFabric262=false -Dlodestone.port=$Port -Dlodestone.token=$token -Dlodestone.permissions=$permissions -Dlodestone.runDirectory=$RunDirectory `:hosts:neoforge:mc1_21_1:runKeepFocusClient"
+    $command = ".\gradlew.bat --no-daemon --console=plain -PincludeFabric262=false -Dlodestone.port=$Port -Dlodestone.token=$token -Dlodestone.permissions=$permissions -Dlodestone.runDirectory=$RunDirectory :hosts:neoforge:mc1_21_1:runKeepFocusClient"
     $launcher = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', $command -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput $StdoutLog -RedirectStandardError $StderrLog -PassThru
 
     $result = [ordered]@{
@@ -132,7 +298,7 @@ function Invoke-SeedRun {
         }
         if (-not $clientJavaPid) { throw "INFRA:mcp-endpoint-timeout: MCP endpoint did not open on port $Port within 25 minutes" }
 
-        $http = New-HttpClient
+        $http = New-HttpClient -TimeoutBaseMs $effectiveGoalMaxDurationMs
         $sessionId = $null
         $uri = "http://127.0.0.1:$Port/mcp"
         try {
@@ -157,14 +323,20 @@ function Invoke-SeedRun {
                 throw "INFRA:title-screen-timeout: fresh title screen not reached: inWorld=$($initialUi.inWorld), screen=$($initialUi.screenClass)"
             }
 
+            $goalArguments = @{
+                goal = $Goal; mode = $Mode; taskId = $TaskId; maxSteps = 400
+                maxDurationMs = $effectiveGoalMaxDurationMs; dryRun = $false; suppressInGameMessages = $true
+                intelligence = $Intelligence; safety = $Safety
+            }
+            # Omitted (not sent as null/empty) when priming: a genuinely absent worldSeed argument
+            # keeps GoalSpec.worldSeed() null, so the plan takes its normal random-fresh-world path
+            # instead of trying to type an empty string into the seed field.
+            if (-not [string]::IsNullOrWhiteSpace($Seed)) { $goalArguments.worldSeed = $Seed }
+
             $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
             $goalRpc = Invoke-Rpc $http $uri ([ref] $sessionId) $token 'tools/call' @{
                 name = 'minecraft_goal'
-                arguments = @{
-                    goal = $Goal; mode = $Mode; taskId = $TaskId; maxSteps = 400
-                    maxDurationMs = $GoalMaxDurationMs; dryRun = $false; suppressInGameMessages = $true
-                    intelligence = $Intelligence; safety = $Safety; worldSeed = $Seed
-                }
+                arguments = $goalArguments
             }
             $stopwatch.Stop()
             $goalResponse = Convert-ToolResponse $goalRpc
@@ -206,18 +378,39 @@ function Invoke-SeedRun {
     return [pscustomobject] $result
 }
 
+# The wooden-axe-mine-tree plan's "open singleplayer, then click through to create a world"
+# navigation only works correctly when the save list is already non-empty (verified live: an
+# empty list makes Singleplayer auto-advance straight past the list to the world-configuration
+# screen, so the very next click - meant to open that screen - instead fires its confirm button
+# immediately, before a requested worldSeed is ever entered; see task "Fix create_new_world/
+# create_world label collision for fresh installs"). A brand-new isolated run directory always
+# starts with an empty list, so prime it once with a throwaway, unseeded world before running any
+# seeded attempt against it - cheap relative to a full benchmark, and avoids touching the shared
+# navigation/plan code from this harness.
+function Test-HasExistingSave {
+    param([string] $TargetRunDirectory)
+    $savesDir = Join-Path (Join-Path $repoRoot 'hosts\neoforge\1.21.1') (Join-Path $TargetRunDirectory 'saves')
+    return (Test-Path -LiteralPath $savesDir) -and @(Get-ChildItem -LiteralPath $savesDir -Directory -ErrorAction SilentlyContinue).Count -gt 0
+}
+
+if (-not (Test-HasExistingSave -TargetRunDirectory $RunDirectory)) {
+    Write-Host "Priming $RunDirectory with one throwaway unseeded world (save list is empty) ..."
+    $priming = Invoke-SeedRun -Seed $null -StdoutLog (Join-Path $runDir 'priming.stdout.log') -StderrLog (Join-Path $runDir 'priming.stderr.log') -MaxDurationMsOverride 45000
+    Write-Host "  priming run -> $($priming.status) cause=$($priming.failureCause) (discarded, not scored)"
+    (@{ purpose = 'prime-save-list'; result = $priming } | ConvertTo-Json -Depth 32) |
+        Set-Content -LiteralPath (Join-Path $runDir 'priming.json') -Encoding UTF8
+}
+
 $results = @()
 $seedIndex = 0
 foreach ($seed in $Seeds) {
     $seedIndex++
     Write-Host "[$seedIndex/$($Seeds.Count)] seed=$seed ..."
-    $stdoutLog = Join-Path $runDir "seed-$seed.stdout.log"
-    $stderrLog = Join-Path $runDir "seed-$seed.stderr.log"
 
-    $attempt = Invoke-SeedRun -Seed $seed -StdoutLog $stdoutLog -StderrLog $stderrLog
+    $attempt = Invoke-SeedRun -Seed $seed -StdoutLog (Join-Path $runDir "seed-$seed.attempt1.stdout.log") -StderrLog (Join-Path $runDir "seed-$seed.attempt1.stderr.log")
     if ($attempt.status -eq 'INFRA_FAILURE') {
         Write-Host "  infra failure ($($attempt.infra)) - retrying once"
-        $attempt = Invoke-SeedRun -Seed $seed -StdoutLog $stdoutLog -StderrLog $stderrLog
+        $attempt = Invoke-SeedRun -Seed $seed -StdoutLog (Join-Path $runDir "seed-$seed.attempt2.stdout.log") -StderrLog (Join-Path $runDir "seed-$seed.attempt2.stderr.log")
     }
 
     Write-Host "  -> $($attempt.status) cause=$($attempt.failureCause) elapsedMs=$($attempt.elapsedMs)"
