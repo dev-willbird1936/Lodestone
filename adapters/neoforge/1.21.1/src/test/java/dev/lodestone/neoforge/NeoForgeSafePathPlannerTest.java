@@ -49,6 +49,35 @@ final class NeoForgeSafePathPlannerTest {
         assertEquals(14.5, NeoForgeSafePathPlanner.edgeCost(origin, below, policy("adaptive-v1", "low")), 1e-9);
     }
 
+    @Test
+    void fallDamageIsZeroWithinTheSafeFallDistanceOrWhenNotDescending() {
+        assertEquals(0.0, NeoForgeSafePathPlanner.estimatedFallDamage(3, 3.0, 1.0, 0, false), 1e-9);
+        assertEquals(0.0, NeoForgeSafePathPlanner.estimatedFallDamage(1, 3.0, 1.0, 0, false), 1e-9);
+        assertEquals(0.0, NeoForgeSafePathPlanner.estimatedFallDamage(0, 3.0, 1.0, 0, false), 1e-9);
+    }
+
+    @Test
+    void fallDamageBeyondSafeDistanceMatchesTheRealVanillaFormula() {
+        assertEquals(2.0, NeoForgeSafePathPlanner.estimatedFallDamage(5, 3.0, 1.0, 0, false), 1e-9);
+        assertEquals(4.0, NeoForgeSafePathPlanner.estimatedFallDamage(7, 3.0, 1.0, 0, false), 1e-9);
+        // fallDamageMultiplier scales the raw damage before feather falling is applied.
+        assertEquals(4.0, NeoForgeSafePathPlanner.estimatedFallDamage(5, 3.0, 2.0, 0, false), 1e-9);
+    }
+
+    @Test
+    void featherFallingReducesDamageByItsRealProtectionCurveCappedAtTwenty() {
+        // level 4: protectionValue = min(12, 20) = 12 -> 48% reduction
+        assertEquals(3.64, NeoForgeSafePathPlanner.estimatedFallDamage(10, 3.0, 1.0, 4, false), 1e-9);
+        // level 7 would be protectionValue=21, capped at 20 -> 80% reduction, same as any level >= 7
+        assertEquals(1.4, NeoForgeSafePathPlanner.estimatedFallDamage(10, 3.0, 1.0, 7, false), 1e-9);
+        assertEquals(1.4, NeoForgeSafePathPlanner.estimatedFallDamage(10, 3.0, 1.0, 20, false), 1e-9);
+    }
+
+    @Test
+    void slowFallingOrLevitationAlwaysFullyNegatesFallDamage() {
+        assertEquals(0.0, NeoForgeSafePathPlanner.estimatedFallDamage(50, 3.0, 1.0, 0, true), 1e-9);
+    }
+
     private static NeoForgeGoalPolicy policy(String intelligence, String safety) {
         return NeoForgeGoalPolicy.from(Map.of("intelligence", intelligence, "safety", safety));
     }

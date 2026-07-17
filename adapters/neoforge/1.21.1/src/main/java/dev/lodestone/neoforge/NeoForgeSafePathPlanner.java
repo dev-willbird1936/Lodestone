@@ -22,6 +22,9 @@ final class NeoForgeSafePathPlanner {
     private static final int MAX_HORIZONTAL_RADIUS = 96;
     private static final int MAX_VERTICAL_RADIUS = 32;
     private static final int[] DY_OFFSETS = {1, 0, -1, -2, -3};
+    // Tunable preference weight, not a derived game-mechanics value: how many extra walked-block
+    // equivalents one point of real estimated fall damage is worth avoiding.
+    private static final double FALL_DAMAGE_COST_PER_HP = 4.0;
     private static final Direction[][] DIAGONALS = {
             {Direction.NORTH, Direction.EAST}, {Direction.NORTH, Direction.WEST},
             {Direction.SOUTH, Direction.EAST}, {Direction.SOUTH, Direction.WEST},
@@ -180,7 +183,7 @@ final class NeoForgeSafePathPlanner {
         // navigation. Adaptive intelligence keeps this rule even with balanced safety so
         // planning quality cannot trade health for a shorter route.
         if (current.getY() - candidate.getY() > 1) return;
-        var nextCost = cost.get(current.asLong()) + edgeCost(current, candidate, policy);
+        var nextCost = cost.get(current.asLong()) + edgeCost(current, candidate, policy, snapshot);
         if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) return;
         cost.put(candidate.asLong(), nextCost);
         previous.put(candidate.asLong(), current.asLong());
@@ -258,7 +261,7 @@ final class NeoForgeSafePathPlanner {
                             || Math.abs(candidate.getY() - origin.getY()) > 24
                             || !snapshot.bufferedWalkable(candidate)
                             || position.getY() - candidate.getY() > 1) continue;
-                    var nextCost = current.cost() + edgeCost(position, candidate, policy);
+                    var nextCost = current.cost() + edgeCost(position, candidate, policy, snapshot);
                     if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) continue;
                     cost.put(candidate.asLong(), nextCost);
                     previous.put(candidate.asLong(), position.asLong());
@@ -269,12 +272,12 @@ final class NeoForgeSafePathPlanner {
             if (snapshot.bufferedWalkable(directBelow)
                     && directBelow.getY() < origin.getY()
                     && !rejected.contains(directBelow.asLong())
-                    && current.cost() + edgeCost(position, directBelow, policy)
+                    && current.cost() + edgeCost(position, directBelow, policy, snapshot)
                     < cost.getOrDefault(directBelow.asLong(), Double.POSITIVE_INFINITY)) {
-                cost.put(directBelow.asLong(), current.cost() + edgeCost(position, directBelow, policy));
+                cost.put(directBelow.asLong(), current.cost() + edgeCost(position, directBelow, policy, snapshot));
                 previous.put(directBelow.asLong(), position.asLong());
-                queue.add(new Node(directBelow.immutable(), current.cost() + edgeCost(position, directBelow, policy),
-                        current.cost() + edgeCost(position, directBelow, policy)));
+                queue.add(new Node(directBelow.immutable(), current.cost() + edgeCost(position, directBelow, policy, snapshot),
+                        current.cost() + edgeCost(position, directBelow, policy, snapshot)));
             }
         }
         if (best == null) return List.of();
@@ -402,6 +405,48 @@ final class NeoForgeSafePathPlanner {
         if (policy.intelligence() == NeoForgeGoalPolicy.Intelligence.ADAPTIVE_V1
                 && to.getY() < from.getY()) cost += 12.0;
         return cost;
+    }
+
+    /**
+     * Real fall-damage cost layered on top of {@link #edgeCost(BlockPos, BlockPos, NeoForgeGoalPolicy)}'s
+     * existing terms (which stay unchanged - they weight general descent preference, not damage risk).
+     * Every edge here is capped at a 1-block drop by the existing descent-cap check, under which
+     * real fall damage is always zero; this is deliberately still real and tested rather than a
+     * stub, so it is already correct if that cap is ever relaxed for a future recovery route.
+     */
+    private static double fallDamageCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy,
+                                          NeoForgeWorldSnapshot snapshot) {
+        var appliesAtThisTier = policy.safety() == NeoForgeGoalPolicy.Safety.BALANCED || policy.highSafety()
+                || policy.safety() == NeoForgeGoalPolicy.Safety.LOW
+                        && policy.intelligence() == NeoForgeGoalPolicy.Intelligence.ADAPTIVE_V1;
+        if (!appliesAtThisTier) return 0.0;
+        var dyBlocks = from.getY() - to.getY();
+        if (dyBlocks <= 0) return 0.0;
+        var damage = estimatedFallDamage(dyBlocks, snapshot.safeFallDistance(), snapshot.fallDamageMultiplier(),
+                snapshot.featherFallingLevel(), snapshot.slowFalling());
+        return damage * FALL_DAMAGE_COST_PER_HP;
+    }
+
+    /**
+     * Real vanilla fall-damage formula: {@code max(0, ceil((fallBlocks - safeFallDistance) *
+     * fallDamageMultiplier))}, reduced by Feather Falling's real linear protection-value curve
+     * (3.0/level) converted via the standard 4%-per-point-capped-at-20 approximation (the exact
+     * percentage aggregator is server-only and unreachable from a client-side mod). Slow Falling
+     * and Levitation reset fall distance every tick in vanilla, so they always fully negate this.
+     */
+    static double estimatedFallDamage(int dyBlocks, double safeFallDistance, double fallDamageMultiplier,
+                                       int featherFallingLevel, boolean slowFalling) {
+        if (slowFalling || dyBlocks <= 0) return 0.0;
+        var raw = Math.max(0.0, Math.ceil((dyBlocks - safeFallDistance) * fallDamageMultiplier));
+        if (featherFallingLevel <= 0 || raw <= 0.0) return raw;
+        var protectionValue = Math.min(3.0 * featherFallingLevel, 20.0);
+        return raw * (1.0 - protectionValue * 0.04);
+    }
+
+    /** Convenience overload layering real fall-damage cost on top of the pure geometry/tier cost. */
+    private static double edgeCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy,
+                                    NeoForgeWorldSnapshot snapshot) {
+        return edgeCost(from, to, policy) + fallDamageCost(from, to, policy, snapshot);
     }
 
     private static double heuristic(BlockPos from, BlockPos target) {

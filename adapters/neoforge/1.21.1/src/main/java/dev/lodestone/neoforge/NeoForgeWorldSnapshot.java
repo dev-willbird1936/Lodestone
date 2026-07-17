@@ -31,6 +31,8 @@ final class NeoForgeWorldSnapshot {
     private final LocalPlayer player;
     private final int featherFallingLevel;
     private final boolean slowFalling;
+    private final double safeFallDistance;
+    private final double fallDamageMultiplier;
     // Lazy and memoized rather than precomputed in the constructor: capture() runs on dozens of
     // per-tick calls that never touch mob/lava data (adjacentSafeEscape, tickObstructionClear,
     // standable, ...), and these two scans are the expensive ones (an entity AABB query and up to
@@ -47,6 +49,8 @@ final class NeoForgeWorldSnapshot {
         this.player = player;
         this.featherFallingLevel = computeFeatherFallingLevel(player);
         this.slowFalling = player.hasEffect(MobEffects.SLOW_FALLING) || player.hasEffect(MobEffects.LEVITATION);
+        this.safeFallDistance = player.getAttributeValue(Attributes.SAFE_FALL_DISTANCE);
+        this.fallDamageMultiplier = player.getAttributeValue(Attributes.FALL_DAMAGE_MULTIPLIER);
     }
 
     static NeoForgeWorldSnapshot capture(ClientLevel level, NeoForgeGoalPolicy policy, LocalPlayer player) {
@@ -61,6 +65,16 @@ final class NeoForgeWorldSnapshot {
     /** True while Slow Falling or Levitation is active; both reset fall distance every tick. */
     boolean slowFalling() {
         return slowFalling;
+    }
+
+    /** Real per-entity vanilla attribute: blocks of fall distance before damage starts (default 3). */
+    double safeFallDistance() {
+        return safeFallDistance;
+    }
+
+    /** Real per-entity vanilla attribute scaling raw fall damage (default 1.0). */
+    double fallDamageMultiplier() {
+        return fallDamageMultiplier;
     }
 
     /** Bounded, once-per-search snapshot of nearby hostile/targeting mobs. */
