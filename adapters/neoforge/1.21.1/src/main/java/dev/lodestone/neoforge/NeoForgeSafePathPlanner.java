@@ -107,11 +107,10 @@ final class NeoForgeSafePathPlanner {
      */
     static List<BlockPos> findSafeDescent(ClientLevel level, BlockPos start, BlockPos target,
                                            NeoForgeGoalPolicy policy, java.util.Set<Long> rejected) {
-        if (start.getY() - target.getY() < 3) return List.of();
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
         var origin = start.immutable();
         if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
-                snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
+                snapshot.bufferedWalkable(origin), false)) return List.of();
 
         var queue = new PriorityQueue<Node>();
         var previous = new HashMap<Long, Long>();
@@ -160,6 +159,17 @@ final class NeoForgeSafePathPlanner {
                     previous.put(candidate.asLong(), position.asLong());
                     queue.add(new Node(candidate.immutable(), nextCost, nextCost));
                 }
+            }
+            var directBelow = position.below();
+            if (snapshot.bufferedWalkable(directBelow)
+                    && directBelow.getY() < origin.getY()
+                    && !rejected.contains(directBelow.asLong())
+                    && current.cost() + edgeCost(position, directBelow, policy)
+                    < cost.getOrDefault(directBelow.asLong(), Double.POSITIVE_INFINITY)) {
+                cost.put(directBelow.asLong(), current.cost() + edgeCost(position, directBelow, policy));
+                previous.put(directBelow.asLong(), position.asLong());
+                queue.add(new Node(directBelow.immutable(), current.cost() + edgeCost(position, directBelow, policy),
+                        current.cost() + edgeCost(position, directBelow, policy)));
             }
         }
         if (best == null) return List.of();

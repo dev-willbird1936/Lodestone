@@ -3400,7 +3400,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private boolean beginVerticalRecovery(Minecraft client, BlockPos blockedTarget, String label) {
         var player = requirePlayer(client);
-        if (player.blockPosition().getY() - blockedTarget.getY() < 3) return false;
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var originNeedsRecovery = !snapshot.bufferedWalkable(player.blockPosition());
+        if (!originNeedsRecovery && player.blockPosition().getY() - blockedTarget.getY() < 3) return false;
         var path = NeoForgeSafePathPlanner.findSafeDescent(client.level, player.blockPosition(),
                 blockedTarget, policy, rejectedVerticalRecoveryWaypoints);
         if (path.size() < 2) return false;
