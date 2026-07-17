@@ -22,7 +22,7 @@ final class NeoForgeGoalActionGuard {
         if (state.isAir() || state.getDestroySpeed(level, position) < 0) return false;
         if (position.equals(player.blockPosition()) || position.equals(player.blockPosition().below())) return false;
         if (policy.highSafety()) {
-            var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+            var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
             if (snapshot.hazard(position) || snapshot.hazard(position.above())
                     || snapshot.hazard(position.below())) return false;
         }
@@ -43,7 +43,7 @@ final class NeoForgeGoalActionGuard {
         var feet = player.blockPosition();
         var ahead = feet.relative(player.getDirection());
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, NeoForgeGoalPolicy.from(Map.of(
-                "intelligence", "guarded-v1", "safety", "high")));
+                "intelligence", "guarded-v1", "safety", "high")), player);
         if (snapshot.walkable(ahead)) return false;
         for (var dy = -1; dy >= -4; dy--) {
             var candidate = new BlockPos(ahead.getX(), feet.getY() + dy, ahead.getZ());

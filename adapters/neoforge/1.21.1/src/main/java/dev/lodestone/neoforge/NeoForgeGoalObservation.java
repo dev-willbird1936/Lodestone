@@ -20,7 +20,8 @@ import java.util.Map;
 /** Compact read-only world/player facts shared by native intelligent goal outputs. */
 final class NeoForgeGoalObservation {
     private static final int MAX_INVENTORY_ENTRIES = 48;
-    private static final int MAX_THREATS = 8;
+    // Package-private: also the bound for NeoForgeWorldSnapshot's precomputed mob-proximity facts.
+    static final int MAX_THREATS = 8;
 
     private NeoForgeGoalObservation() {
     }
@@ -82,7 +83,7 @@ final class NeoForgeGoalObservation {
 
     private static List<Map<String, Object>> threats(LocalPlayer player) {
         return player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(12.0),
-                        mob -> mob.isAlive() && (mob.getTarget() == player || mob instanceof net.minecraft.world.entity.monster.Monster))
+                        mob -> isThreat(mob, player))
                 .stream().sorted(Comparator.comparingDouble(player::distanceToSqr))
                 .limit(MAX_THREATS)
                 .map(mob -> Map.<String, Object>ofEntries(
@@ -92,6 +93,11 @@ final class NeoForgeGoalObservation {
                         Map.entry("health", mob.getHealth()),
                         Map.entry("targetingPlayer", mob.getTarget() == player)))
                 .toList();
+    }
+
+    /** Shared hostile/targeting-mob filter, also reused by the safe-path planner's mob-proximity precompute. */
+    static boolean isThreat(Mob mob, LocalPlayer player) {
+        return mob.isAlive() && (mob.getTarget() == player || mob instanceof net.minecraft.world.entity.monster.Monster);
     }
 
     private static Map<String, Object> targetBlock(LocalPlayer player, Minecraft client) {
@@ -123,7 +129,7 @@ final class NeoForgeGoalObservation {
     private static Map<String, Object> localNavigation(Minecraft client, LocalPlayer player,
                                                         NeoForgeGoalPolicy policy) {
         var origin = player.blockPosition();
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var cells = new java.util.ArrayList<Map<String, Object>>();
         for (var y = -1; y <= 2; y++) {
             for (var x = -1; x <= 1; x++) {

@@ -150,7 +150,7 @@ final class NeoForgeGoalSupervisor {
         client.options.keyShift.setDown(false);
         client.options.keyJump.setDown(true);
 
-        var route = NeoForgeSafePathPlanner.findWaterRetreat(client.level, player.blockPosition(),
+        var route = NeoForgeSafePathPlanner.findWaterRetreat(client.level, player, player.blockPosition(),
                 policy, player.getAirSupply());
         if (route.size() >= 2) {
             var next = route.get(1);
@@ -251,7 +251,7 @@ final class NeoForgeGoalSupervisor {
     }
 
     private boolean escapeFireOrLava(Minecraft client, LocalPlayer player) {
-        var route = NeoForgeSafePathPlanner.findHazardRetreat(client.level, player.blockPosition(), policy);
+        var route = NeoForgeSafePathPlanner.findHazardRetreat(client.level, player, player.blockPosition(), policy);
         if (route.size() >= 2) {
             lookAt(player, route.get(1));
             setRecoveryMovement(client, true);
@@ -369,7 +369,7 @@ final class NeoForgeGoalSupervisor {
                 && hit instanceof BlockHitResult blockHit) {
             var block = blockHit.getBlockPos();
             var state = client.level.getBlockState(block);
-            var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+            var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
             if (!state.isAir() && state.getFluidState().isEmpty()
                     && canClearWithCurrentTool(player, state)
                     && snapshot.safeMiningSite(feet, block, player.getEyePosition(), Vec3.atCenterOf(block))
@@ -423,7 +423,7 @@ final class NeoForgeGoalSupervisor {
             navigationReplanEpoch++;
             return true;
         }
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         if (!snapshot.safeMiningSite(player.blockPosition(), obstructionClearTarget,
                 player.getEyePosition(), Vec3.atCenterOf(obstructionClearTarget))
                 || !hasBufferedRetreat(client, player, snapshot)) {
@@ -466,7 +466,7 @@ final class NeoForgeGoalSupervisor {
             clearObstructionEscape(client);
             throw new IllegalStateException("bounded adjacent obstruction escape timed out at " + failed);
         }
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         if (!snapshot.walkable(obstructionEscapeTarget)) {
             rejectAndRetargetEscape(client, player);
             return true;
@@ -518,7 +518,7 @@ final class NeoForgeGoalSupervisor {
 
     private BlockPos adjacentSafeEscape(Minecraft client, LocalPlayer player) {
         var feet = player.blockPosition();
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var facing = player.getDirection();
         var directions = List.of(facing.getOpposite(), facing.getClockWise(),
                 facing.getCounterClockWise(), facing);
@@ -543,7 +543,7 @@ final class NeoForgeGoalSupervisor {
             for (var dy : new int[]{0, 1, -1}) {
                 var candidate = feet.relative(direction).offset(0, dy, 0);
                 if (!snapshot.bufferedWalkable(candidate)) continue;
-                var path = NeoForgeSafePathPlanner.find(client.level, feet, candidate, policy, arrival);
+                var path = NeoForgeSafePathPlanner.find(client.level, player, feet, candidate, policy, arrival);
                 if (snapshot.safeMiningPath(path)) return true;
             }
         }
@@ -613,7 +613,7 @@ final class NeoForgeGoalSupervisor {
         if (!client.options.keyUp.isDown() && !client.options.keySprint.isDown()) return false;
         var feet = player.blockPosition();
         var ahead = feet.relative(player.getDirection());
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         if (snapshot.walkable(ahead)) return false;
         // A solid block at the player's feet is normally an obstacle or a one-block rise,
         // not a fall.  The old check treated every non-walkable block ahead as a drop and

@@ -154,7 +154,7 @@ final class NeoForgeCombatGoal {
             return;
         }
         if (!pathComputed || (!path.isEmpty() && pathIndex >= path.size()) || stageTicks % 30 == 1) {
-            path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), target.blockPosition(), policy);
+            path = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), target.blockPosition(), policy);
             pathIndex = path.size() > 1 ? 1 : 0;
             pathComputed = true;
             replans++;

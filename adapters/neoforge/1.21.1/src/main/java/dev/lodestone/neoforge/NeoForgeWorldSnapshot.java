@@ -2,25 +2,102 @@
 package dev.lodestone.neoforge;
 
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /** Read-only local world projection used by planning and safety decisions. */
 final class NeoForgeWorldSnapshot {
+    // These bounds keep the once-per-search mob/lava precompute cheap and independent of the
+    // search radius; the cost formulas that will consume them (a later pass) only look a few
+    // blocks further than this from any given edge.
+    private static final double THREAT_SCAN_RADIUS = 12.0;
+    private static final int LAVA_SCAN_HORIZONTAL_RADIUS = 8;
+    private static final int LAVA_SCAN_VERTICAL_RADIUS = 5;
+
     private final ClientLevel level;
     private final NeoForgeGoalPolicy policy;
+    private final int featherFallingLevel;
+    private final boolean slowFalling;
+    private final List<ThreatFact> nearbyThreats;
+    private final List<BlockPos> nearbyLava;
 
-    private NeoForgeWorldSnapshot(ClientLevel level, NeoForgeGoalPolicy policy) {
+    private NeoForgeWorldSnapshot(ClientLevel level, NeoForgeGoalPolicy policy, LocalPlayer player) {
         this.level = level;
         this.policy = policy;
+        this.featherFallingLevel = computeFeatherFallingLevel(player);
+        this.slowFalling = player.hasEffect(MobEffects.SLOW_FALLING) || player.hasEffect(MobEffects.LEVITATION);
+        this.nearbyThreats = computeNearbyThreats(level, player);
+        this.nearbyLava = computeNearbyLava(level, player.blockPosition());
     }
 
-    static NeoForgeWorldSnapshot capture(ClientLevel level, NeoForgeGoalPolicy policy) {
-        return new NeoForgeWorldSnapshot(level, policy);
+    static NeoForgeWorldSnapshot capture(ClientLevel level, NeoForgeGoalPolicy policy, LocalPlayer player) {
+        return new NeoForgeWorldSnapshot(level, policy, player);
     }
+
+    /** Feather Falling level on any currently equipped item (boots in vanilla), 0 if none. */
+    int featherFallingLevel() {
+        return featherFallingLevel;
+    }
+
+    /** True while Slow Falling or Levitation is active; both reset fall distance every tick. */
+    boolean slowFalling() {
+        return slowFalling;
+    }
+
+    /** Bounded, once-per-search snapshot of nearby hostile/targeting mobs. */
+    List<ThreatFact> nearbyThreats() {
+        return nearbyThreats;
+    }
+
+    /** Bounded, once-per-search snapshot of nearby lava-fluid positions. */
+    List<BlockPos> nearbyLava() {
+        return nearbyLava;
+    }
+
+    private static int computeFeatherFallingLevel(LocalPlayer player) {
+        var featherFalling = player.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
+                .getOrThrow(Enchantments.FEATHER_FALLING);
+        return EnchantmentHelper.getEnchantmentLevel(featherFalling, player);
+    }
+
+    private static List<ThreatFact> computeNearbyThreats(ClientLevel level, LocalPlayer player) {
+        return level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(THREAT_SCAN_RADIUS),
+                        mob -> NeoForgeGoalObservation.isThreat(mob, player))
+                .stream().sorted(Comparator.comparingDouble(player::distanceToSqr))
+                .limit(NeoForgeGoalObservation.MAX_THREATS)
+                .map(mob -> new ThreatFact(mob.blockPosition().immutable(),
+                        mob.getAttributeValue(Attributes.FOLLOW_RANGE), mob.getTarget() == player))
+                .toList();
+    }
+
+    private static List<BlockPos> computeNearbyLava(ClientLevel level, BlockPos origin) {
+        var result = new ArrayList<BlockPos>();
+        for (var x = origin.getX() - LAVA_SCAN_HORIZONTAL_RADIUS; x <= origin.getX() + LAVA_SCAN_HORIZONTAL_RADIUS; x++) {
+            for (var z = origin.getZ() - LAVA_SCAN_HORIZONTAL_RADIUS; z <= origin.getZ() + LAVA_SCAN_HORIZONTAL_RADIUS; z++) {
+                if (!level.hasChunkAt(new BlockPos(x, origin.getY(), z))) continue;
+                for (var y = origin.getY() - LAVA_SCAN_VERTICAL_RADIUS; y <= origin.getY() + LAVA_SCAN_VERTICAL_RADIUS; y++) {
+                    var probe = new BlockPos(x, y, z);
+                    if (level.getFluidState(probe).is(FluidTags.LAVA)) result.add(probe.immutable());
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    /** One precomputed nearby-mob fact: position, real follow range, and whether it targets the player. */
+    record ThreatFact(BlockPos position, double followRange, boolean targetingPlayer) { }
 
     boolean walkable(BlockPos feet) {
         var head = feet.above();

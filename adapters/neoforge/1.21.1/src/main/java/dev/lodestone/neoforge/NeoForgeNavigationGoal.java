@@ -127,7 +127,7 @@ final class NeoForgeNavigationGoal {
 
     private void replan(Minecraft client) {
         var player = client.player;
-        path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), target, policy);
+        path = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), target, policy);
         pathIndex = path.size() > 1 ? 1 : 0;
         replans++;
         stuckTicks = 0;

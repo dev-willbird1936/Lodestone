@@ -327,7 +327,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 candidateProbeIndex++;
                 continue;
             }
-            var route = NeoForgeSafePathPlanner.probe(client.level, player.blockPosition(),
+            var route = NeoForgeSafePathPlanner.probe(client.level, player, player.blockPosition(),
                     candidate.base(), policy, ELECTION_PROBE_BUDGET);
             candidateProbeIndex++;
             if (route.isEmpty()) {
@@ -1155,7 +1155,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
 
     private List<BlockPos> findNavigationPath(Minecraft client, BlockPos target) {
         if (policy.smartNavigation()) {
-            return NeoForgeSafePathPlanner.find(client.level, requirePlayer(client).blockPosition(), target, policy);
+            var player = requirePlayer(client);
+            return NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), target, policy);
         }
         var level = client.level;
         var player = requirePlayer(client);

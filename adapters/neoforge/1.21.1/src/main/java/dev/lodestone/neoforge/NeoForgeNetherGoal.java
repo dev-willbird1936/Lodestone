@@ -756,7 +756,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             return;
         }
         lookAt(player, Vec3.atCenterOf(target));
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         if (!snapshot.safeMiningSite(player.blockPosition(), target,
                 player.getEyePosition(), Vec3.atCenterOf(target))) {
             stopAttack(client);
@@ -849,7 +849,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     }
 
     private BlockPos findResourceMiningVantage(Minecraft client, BlockPos target) {
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client));
         for (var direction : List.of(Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST)) {
             for (int distance = 1; distance <= 3; distance++) {
                 for (int yOffset = -1; yOffset <= 2; yOffset++) {
@@ -872,7 +872,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private BlockPos findReachableResourceMiningVantage(Minecraft client) {
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.8, 0.8);
             for (var target : resourceSource.blocks().stream().limit(16).toList()) {
             if (!client.level.getBlockState(target).is(BlockTags.LOGS)) continue;
@@ -898,9 +898,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             BlockPos best = null;
             var bestPathLength = Integer.MAX_VALUE;
             for (var candidate : candidates.stream().limit(12).toList()) {
-                var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate,
+                var path = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), candidate,
                         policy, arrival);
-                var retreat = NeoForgeSafePathPlanner.find(client.level, candidate,
+                var retreat = NeoForgeSafePathPlanner.find(client.level, player, candidate,
                         player.blockPosition(), policy, arrival);
                 if (snapshot.safeMiningPath(path) && snapshot.safeMiningPath(retreat)
                         && path.size() < bestPathLength) {
@@ -920,7 +920,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
      */
     private BlockPos findResourceApproachWaypoint(Minecraft client) {
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.8, 0.8);
         var candidates = new ArrayList<BlockPos>();
         for (var target : resourceSource.blocks().stream().limit(16).toList()) {
@@ -937,7 +937,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             }
         }
         if (candidates.isEmpty()) return null;
-        var path = NeoForgeSafePathPlanner.findToAny(client.level, player.blockPosition(), candidates,
+        var path = NeoForgeSafePathPlanner.findToAny(client.level, player, player.blockPosition(), candidates,
                 policy, arrival);
         if (!snapshot.safeMiningPath(path)) return null;
         // Every route edge already disallows drops greater than one block. With a static chunk
@@ -960,7 +960,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         lookAt(player, Vec3.atCenterOf(target));
         var hit = player.pick(5.0F, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target)) {
-            var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+            var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
             if (snapshot.safeMiningSite(player.blockPosition(), target,
                     player.getEyePosition(), Vec3.atCenterOf(target))) {
                 return MiningTargetPreparation.READY;
@@ -1017,7 +1017,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private BlockPos findMiningVantage(Minecraft client, BlockPos target) {
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(MINING_VANTAGE_TOLERANCE, 0.8);
         var candidates = new ArrayList<BlockPos>();
         for (var direction : List.of(Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST)) {
@@ -1040,8 +1040,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         BlockPos best = null;
         var bestPathLength = Integer.MAX_VALUE;
         for (var candidate : candidates.stream().limit(24).toList()) {
-            var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate, policy, arrival);
-            var retreat = NeoForgeSafePathPlanner.find(client.level, candidate,
+            var path = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), candidate, policy, arrival);
+            var retreat = NeoForgeSafePathPlanner.find(client.level, player, candidate,
                     player.blockPosition(), policy, arrival);
             if (snapshot.safeMiningPath(path) && snapshot.safeMiningPath(retreat)
                     && path.size() < bestPathLength) {
@@ -1062,7 +1062,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private NeoForgeMiningTargetSearch.BatchResult pollMiningSearch(Minecraft client) {
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         miningSearchTelemetry = miningTargetSearch.poll(new NeoForgeMiningTargetSearch.Validator() {
             @Override
             public long worldRevision(BlockPos candidate) {
@@ -1241,7 +1241,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private BlockPos findDirectCollectiblePickupOrigin(Minecraft client, Vec3 collectible) {
         var player = requirePlayer(client);
         var origin = player.blockPosition().immutable();
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         if (!snapshot.walkable(origin) || snapshot.hazard(origin) || snapshot.hazard(origin.above())) return null;
         var dx = collectible.x - player.getX();
         var dy = collectible.y - player.getY();
@@ -1253,7 +1253,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private BlockPos findCollectibleVantage(Minecraft client, Vec3 collectible) {
         var player = requirePlayer(client);
         var target = BlockPos.containing(collectible);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.55, 0.8);
         var origin = player.blockPosition().immutable();
         var bufferedOrigin = snapshot.bufferedWalkable(origin);
@@ -1270,15 +1270,15 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                             candidate.getZ() + 0.5);
                     if (pickupPoint.distanceTo(collectible) > 1.65 || !snapshot.bufferedWalkable(candidate)) continue;
                     var path = bufferedOrigin
-                            ? NeoForgeSafePathPlanner.find(client.level, origin, candidate, policy, arrival)
-                            : NeoForgeSafePathPlanner.findFromWalkableOrigin(client.level, origin,
+                            ? NeoForgeSafePathPlanner.find(client.level, player, origin, candidate, policy, arrival)
+                            : NeoForgeSafePathPlanner.findFromWalkableOrigin(client.level, player, origin,
                             List.of(candidate), policy, arrival);
                     var pathSafe = bufferedOrigin
                             ? snapshot.safeMiningPath(path)
                             : bodySafeOrigin && path.size() > 1
                             && path.stream().skip(1).allMatch(snapshot::bufferedWalkable);
                     var retreat = bufferedOrigin
-                            ? NeoForgeSafePathPlanner.find(client.level, candidate, origin, policy, arrival)
+                            ? NeoForgeSafePathPlanner.find(client.level, player, candidate, origin, policy, arrival)
                             : List.of(candidate);
                     var retreatSafe = bufferedOrigin && snapshot.safeMiningPath(retreat) || !bufferedOrigin;
                     if (pathSafe && retreatSafe
@@ -1300,7 +1300,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var blocker = blockHit.getBlockPos();
         var state = client.level.getBlockState(blocker);
         if (state.isAir()) return null;
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var legal = state.is(BlockTags.LEAVES) || state.is(BlockTags.LOGS)
                 || state.getDestroySpeed(client.level, blocker) >= 0.0F
                 && state.getDestroySpeed(client.level, blocker) <= 0.6F
@@ -1313,7 +1313,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private Placement findCollectibleSupportPlacement(Minecraft client, Vec3 collectible) {
         if (findSafeSupportBlockSlot(requirePlayer(client)) < 0) return null;
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var item = BlockPos.containing(collectible);
         for (var dy = -2; dy <= 0; dy++) {
             for (var dx = -1; dx <= 1; dx++) {
@@ -1340,7 +1340,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private void placeCollectibleSupport(Minecraft client, Placement placement) {
         var player = requirePlayer(client);
         var slot = findSafeSupportBlockSlot(player);
-        if (slot < 0 || !NeoForgeWorldSnapshot.capture(client.level, policy)
+        if (slot < 0 || !NeoForgeWorldSnapshot.capture(client.level, policy, player)
                 .safePlacementSite(placement.target())) return;
         stopMovement(client);
         stopAttack(client);
@@ -1385,7 +1385,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             selectHotbar(client, slot);
             return true;
         }
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         lookAt(player, Vec3.atCenterOf(support));
         var hit = player.pick(5.0F, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(support)
@@ -1715,7 +1715,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 tableInteractionPositionReady = true;
                 stageTicks = 0;
             } else {
-                var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+                var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client));
                 if (!snapshot.walkable(tableInteractionVantage)) {
                     tableInteractionVantage = findMiningVantage(client, tablePosition);
                     if (tableInteractionVantage == null) {
@@ -1954,11 +1954,11 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     + ", steps=" + prerequisiteCommittedSteps + ", blocks=" + prerequisiteBlocksBroken
                     + ", rejections=" + prerequisitePlanRejections);
         }
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var from = player.blockPosition().immutable();
         if (!snapshot.bufferedWalkable(from)) {
             if (!relocateToSafeExcavationOrigin(client, snapshot)) return;
-            snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+            snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
             from = player.blockPosition().immutable();
             if (!snapshot.bufferedWalkable(from)) return;
         }
@@ -2021,7 +2021,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             }
         }
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.45, 0.8);
-        var path = NeoForgeSafePathPlanner.findFromWalkableOrigin(client.level, from, candidates,
+        var path = NeoForgeSafePathPlanner.findFromWalkableOrigin(client.level, player, from, candidates,
                 policy, arrival);
         if (path.size() < 2) {
             throw new IllegalStateException("PREREQUISITE_SAFETY_VETO: no buffered excavation origin reachable from "
@@ -2068,7 +2068,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var resource = requirePrerequisiteResource();
         var state = client.level.getBlockState(target);
         if (state.isAir()) return true;
-        var hazard = NeoForgeWorldSnapshot.capture(client.level, policy).hazard(target);
+        var hazard = NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client)).hazard(target);
         return resource.routeMaterial().test(state)
                 && NeoForgePrerequisiteAcquisitionPlanner.admissibleRouteMaterial(state,
                 state.getDestroySpeed(client.level, target), hazard,
@@ -2121,7 +2121,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             waitTicks = 1;
             return;
         }
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         lookAt(player, Vec3.atCenterOf(target));
         var hit = player.pick(5.0F, 0.0F, false);
         var exactHit = hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target);
@@ -2141,7 +2141,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private void validatePostBreakPrerequisiteStep(Minecraft client,
                                                     NeoForgePrerequisiteAcquisitionPlanner.StairStep step) {
         stopAttack(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client));
         var playerFeet = requirePlayer(client).blockPosition();
         if (!snapshot.bufferedWalkable(playerFeet)) {
             throw new IllegalStateException("PREREQUISITE_SAFETY_VETO: newly exposed hazard reached player at "
@@ -2177,7 +2177,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private void moveIntoPrerequisiteStep(Minecraft client,
                                           NeoForgePrerequisiteAcquisitionPlanner.StairStep step) {
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client));
         if (!snapshot.bufferedWalkable(step.toFeet()) || !safeRetreatPath(client, step.toFeet())) {
             rejectPrerequisiteStep(client, "movement-gate-retreat-or-landing-lost");
             return;
@@ -2229,8 +2229,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private boolean safeRetreatPath(Minecraft client, BlockPos from) {
         if (prerequisiteRetreatOrigin == null) return false;
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
-        var path = NeoForgeSafePathPlanner.find(client.level, from, prerequisiteRetreatOrigin,
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client));
+        var path = NeoForgeSafePathPlanner.find(client.level, requirePlayer(client), from, prerequisiteRetreatOrigin,
                 policy, new NeoForgeSafePathPlanner.ArrivalSpec(0.45, 0.8));
         return snapshot.safeMiningPath(path);
     }
@@ -2790,7 +2790,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     /** Explore loaded terrain with normal movement while rejecting holes and fluids. */
     private void exploreSafely(Minecraft client, String label) {
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var areaStalled = false;
         if (stage == Stage.FIND_STONE) {
             if (explorationProgressAnchor == null) explorationProgressAnchor = player.position();
@@ -2896,7 +2896,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             return dx * dx + dz * dz;
         }).reversed());
         for (var candidate : candidates.stream().limit(24).toList()) {
-            var path = NeoForgeSafePathPlanner.find(client.level, origin, candidate, policy);
+            var path = NeoForgeSafePathPlanner.find(client.level, requirePlayer(client), origin, candidate, policy);
             if (!path.isEmpty() && path.size() > 1) return candidate;
         }
         return null;
@@ -3013,7 +3013,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private SafeFrontier findSafeFrontier(Minecraft client) {
         var player = requirePlayer(client);
         var origin = player.blockPosition();
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var candidates = new ArrayList<BlockPos>();
         for (var offset : List.of(
                 new int[]{1, 0}, new int[]{1, 1}, new int[]{0, 1}, new int[]{-1, 1},
@@ -3029,8 +3029,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         }
         candidates.sort(Comparator.comparingDouble(candidate -> player.distanceToSqr(Vec3.atCenterOf(candidate))));
         for (var candidate : candidates.stream().limit(32).toList()) {
-            var path = NeoForgeSafePathPlanner.find(client.level, origin, candidate, policy);
-            var retreat = NeoForgeSafePathPlanner.find(client.level, candidate, origin, policy);
+            var path = NeoForgeSafePathPlanner.find(client.level, player, origin, candidate, policy);
+            var retreat = NeoForgeSafePathPlanner.find(client.level, player, candidate, origin, policy);
             if (path.size() <= 1 || retreat.size() <= 1
                     || !snapshot.safeMiningPath(path) || !snapshot.safeMiningPath(retreat)) continue;
             return new SafeFrontier(candidate, path.size(), retreat.size(),
@@ -3235,7 +3235,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         if (!client.level.getBlockState(placement.target()).isAir()) {
             throw new IllegalStateException("portal target became obstructed: " + placement.target());
         }
-        if (!NeoForgeWorldSnapshot.capture(client.level, policy).safePlacementSite(placement.target())) {
+        if (!NeoForgeWorldSnapshot.capture(client.level, policy, player).safePlacementSite(placement.target())) {
             throw new IllegalStateException("portal placement hazard gate rejected " + placement.target());
         }
         var slot = hotbarSlot(player, Items.OBSIDIAN);
@@ -3572,7 +3572,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         if (!routeTarget.equals(navigationDestination) || !arrival.equals(navigationArrival)) {
             navigationDestination = routeTarget.immutable();
             navigationArrival = arrival;
-            navigationPath = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), routeTarget,
+            navigationPath = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), routeTarget,
                     policy, arrival);
             navigationIndex = navigationStartIndex(player, navigationPath);
             navigationStuckTicks = 0;
@@ -3600,7 +3600,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             return false;
         }
         if (navigationPoseDrifted(player)) {
-            navigationPath = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), routeTarget,
+            navigationPath = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), routeTarget,
                     policy, arrival);
             navigationIndex = navigationStartIndex(player, navigationPath);
             navigationStuckTicks = 0;
@@ -3619,7 +3619,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             else break;
         }
         if (navigationIndex >= navigationPath.size()) {
-            navigationPath = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), routeTarget,
+            navigationPath = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), routeTarget,
                     policy, arrival);
             navigationIndex = navigationStartIndex(player, navigationPath);
             navigationStuckTicks = 0;
@@ -3637,7 +3637,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         else navigationStuckTicks++;
         navigationLastDistance = waypointDistance;
         if (navigationStuckTicks > 90) {
-            navigationPath = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), routeTarget,
+            navigationPath = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), routeTarget,
                     policy, arrival);
             navigationIndex = navigationStartIndex(player, navigationPath);
             navigationStuckTicks = 0;
@@ -3677,10 +3677,10 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private boolean beginVerticalRecovery(Minecraft client, BlockPos blockedTarget, String label) {
         var player = requirePlayer(client);
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var originNeedsRecovery = !snapshot.bufferedWalkable(player.blockPosition());
         if (!originNeedsRecovery && player.blockPosition().getY() - blockedTarget.getY() < 3) return false;
-        var path = NeoForgeSafePathPlanner.findSafeDescent(client.level, player.blockPosition(),
+        var path = NeoForgeSafePathPlanner.findSafeDescent(client.level, player, player.blockPosition(),
                 blockedTarget, policy, rejectedVerticalRecoveryWaypoints);
         if (path.size() < 2) return false;
         verticalRecoveryGoal = blockedTarget.immutable();
@@ -3762,7 +3762,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private BlockPos findTablePlacement(Minecraft client) {
         var player = requirePlayer(client);
         var origin = player.blockPosition();
-        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         for (int radius = 1; radius <= 5; radius++) {
             for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {
@@ -3791,7 +3791,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     }
 
     private boolean standable(Minecraft client, BlockPos feet) {
-        return NeoForgeWorldSnapshot.capture(client.level, policy).bufferedWalkable(feet);
+        return NeoForgeWorldSnapshot.capture(client.level, policy, requirePlayer(client)).bufferedWalkable(feet);
     }
 
     private static void stopMovement(Minecraft client) {

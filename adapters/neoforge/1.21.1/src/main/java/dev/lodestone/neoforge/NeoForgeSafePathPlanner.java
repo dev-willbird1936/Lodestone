@@ -2,6 +2,7 @@
 package dev.lodestone.neoforge;
 
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.FluidTags;
@@ -28,14 +29,14 @@ final class NeoForgeSafePathPlanner {
 
     private NeoForgeSafePathPlanner() { }
 
-    static List<BlockPos> find(ClientLevel level, BlockPos start, BlockPos target,
+    static List<BlockPos> find(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                NeoForgeGoalPolicy policy) {
-        return find(level, start, target, policy, new ArrivalSpec(3.0, 5.0));
+        return find(level, player, start, target, policy, new ArrivalSpec(3.0, 5.0));
     }
 
-    static List<BlockPos> find(ClientLevel level, BlockPos start, BlockPos target,
+    static List<BlockPos> find(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
-        return findToAny(level, start, List.of(target), policy, arrival);
+        return findToAny(level, player, start, List.of(target), policy, arrival);
     }
 
     /**
@@ -43,9 +44,10 @@ final class NeoForgeSafePathPlanner {
      * adaptive resource acquisition: trying every legal mining cell with a separate A* search can
      * monopolize the client thread even when each individual search has a visit bound.
      */
-    static List<BlockPos> findToAny(ClientLevel level, BlockPos start, Collection<BlockPos> targets,
+    static List<BlockPos> findToAny(ClientLevel level, LocalPlayer player, BlockPos start,
+                                    Collection<BlockPos> targets,
                                     NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
-        return findToAny(level, start, targets, policy, arrival, false, MAX_VISITED);
+        return findToAny(level, player, start, targets, policy, arrival, false, MAX_VISITED);
     }
 
     /**
@@ -53,10 +55,10 @@ final class NeoForgeSafePathPlanner {
      * for recovery into a high-safety work surface; every destination and subsequent edge still
      * has to satisfy the full buffered-walkable contract.
      */
-    static List<BlockPos> findFromWalkableOrigin(ClientLevel level, BlockPos start,
+    static List<BlockPos> findFromWalkableOrigin(ClientLevel level, LocalPlayer player, BlockPos start,
                                                   Collection<BlockPos> targets,
                                                   NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
-        return findToAny(level, start, targets, policy, arrival, true, MAX_VISITED);
+        return findToAny(level, player, start, targets, policy, arrival, true, MAX_VISITED);
     }
 
     /**
@@ -65,18 +67,18 @@ final class NeoForgeSafePathPlanner {
      * budget; the committed route is still planned with the full budget afterwards. A probe that
      * exhausts its reduced budget means "prefer another candidate", never "proven unreachable".
      */
-    static List<BlockPos> probe(ClientLevel level, BlockPos start, BlockPos target,
+    static List<BlockPos> probe(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                 NeoForgeGoalPolicy policy, int maxVisited) {
-        return findToAny(level, start, List.of(target), policy, new ArrivalSpec(3.0, 5.0),
+        return findToAny(level, player, start, List.of(target), policy, new ArrivalSpec(3.0, 5.0),
                 false, Math.min(maxVisited, MAX_VISITED));
     }
 
-    private static List<BlockPos> findToAny(ClientLevel level, BlockPos start,
+    private static List<BlockPos> findToAny(ClientLevel level, LocalPlayer player, BlockPos start,
                                             Collection<BlockPos> targets,
                                             NeoForgeGoalPolicy policy, ArrivalSpec arrival,
                                             boolean allowWalkableOrigin, int maxVisited) {
         if (targets.isEmpty()) return List.of();
-        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
         var originAllowed = NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
                 snapshot.bufferedWalkable(origin), policy.highSafety());
@@ -208,9 +210,9 @@ final class NeoForgeSafePathPlanner {
      * otherwise unreachable origin. Every edge uses the same walkability and one-block descent
      * rules as ordinary A*, so this cannot turn route recovery into an unsafe fall shortcut.
      */
-    static List<BlockPos> findSafeDescent(ClientLevel level, BlockPos start, BlockPos target,
+    static List<BlockPos> findSafeDescent(ClientLevel level, LocalPlayer player, BlockPos start, BlockPos target,
                                            NeoForgeGoalPolicy policy, java.util.Set<Long> rejected) {
-        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
         if (!NeoForgeSurvivalInvariant.verticalRecoveryOriginAllowed(snapshot.walkable(origin),
                 snapshot.hazard(origin), snapshot.hazard(origin.above()))) return List.of();
@@ -283,11 +285,11 @@ final class NeoForgeSafePathPlanner {
      * Emergency graph from the real submerged pose to dry buffered ground. It never descends,
      * crosses non-water fluid, invents an origin, or selects a route longer than the air reserve.
      */
-    static List<BlockPos> findWaterRetreat(ClientLevel level, BlockPos start,
+    static List<BlockPos> findWaterRetreat(ClientLevel level, LocalPlayer player, BlockPos start,
                                             NeoForgeGoalPolicy policy, int airSupply) {
         var maxEdges = NeoForgeSurvivalInvariant.maxWaterRetreatEdges(airSupply);
         if (maxEdges <= 0) return List.of();
-        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
         if (!snapshot.waterRetreatPassable(origin)) return List.of();
 
@@ -328,9 +330,9 @@ final class NeoForgeSafePathPlanner {
      * origin by design, so this deliberately permits only the current cell and a small connected
      * band of empty/lava cells until a fully buffered dry surface is reached.
      */
-    static List<BlockPos> findHazardRetreat(ClientLevel level, BlockPos start,
+    static List<BlockPos> findHazardRetreat(ClientLevel level, LocalPlayer player, BlockPos start,
                                              NeoForgeGoalPolicy policy) {
-        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
         var queue = new ArrayDeque<BlockPos>();
         var previous = new HashMap<Long, Long>();
