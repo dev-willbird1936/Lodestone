@@ -122,7 +122,7 @@ final class NeoForgeCombatGoal {
         var candidates = client.level.getEntitiesOfClass(Monster.class,
                         player.getBoundingBox().inflate(TARGET_RADIUS), entity -> entity.isAlive()
                                 && !entity.isRemoved())
-                .stream().sorted(Comparator.comparingDouble(player::distanceToSqr)
+                .stream().sorted(Comparator.comparingDouble((Monster entity) -> player.distanceToSqr(entity))
                         .thenComparing(entity -> entity.getUUID().toString())).toList();
         if (candidates.isEmpty()) {
             if (++stageTicks > 180) {

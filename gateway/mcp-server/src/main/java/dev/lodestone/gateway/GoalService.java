@@ -54,8 +54,19 @@ public final class GoalService {
                              GoalControls controls,
                              String callerSessionId,
                              AuthorizationPolicy authorization) {
+        return run(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
+                suppressInGameMessages, intelligence, safety, controls, null,
+                callerSessionId, authorization);
+    }
+
+    public GoalRunReport run(String goal, GoalMode mode, String taskId, int maxSteps, long maxDurationMs,
+                             boolean dryRun, GoalPlan customPlan, boolean suppressInGameMessages,
+                             GoalIntelligence intelligence, GoalSafety safety,
+                             GoalControls controls, String worldSeed,
+                             String callerSessionId,
+                             AuthorizationPolicy authorization) {
         var spec = new GoalSpec(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
-                suppressInGameMessages, intelligence, safety, controls);
+                suppressInGameMessages, intelligence, safety, controls, worldSeed);
         return engine.run(spec, invoker(callerSessionId, authorization));
     }
 

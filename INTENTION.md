@@ -62,6 +62,10 @@ every Minecraft environment.
   around visible blocks, while adaptive may clear a visible obstruction only with the required tool
   and explicit block-breaking permission. Guarded and adaptive script segments also receive fresh
   state handoffs, including a bounded local collision/hazard grid and forward-drop risk.
+- Adaptive goals with no built-in match can now request a bounded declarative plan from the selected
+  low-latency model. Plan synthesis is constrained to the goal DSL, explicit terminal predicates,
+  known capability namespaces, and no survival commands, text injection, raw input, or direct world
+  mutation; typed movement/interact/state calls carry policy fields through the NeoForge contract.
 - NeoForge player-state readback now carries the same bounded local goal observation after ordinary
   actions, giving realtime replanning fresh inventory/tool, threat, target-block, fluid, and fall
   facts instead of only a terminal native-actor summary.

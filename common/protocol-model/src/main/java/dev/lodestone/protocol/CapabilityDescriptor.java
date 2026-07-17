@@ -96,6 +96,15 @@ public record CapabilityDescriptor(
         return permissions.contains(permission);
     }
 
+    /** Create an adapter-local contract variant without changing identity or authorization. */
+    public CapabilityDescriptor withInputSchema(Map<String, Object> nextInputSchema) {
+        return new CapabilityDescriptor(id, kind, version, stability, availability, reason,
+                adapterId, adapterVersion, gameEdition, gameVersion, loader, environment,
+                nextInputSchema, outputSchema, eventSchema, permissions, sideEffect, idempotency,
+                prerequisites, nativeThread, rateLimit, timeoutMs, cancellable, delivery,
+                documentation, featureFlags);
+    }
+
     public CapabilityDescriptor forAdapter(AdapterDescriptor adapter, Availability nextAvailability,
                                            AvailabilityReason nextReason) {
         return new CapabilityDescriptor(id, kind, version, stability, nextAvailability, nextReason,

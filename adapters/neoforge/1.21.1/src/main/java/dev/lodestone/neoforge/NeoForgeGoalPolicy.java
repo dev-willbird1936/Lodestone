@@ -66,6 +66,34 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return intelligence != Intelligence.RAW_V1;
     }
 
+    boolean directObservedActionsOnly() {
+        return intelligence == Intelligence.RAW_V1;
+    }
+
+    boolean safeExposedPrerequisiteSearchEnabled() {
+        return intelligence != Intelligence.RAW_V1;
+    }
+
+    boolean recursivePrerequisitePlanningEnabled() {
+        return intelligence == Intelligence.ADAPTIVE_V1;
+    }
+
+    boolean undergroundPrerequisiteAcquisitionEnabled() {
+        return recursivePrerequisitePlanningEnabled() && allowBlockBreaking;
+    }
+
+    boolean frontierNoveltyRecoveryEnabled() {
+        return intelligence == Intelligence.ADAPTIVE_V1;
+    }
+
+    String intelligenceLayer() {
+        return switch (intelligence) {
+            case RAW_V1 -> "direct-observed-actions";
+            case GUARDED_V1 -> "prerequisite-tools+safe-exposed-search";
+            case ADAPTIVE_V1 -> "recursive-prerequisites+underground-acquisition+novelty-recovery";
+        };
+    }
+
     boolean safeNavigationPlanningEnabled() {
         return intelligence != Intelligence.RAW_V1;
     }

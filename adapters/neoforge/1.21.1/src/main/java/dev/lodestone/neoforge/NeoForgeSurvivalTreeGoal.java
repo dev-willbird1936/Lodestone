@@ -283,7 +283,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             return;
         }
         lookAt(player, target);
-        client.options.keyAttack.setDown(true);
+        clickAndHoldAttack(client, "hand");
         inputActions.add("attack:key.attack-held-by-hand");
         if (stageTicks > 360) throw new IllegalStateException("hand mining failed to break observed log " + target);
     }
@@ -627,7 +627,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 return;
             }
         }
-        client.options.keyAttack.setDown(true);
+        clickAndHoldAttack(client, "wooden-axe");
         inputActions.add("attack:key.attack-held-with-wooden-axe");
         if (stageTicks > 260) throw new IllegalStateException("axe mining failed to break observed target log " + target);
     }
@@ -644,7 +644,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         var state = client.level.getBlockState(blockHit.getBlockPos());
         if (!NeoForgeGoalActionGuard.canBreakObstruction(client.level, player, blockHit.getBlockPos(), policy)) return false;
         lookAt(player, blockHit.getBlockPos());
-        client.options.keyAttack.setDown(true);
+        clickAndHoldAttack(client, "tree-obstruction");
         obstructionBreaks++;
         inputActions.add("recovery:break-tree-obstruction:" + blockHit.getBlockPos());
         safetyDiagnostics.add("tree-obstruction:" + blockHit.getBlockPos());
@@ -717,7 +717,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 Map.entry("suppressInGameMessages", suppressInGameMessages),
                 Map.entry("inGameMessagesEmitted", inGameMessagesEmitted),
                 Map.entry("navigationDiagnostics", List.copyOf(navigationDiagnostics)),
-                Map.entry("inputActions", List.copyOf(inputActions))));
+                Map.entry("inputActions", List.copyOf(inputActions)));
     }
 
     private static String checkpoint(Map<String, Object> input) {
@@ -914,7 +914,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         if (position.equals(target) || !NeoForgeGoalActionGuard.canBreakObstruction(client.level, player, position, policy)
                 || player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(position)) > 30.0) return false;
         lookAt(player, position);
-        client.options.keyAttack.setDown(true);
+        clickAndHoldAttack(client, "navigation-obstruction");
         obstructionBreaks++;
         inputActions.add("recovery:break-navigation-obstruction:" + position);
         safetyDiagnostics.add("navigation-obstruction:" + position);
@@ -1182,6 +1182,15 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
 
     private static void stopAttack(Minecraft client) {
         client.options.keyAttack.setDown(false);
+    }
+
+    /** Start a vanilla destroy session, then keep the ordinary attack mapping held. */
+    private void clickAndHoldAttack(Minecraft client, String label) {
+        if (stageTicks % 10 == 1) {
+            KeyMapping.click(client.options.keyAttack.getKey());
+            inputActions.add("attack:key.attack-click-start:" + label);
+        }
+        client.options.keyAttack.setDown(true);
     }
 
     private static void releaseInput(Minecraft client) {

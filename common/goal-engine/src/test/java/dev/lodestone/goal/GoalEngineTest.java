@@ -32,10 +32,11 @@ class GoalEngineTest {
     }
 
     @Test
-    void adaptiveIntelligenceRequiresRealtimeMode() {
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new GoalSpec("test", GoalMode.SCRIPT, null, 10, 10_000, false, null, false,
-                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.HIGH));
+    void adaptiveIntelligenceCanUseLayeredScriptMode() {
+        var spec = new GoalSpec("test", GoalMode.SCRIPT, null, 10, 10_000, false, null, false,
+                GoalIntelligence.ADAPTIVE_V1, GoalSafety.HIGH);
+        assertEquals(GoalIntelligence.ADAPTIVE_V1, spec.intelligence());
+        assertFalse(spec.intelligence().requiresModel(spec.mode()));
     }
 
     @Test
@@ -161,6 +162,31 @@ class GoalEngineTest {
         assertTrue(workflow.assertions().stream().anyMatch(assertion ->
                 assertion.path().equals("steps.nether-workflow.finalDimension")
                         && assertion.expected().equals("minecraft:the_nether")));
+    }
+
+    @Test
+    void netherPlanEntersRequestedSeedThroughCreateWorldUi() {
+        var spec = new GoalSpec("load into a fresh survival world and get to the Nether",
+                GoalMode.REALTIME, "survival.reach-nether", 256, 480_000, false, null, true,
+                GoalIntelligence.ADAPTIVE_V1, GoalSafety.HIGH, GoalControls.defaults(),
+                "281475037711136");
+
+        var plan = new BuiltinGoalPlanner().plan(spec).plan();
+        var seedSegments = plan.segments().stream()
+                .filter(segment -> List.of("open-world-options", "focus-world-seed",
+                        "insert-world-seed", "create-fresh-world").contains(segment.id()))
+                .toList();
+        var createSteps = seedSegments.stream().flatMap(segment -> segment.steps().stream()).toList();
+
+        assertEquals(List.of("open-world-options", "focus-world-seed", "insert-world-seed", "create-world"),
+                createSteps.stream().map(GoalStep::id).toList());
+        assertEquals(List.of("open-world-options", "focus-world-seed", "insert-world-seed", "create-fresh-world"),
+                seedSegments.stream().map(GoalSegment::id).toList());
+        assertEquals(Map.of("target", "world_tab"), createSteps.get(0).input());
+        assertEquals(Map.of("target", "world_seed"), createSteps.get(1).input());
+        assertEquals("minecraft.ui.text.insert", createSteps.get(2).capability());
+        assertEquals(Map.of("text", "281475037711136"), createSteps.get(2).input());
+        assertEquals(false, plan.metadata().get("randomFreshWorldRequired"));
     }
 
     @Test

@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -21,12 +22,15 @@ final class NeoForgeSafePathPlanner {
 
     static List<BlockPos> find(ClientLevel level, BlockPos start, BlockPos target,
                                NeoForgeGoalPolicy policy) {
+        return find(level, start, target, policy, new ArrivalSpec(3.0, 5.0));
+    }
+
+    static List<BlockPos> find(ClientLevel level, BlockPos start, BlockPos target,
+                               NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
         var origin = start.immutable();
-        if (!snapshot.walkable(origin)) {
-            origin = findNearbyWalkable(snapshot, start, 3);
-            if (origin == null) return List.of();
-        }
+        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
+                snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
 
         var queue = new PriorityQueue<Node>();
         var previous = new HashMap<Long, Long>();
@@ -39,7 +43,7 @@ final class NeoForgeSafePathPlanner {
 
         while (!queue.isEmpty() && visited++ < MAX_VISITED) {
             var current = queue.remove();
-            if (nearTarget(current.position(), target)) {
+            if (arrival.reached(current.position(), target)) {
                 reached = current.position();
                 break;
             }
@@ -48,7 +52,9 @@ final class NeoForgeSafePathPlanner {
                 for (var dy : new int[]{1, 0, -1, -2, -3}) {
                     var candidate = new BlockPos(horizontal.getX(), current.position().getY() + dy,
                             horizontal.getZ());
-                    if (!withinBounds(origin, candidate) || !snapshot.walkable(candidate)) continue;
+                    if (!withinBounds(origin, candidate)
+                            || policy.highSafety() && !snapshot.bufferedWalkable(candidate)
+                            || !policy.highSafety() && !snapshot.walkable(candidate)) continue;
                     // A normal player can safely step down one block; larger drops are
                     // fall damage, not navigation. Adaptive intelligence keeps this rule
                     // even with balanced safety so planning quality cannot trade health for
@@ -75,22 +81,125 @@ final class NeoForgeSafePathPlanner {
         return List.copyOf(path);
     }
 
-    private static BlockPos findNearbyWalkable(NeoForgeWorldSnapshot snapshot, BlockPos start, int radius) {
-        for (var dy = 2; dy >= -radius; dy--) {
-            for (var dx = -radius; dx <= radius; dx++) {
-                for (var dz = -radius; dz <= radius; dz++) {
-                    var candidate = start.offset(dx, dy, dz);
-                    if (snapshot.walkable(candidate)) return candidate.immutable();
+    /**
+     * Find normal-input vertical progress when the requested target is materially below an
+     * otherwise unreachable origin. Every edge uses the same walkability and one-block descent
+     * rules as ordinary A*, so this cannot turn route recovery into an unsafe fall shortcut.
+     */
+    static List<BlockPos> findSafeDescent(ClientLevel level, BlockPos start, BlockPos target,
+                                           NeoForgeGoalPolicy policy, java.util.Set<Long> rejected) {
+        if (start.getY() - target.getY() < 3) return List.of();
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var origin = start.immutable();
+        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
+                snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
+
+        var queue = new PriorityQueue<Node>();
+        var previous = new HashMap<Long, Long>();
+        var cost = new HashMap<Long, Double>();
+        queue.add(new Node(origin, 0.0, 0.0));
+        previous.put(origin.asLong(), Long.MIN_VALUE);
+        cost.put(origin.asLong(), 0.0);
+        BlockPos best = null;
+        var bestTargetHeightDelta = Integer.MAX_VALUE;
+        var bestHorizontalDelta = Integer.MAX_VALUE;
+        var bestCost = Double.POSITIVE_INFINITY;
+        var visited = 0;
+
+        while (!queue.isEmpty() && visited++ < MAX_VISITED) {
+            var current = queue.remove();
+            var position = current.position();
+            if (position.getY() < origin.getY() && !rejected.contains(position.asLong())) {
+                var targetHeightDelta = Math.abs(position.getY() - target.getY());
+                var horizontalDelta = Math.abs(position.getX() - target.getX())
+                        + Math.abs(position.getZ() - target.getZ());
+                if (targetHeightDelta < bestTargetHeightDelta
+                        || targetHeightDelta == bestTargetHeightDelta && horizontalDelta < bestHorizontalDelta
+                        || targetHeightDelta == bestTargetHeightDelta && horizontalDelta == bestHorizontalDelta
+                        && current.cost() < bestCost) {
+                    best = position;
+                    bestTargetHeightDelta = targetHeightDelta;
+                    bestHorizontalDelta = horizontalDelta;
+                    bestCost = current.cost();
+                }
+                // A target-level cell within ordinary interaction range is sufficient vertical
+                // progress; stop before exploring the rest of the loaded 24-block volume.
+                if (targetHeightDelta <= 1 && horizontalDelta <= 4) break;
+            }
+            for (var direction : Direction.Plane.HORIZONTAL) {
+                var horizontal = position.relative(direction);
+                for (var dy : new int[]{1, 0, -1, -2, -3}) {
+                    var candidate = new BlockPos(horizontal.getX(), position.getY() + dy, horizontal.getZ());
+                    if (Math.abs(candidate.getX() - origin.getX()) > 24
+                            || Math.abs(candidate.getZ() - origin.getZ()) > 24
+                            || Math.abs(candidate.getY() - origin.getY()) > 24
+                            || !snapshot.bufferedWalkable(candidate)
+                            || position.getY() - candidate.getY() > 1) continue;
+                    var nextCost = current.cost() + edgeCost(position, candidate, policy);
+                    if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) continue;
+                    cost.put(candidate.asLong(), nextCost);
+                    previous.put(candidate.asLong(), position.asLong());
+                    queue.add(new Node(candidate.immutable(), nextCost, nextCost));
                 }
             }
         }
-        return null;
+        if (best == null) return List.of();
+        return reconstruct(previous, best);
     }
 
-    private static boolean nearTarget(BlockPos current, BlockPos target) {
-        var dx = current.getX() + 0.5 - target.getX() - 0.5;
-        var dz = current.getZ() + 0.5 - target.getZ() - 0.5;
-        return dx * dx + dz * dz <= 9.0 && Math.abs(current.getY() - target.getY()) <= 5;
+    /**
+     * Emergency graph from the real submerged pose to dry buffered ground. It never descends,
+     * crosses non-water fluid, invents an origin, or selects a route longer than the air reserve.
+     */
+    static List<BlockPos> findWaterRetreat(ClientLevel level, BlockPos start,
+                                            NeoForgeGoalPolicy policy, int airSupply) {
+        var maxEdges = NeoForgeSurvivalInvariant.maxWaterRetreatEdges(airSupply);
+        if (maxEdges <= 0) return List.of();
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
+        var origin = start.immutable();
+        if (!snapshot.waterRetreatPassable(origin)) return List.of();
+
+        var queue = new ArrayDeque<BlockPos>();
+        var previous = new HashMap<Long, Long>();
+        var depth = new HashMap<Long, Integer>();
+        queue.add(origin);
+        previous.put(origin.asLong(), Long.MIN_VALUE);
+        depth.put(origin.asLong(), 0);
+
+        while (!queue.isEmpty()) {
+            var current = queue.removeFirst();
+            var currentDepth = depth.get(current.asLong());
+            if (currentDepth > 0 && snapshot.bufferedWalkable(current)) {
+                return reconstruct(previous, current);
+            }
+            if (currentDepth >= maxEdges) continue;
+            var candidates = new ArrayList<BlockPos>(5);
+            candidates.add(current.above());
+            for (var direction : Direction.Plane.HORIZONTAL) candidates.add(current.relative(direction));
+            for (var candidate : candidates) {
+                if (candidate.getY() < origin.getY()
+                        || Math.abs(candidate.getX() - origin.getX()) > 12
+                        || Math.abs(candidate.getZ() - origin.getZ()) > 12
+                        || candidate.getY() - origin.getY() > 12
+                        || previous.containsKey(candidate.asLong())
+                        || !snapshot.waterRetreatPassable(candidate)) continue;
+                previous.put(candidate.asLong(), current.asLong());
+                depth.put(candidate.asLong(), currentDepth + 1);
+                queue.addLast(candidate.immutable());
+            }
+        }
+        return List.of();
+    }
+
+    private static List<BlockPos> reconstruct(HashMap<Long, Long> previous, BlockPos reached) {
+        var path = new ArrayList<BlockPos>();
+        var cursor = reached.asLong();
+        while (cursor != Long.MIN_VALUE) {
+            path.add(BlockPos.of(cursor).immutable());
+            cursor = previous.getOrDefault(cursor, Long.MIN_VALUE);
+        }
+        Collections.reverse(path);
+        return List.copyOf(path);
     }
 
     private static boolean withinBounds(BlockPos origin, BlockPos candidate) {
@@ -116,5 +225,19 @@ final class NeoForgeSafePathPlanner {
     private record Node(BlockPos position, double cost, double priority) implements Comparable<Node> {
         @Override
         public int compareTo(Node other) { return Double.compare(priority, other.priority); }
+    }
+
+    record ArrivalSpec(double horizontalTolerance, double verticalTolerance) {
+        boolean reached(BlockPos current, BlockPos target) {
+            return reached(current.getX() + 0.5, current.getY(), current.getZ() + 0.5, target);
+        }
+
+        boolean reached(double x, double y, double z, BlockPos target) {
+            var dx = target.getX() + 0.5 - x;
+            var dz = target.getZ() + 0.5 - z;
+            var dy = target.getY() + 0.1 - y;
+            return dx * dx + dz * dz <= horizontalTolerance * horizontalTolerance
+                    && Math.abs(dy) <= verticalTolerance;
+        }
     }
 }

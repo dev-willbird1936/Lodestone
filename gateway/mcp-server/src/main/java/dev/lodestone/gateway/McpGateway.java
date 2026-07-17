@@ -11,6 +11,7 @@ import dev.lodestone.goal.GoalMode;
 import dev.lodestone.goal.GoalIntelligence;
 import dev.lodestone.goal.GoalSafety;
 import dev.lodestone.goal.GoalControls;
+import dev.lodestone.goal.GoalSpec;
 import dev.lodestone.protocol.JsonSupport;
 import dev.lodestone.protocol.PermissionClass;
 import dev.lodestone.protocol.ProtocolVersion;
@@ -309,7 +310,7 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw preserves legacy behavior; adaptive is the highest profile and uses a low-latency model for realtime high-level replanning. Custom plan steps may declare state preconditions; realtime filters ineligible candidates and script fails closed before invoking them.", schema(Map.ofEntries(
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw preserves legacy behavior; adaptive is the highest profile, uses a low-latency model for realtime replanning, and can synthesize a bounded declarative plan for an otherwise unknown natural-language goal when a model provider is configured. Custom plan steps may declare state preconditions; realtime filters ineligible candidates and script fails closed before invoking them.", schema(Map.ofEntries(
                     Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
                     Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
                     Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
@@ -324,6 +325,8 @@ public final class McpGateway {
                     Map.entry("allowBlockBreaking", Map.of("type", "boolean")),
                     Map.entry("allowBlockPlacing", Map.of("type", "boolean")),
                     Map.entry("allowCommands", Map.of("type", "boolean")),
+                    Map.entry("worldSeed", Map.of("type", "string", "minLength", 1, "maxLength", 20,
+                            "description", "Optional signed 64-bit Java seed entered through the normal create-world UI")),
                     Map.entry("plan", Map.of("type", "object", "description",
                             "Optional declarative plan; invoke steps may declare assertion-shaped preconditions")))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
@@ -992,7 +995,7 @@ public final class McpGateway {
             var report = goalService.run(goal, mode, taskId, maxSteps, maxDurationMs,
                     bool(args, "dryRun", false), customPlan,
                     bool(args, "suppressInGameMessages", false), intelligence, safety,
-                    controls,
+                    controls, text(args, "worldSeed", null),
                     session().id, session().authorization);
             return toolResult(report);
         } catch (IllegalArgumentException invalid) {
@@ -1005,14 +1008,17 @@ public final class McpGateway {
         return toolResult(Map.of("tasks", goalService.tasks(text(args, "category", "")),
                 "modelProviders", goalService.modelProviders(),
                 "executorModel", dev.lodestone.goal.GoalModelProviders.EXECUTOR_MODEL_ID,
+                "adaptivePlanSynthesis", Map.of("enabled", true,
+                        "requiresConfiguredProvider", true,
+                        "appliesWhen", "no built-in task or custom declarative plan matches"),
                 "intelligenceLevels", List.of(
                         Map.of("id", "raw-v1", "behavior", "legacy action order; no prerequisite or safety intervention"),
                         Map.of("id", "guarded-v1", "behavior", "deterministic prerequisite/tool checks, fresh script handoffs, safe navigation, obstruction routing, and threat recovery"),
                         Map.of("id", "adaptive-v1", "behavior", "layered prerequisites, loaded-chunk replanning, fresh segment observations, visible obstruction mining with the right tool, and realtime model selection")),
                 "safetyPolicies", List.of(
                         Map.of("id", "low", "behavior", "goal progress with minimal intervention"),
-                        Map.of("id", "balanced", "avoid fluids and damaging routes; recover visible hazards"),
-                        Map.of("id", "high", "player safety preempts progress; avoid unsafe drops and hostile threats")),
+                        Map.of("id", "balanced", "behavior", "avoid fluids and damaging routes; recover visible hazards"),
+                        Map.of("id", "high", "behavior", "player safety preempts progress; avoid unsafe drops and hostile threats")),
                 "minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader()));
     }
 

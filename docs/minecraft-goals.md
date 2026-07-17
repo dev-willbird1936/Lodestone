@@ -12,10 +12,20 @@ NeoForge 1.21.1 exposes three goal tools through the MCP gateway:
 
 `minecraft_goal` defaults to `guarded-v1` with `balanced` safety. Select `raw-v1` explicitly for
 legacy action order, or `adaptive-v1` for highest prerequisite/replanning behavior. Adaptive
-realtime requires an available model provider; adaptive script uses deterministic native planning
-and segment checkpoints.
+realtime requires an available model provider. Adaptive script uses deterministic native planning
+for known tasks and can ask the same low-latency provider to synthesize a bounded declarative plan
+when no built-in task matches.
 
 Both modes use the same bounded plan format and verification kernel. A plan contains segments, and each segment contains `observe`, `invoke`, or `assert` steps. Outputs are stored under `steps.<step-id>` and can be passed to later steps with `${steps.<step-id>.<field>}`; automatic post-action observations are available under `steps.postObserve.<step-id>`. Custom invoke steps may also declare assertion-shaped `preconditions`; realtime excludes steps whose inputs or preconditions are not satisfied, while script mode fails closed before invoking an invalid step. The selected low-latency model receives those preconditions with each candidate. Arbitrary shell, JavaScript, or Python is never executed by a plan.
+
+When adaptive planning synthesizes a previously unknown goal, the model may emit only this
+declarative DSL. The engine bounds it to 16 segments and 256 total steps, requires explicit
+terminal assertions and `metadata.completionPredicateReady=true`, rejects unknown capability
+namespaces, and rejects direct commands, text injection, raw input, or world mutation for
+survival-scoped plans before execution. Typed goal movement/interact calls carry the requested
+intelligence and safety policy into the NeoForge adapter; calls made outside `minecraft_goal` remain
+raw. If synthesis is unavailable or invalid, the goal fails as `UNSUPPORTED` rather than falling
+back to blind inputs.
 
 If `maxDurationMs` is omitted, short bounded tasks use 120 seconds. The native wool-tree,
 wooden-axe tree, collect-wood, and Nether workflows use 480 seconds so normal movement, hand
@@ -89,7 +99,7 @@ Realtime provider selection is environment-driven:
 3. choose the lowest configured measured p95 latency, preferring the pinned GPT-5.4 mini on ties;
 4. use deterministic plan order if no provider is available.
 
-Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, `LODESTONE_GOAL_MODEL_TIMEOUT_MS`, and `LODESTONE_GOAL_MODEL_REASONING_EFFORT` (`low` by default). Credentials are never included in reports. The provider should return JSON with `candidateIndex` and `rationale`.
+Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, `LODESTONE_GOAL_MODEL_TIMEOUT_MS`, and `LODESTONE_GOAL_MODEL_REASONING_EFFORT` (`low` by default). Credentials are never included in reports. The provider returns JSON with `candidateIndex` and `rationale` for realtime decisions, or the bounded plan object for adaptive plan synthesis.
 
 ## KeepFocus profile
 

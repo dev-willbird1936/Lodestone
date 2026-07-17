@@ -228,30 +228,46 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
 
     private CapabilityDescriptor adapt(CapabilityDescriptor capability) {
         if (!IMPLEMENTED.contains(capability.id())) {
-            return capability.forAdapter(descriptor, Availability.UNAVAILABLE,
+            return goalInputContract(capability.forAdapter(descriptor, Availability.UNAVAILABLE,
                     new AvailabilityReason("not-implemented", "This operation is not implemented by the NeoForge 1.21.1 adapter yet.",
-                            Map.of("adapter", ADAPTER_ID)));
+                            Map.of("adapter", ADAPTER_ID))));
         }
         if (CLIENT_CAPABILITIES.contains(capability.id())) {
             if (clientBridge == null || !clientBridge.available(capability.id())) {
-                return capability.forAdapter(descriptor, Availability.UNAVAILABLE,
+                return goalInputContract(capability.forAdapter(descriptor, Availability.UNAVAILABLE,
                         new AvailabilityReason("client-not-ready",
                                 "This client capability requires a physical client, player, world, or screen that is not currently available.",
-                                Map.of("capability", capability.id())));
+                                Map.of("capability", capability.id()))));
             }
             var readyAvailability = capability.availability() == Availability.RESTRICTED
                     ? Availability.RESTRICTED : Availability.AVAILABLE;
             var readyReason = readyAvailability == Availability.RESTRICTED ? capability.reason() : null;
-            return capability.forAdapter(descriptor, readyAvailability, readyReason);
+            return goalInputContract(capability.forAdapter(descriptor, readyAvailability, readyReason));
         }
         if (!serverReady) {
-            return capability.forAdapter(descriptor, Availability.DEGRADED,
-                    new AvailabilityReason("server-not-ready", "The adapter is loaded, but no logical server/world is running.", Map.of()));
+            return goalInputContract(capability.forAdapter(descriptor, Availability.DEGRADED,
+                    new AvailabilityReason("server-not-ready", "The adapter is loaded, but no logical server/world is running.", Map.of())));
         }
         var readyAvailability = capability.availability() == Availability.RESTRICTED
                 ? Availability.RESTRICTED : Availability.AVAILABLE;
         var readyReason = readyAvailability == Availability.RESTRICTED ? capability.reason() : null;
-        return capability.forAdapter(descriptor, readyAvailability, readyReason);
+        return goalInputContract(capability.forAdapter(descriptor, readyAvailability, readyReason));
+    }
+
+    private static CapabilityDescriptor goalInputContract(CapabilityDescriptor capability) {
+        if (!capability.id().equals("minecraft.player.state.read")
+                && !capability.id().equals("minecraft.player.move")
+                && !capability.id().equals("minecraft.player.interact")) return capability;
+        var schema = new LinkedHashMap<String, Object>(capability.inputSchema());
+        var properties = new LinkedHashMap<String, Object>();
+        if (schema.get("properties") instanceof Map<?, ?> rawProperties) {
+            rawProperties.forEach((key, value) -> properties.put(String.valueOf(key), value));
+        }
+        properties.put("intelligence", Map.of("type", "string",
+                "enum", List.of("raw-v1", "guarded-v1", "adaptive-v1")));
+        properties.put("safety", Map.of("type", "string", "enum", List.of("low", "balanced", "high")));
+        schema.put("properties", properties);
+        return capability.withInputSchema(schema);
     }
 
     private CompletionStage<Map<String, Object>> discoverCommands(InvocationContext invocation) {

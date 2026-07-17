@@ -53,15 +53,20 @@ public final class GoalTaskCatalog {
     public record TaskDefinition(String id, String category, String description, String gameMode,
                                  List<String> requiredCapabilities, String successContract) {
         public Map<String, Object> toMap() {
-            return Map.of("id", id, "category", category, "description", description,
-                    "gameMode", gameMode, "requiredCapabilities", requiredCapabilities,
-                    "successContract", successContract,
-                    "defaultMaxDurationMs", GoalSpec.defaultMaxDurationMs(description, id),
-                    "executionModes", List.of("script", "realtime"),
-                    "intelligenceProfiles", List.of("raw-v1", "guarded-v1", "adaptive-v1"),
-                    "safetyPolicies", List.of("low", "balanced", "high"),
-                    "adaptiveRealtimeRequiresModel", true,
-                    "preconditionContract", preconditionContract());
+            var result = new java.util.LinkedHashMap<String, Object>();
+            result.put("id", id);
+            result.put("category", category);
+            result.put("description", description);
+            result.put("gameMode", gameMode);
+            result.put("requiredCapabilities", requiredCapabilities);
+            result.put("successContract", successContract);
+            result.put("defaultMaxDurationMs", GoalSpec.defaultMaxDurationMs(description, id));
+            result.put("executionModes", List.of("script", "realtime"));
+            result.put("intelligenceProfiles", List.of("raw-v1", "guarded-v1", "adaptive-v1"));
+            result.put("safetyPolicies", List.of("low", "balanced", "high"));
+            result.put("adaptiveRealtimeRequiresModel", true);
+            result.put("preconditionContract", preconditionContract());
+            return Map.copyOf(result);
         }
 
         private String preconditionContract() {

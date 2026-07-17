@@ -11,7 +11,8 @@ param(
     [ValidateSet('raw-v1', 'guarded-v1', 'adaptive-v1')]
     [string] $Intelligence = 'adaptive-v1',
     [ValidateSet('low', 'balanced', 'high')]
-    [string] $Safety = 'balanced'
+    [string] $Safety = 'balanced',
+    [string] $WorldSeed = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +70,7 @@ $report = [ordered]@{
     mcpPort = $Port
     cleanGameplayRequested = $true
     requestedModel = $ModelId
+    requestedWorldSeed = $WorldSeed
     modelProxyPort = $ModelPort
     advisorCheckpoint = [ordered]@{
         status = 'CONSULTED'
@@ -89,12 +91,53 @@ function Invoke-Rpc {
     }
     $message.Content = [System.Net.Http.StringContent]::new($body, [Text.Encoding]::UTF8, 'application/json')
     $response = $script:http.SendAsync($message).Result
+    if ($null -eq $response) {
+        return [pscustomobject]@{
+            httpStatus = 0
+            json = [pscustomobject]@{ error = [pscustomobject]@{
+                code = 'NULL_HTTP_RESPONSE'
+                message = "MCP $Method returned no HTTP response"
+            } }
+        }
+    }
     if ($response.Headers.Contains('Mcp-Session-Id')) { $script:sessionId = ($response.Headers.GetValues('Mcp-Session-Id') -join '') }
-    [pscustomobject]@{ httpStatus = [int] $response.StatusCode; json = ($response.Content.ReadAsStringAsync().Result | ConvertFrom-Json) }
+    $rawBody = if ($null -eq $response.Content) { '' } else { [string] $response.Content.ReadAsStringAsync().Result }
+    if ([string]::IsNullOrWhiteSpace($rawBody)) {
+        return [pscustomobject]@{
+            httpStatus = [int] $response.StatusCode
+            json = [pscustomobject]@{ error = [pscustomobject]@{
+                code = 'EMPTY_HTTP_BODY'
+                message = "MCP $Method returned HTTP $([int] $response.StatusCode) with an empty body"
+            } }
+        }
+    }
+    try {
+        $json = $rawBody | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        $json = [pscustomobject]@{ error = [pscustomobject]@{
+            code = 'INVALID_HTTP_BODY'
+            message = "MCP $Method returned HTTP $([int] $response.StatusCode) with invalid JSON: $($_.Exception.Message)"
+        } }
+    }
+    [pscustomobject]@{ httpStatus = [int] $response.StatusCode; json = $json }
 }
 
 function Convert-ToolResponse {
     param($Rpc)
+    if ($null -eq $Rpc) {
+        return [pscustomobject]@{
+            status = 'rpc-error'
+            error = [pscustomobject]@{ code = 'NULL_RPC_RESPONSE'; message = 'MCP call returned no response object' }
+            output = $null
+        }
+    }
+    if ($null -eq $Rpc.json) {
+        return [pscustomobject]@{
+            status = 'rpc-error'
+            error = [pscustomobject]@{ code = 'NULL_RPC_JSON'; message = "MCP call returned HTTP $($Rpc.httpStatus) without a JSON object" }
+            output = $null
+        }
+    }
     if ($Rpc.json.error) { return [pscustomobject]@{ status = 'rpc-error'; error = $Rpc.json.error; output = $null } }
     $payload = $Rpc.json.result.structuredContent
     if ($null -eq $payload) { return [pscustomobject]@{ status = 'empty'; error = $null; output = $null } }
@@ -129,7 +172,10 @@ function Start-Recorder {
     $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $ffmpeg
-    $psi.Arguments = "-hide_banner -y -f gdigrab -framerate 30 -draw_mouse 0 -i `"title=$WindowTitle`" -c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p -movflags +faststart `"$videoPath`""
+    # The Java window's client surface is not reliably represented by a desktop crop when the
+    # game is rendered in the background. gdigrab's title source follows the Minecraft surface
+    # and is the capture mode validated by the previous recorded runs.
+    $psi.Arguments = "-hide_banner -y -f gdigrab -framerate 30 -draw_mouse 0 -i `"title=$WindowTitle`" -vf `"crop=trunc(iw/2)*2:trunc(ih/2)*2`" -c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p -movflags +faststart `"$videoPath`""
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true
@@ -257,16 +303,21 @@ try {
     if (@($task.requiredCapabilities) -notcontains $capability) { throw "task is missing $capability" }
     $report.taskCatalogEntry = [ordered]@{ id = [string] $task.id; category = [string] $task.category; gameMode = [string] $task.gameMode; requiredCapabilities = [string[]] @($task.requiredCapabilities); successContract = [string] $task.successContract }
 
+    $goalArguments = @{ goal = $goalText; mode = $Mode; taskId = $taskId; maxSteps = 32; maxDurationMs = 600000; dryRun = $false; suppressInGameMessages = $true; intelligence = $Intelligence; safety = $Safety; observation = 'loaded-chunks'; combatPolicy = 'defensive'; allowCommands = $false }
+    if (-not [string]::IsNullOrWhiteSpace($WorldSeed)) { $goalArguments.worldSeed = $WorldSeed.Trim() }
     $goalInvocationCount++
-    $goalRpc = Invoke-Rpc 'tools/call' @{ name = 'minecraft_goal'; arguments = @{ goal = $goalText; mode = $Mode; taskId = $taskId; maxSteps = 32; maxDurationMs = 480000; dryRun = $false; suppressInGameMessages = $true; intelligence = $Intelligence; safety = $Safety } }
+    $goalRpc = Invoke-Rpc 'tools/call' @{ name = 'minecraft_goal'; arguments = $goalArguments }
     $goalResponse = Convert-ToolResponse $goalRpc
     $report.goalInvocationCount = $goalInvocationCount
     $report.goalToolResponseStatus = $goalResponse.status
+    $report.goalToolResponseError = $goalResponse.error
     $report.goalResult = $goalResponse.output
     if ($goalResponse.status -ne 'SUCCEEDED') { throw "single minecraft_goal call did not succeed: status=$($goalResponse.status)" }
 
-    $state = $goalResponse.output.state.steps.'nether-workflow'
-    if (-not $state) { throw 'goal result is missing state.steps.nether-workflow' }
+    $terminalStepId = if ($Intelligence -eq 'adaptive-v1') { 'enter-nether' } else { 'nether-workflow' }
+    $state = $goalResponse.output.state.steps.$terminalStepId
+    $report.terminalStepId = $terminalStepId
+    if (-not $state) { throw "goal result is missing state.steps.$terminalStepId" }
     $report.goalPredicates = [ordered]@{
         freshWorld = [bool] $state.freshWorld
         survival = [bool] $state.survival

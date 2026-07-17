@@ -28,6 +28,29 @@ public final class GoalEngine {
     public GoalRunReport run(GoalSpec spec, GoalInvoker invoker) {
         var started = System.nanoTime();
         var planned = planner.plan(spec);
+        var modelGeneratedPlan = false;
+        if (!planned.supported() && spec.intelligence() == GoalIntelligence.ADAPTIVE_V1
+                && !modelProvider.fallback()) {
+            try {
+                var generated = modelProvider.plan(new GoalPlanRequest(spec, GoalTaskCatalog.tasks().stream()
+                        .map(GoalTaskCatalog.TaskDefinition::toMap).toList()));
+                if (generated.isPresent()) {
+                    var validationFailure = validateGeneratedPlan(generated.get(), spec);
+                    if (validationFailure == null) {
+                        planned = GoalPlanner.PlanResult.supported(generated.get());
+                        modelGeneratedPlan = true;
+                    } else {
+                        planned = GoalPlanner.PlanResult.unsupported(validationFailure);
+                    }
+                } else {
+                    planned = GoalPlanner.PlanResult.unsupported(
+                            "no bounded plan matches goal and the configured planner returned no valid plan");
+                }
+            } catch (RuntimeException failure) {
+                planned = GoalPlanner.PlanResult.unsupported(
+                        "model plan synthesis failed: " + safeMessage(failure));
+            }
+        }
         if (!planned.supported()) {
             return report("none", spec, GoalStatus.UNSUPPORTED, planned.unsupportedReason(), started,
                     0, 0, List.of(), Map.of());
@@ -55,6 +78,7 @@ public final class GoalEngine {
         state.put("actionSegmentReplanning", spec.intelligence().actionSegmentReplanningEnabled());
         state.put("scriptSegmentObservation", spec.intelligence().scriptSegmentObservationEnabled());
         state.put("modelRequired", spec.intelligence().requiresModel(spec.mode()));
+        state.put("planSource", modelGeneratedPlan ? "model-generated" : "declared");
         state.put("safety", spec.safety().id());
         state.put("hazardAvoidance", spec.safety().hazardAvoidanceEnabled());
         state.put("fallProtection", spec.safety().fallProtectionEnabled());
@@ -132,7 +156,8 @@ public final class GoalEngine {
                                 StructuredError.of("COMMANDS_DISABLED",
                                         "goal command execution is disabled by allowCommands=false", false));
                     } else {
-                        var input = resolve(selected.input(), state);
+                        var input = decorateGoalInput(selected.capability(),
+                                resolve(selected.input(), state), spec);
                         result = invokeWithTransientRetry(invoker, selected.capability(), selected.capabilityVersion(),
                                 input, spec.dryRun(), spec, started);
                         actionCount++;
@@ -160,7 +185,8 @@ public final class GoalEngine {
                             pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "no budget for post-action observation");
                             break;
                         }
-                        var observed = invokeWithTransientRetry(invoker, postObservation, "1.0",
+                        var observed = invokeWithTransientRetry(invoker, postObservation,
+                                postObservationVersion(postObservation),
                                 postObservationInput(spec, postObservation),
                                 spec.dryRun(), spec, started);
                         actionCount++;
@@ -277,12 +303,22 @@ public final class GoalEngine {
     private static Map<String, Object> postObservationInput(GoalSpec spec, String capability) {
         if (!"minecraft.player.state.read".equals(capability)) return Map.of();
         return Map.of("intelligence", spec.intelligence().id(),
-                "safety", spec.safety().id(),
-                "observation", spec.controls().observation(),
-                "combatPolicy", spec.controls().combatPolicy(),
-                "allowBlockBreaking", spec.controls().allowBlockBreaking(),
-                "allowBlockPlacing", spec.controls().allowBlockPlacing(),
-                "allowCommands", spec.controls().allowCommands());
+                "safety", spec.safety().id());
+    }
+
+    private static String postObservationVersion(String capability) {
+        return "minecraft.ui.state.read".equals(capability) ? "2.0" : "1.0";
+    }
+
+    private static Map<String, Object> decorateGoalInput(String capability, Map<String, Object> input,
+                                                          GoalSpec spec) {
+        if (capability == null || spec.intelligence() == GoalIntelligence.RAW_V1
+                || (!"minecraft.player.move".equals(capability)
+                && !"minecraft.player.interact".equals(capability))) return input;
+        var decorated = new LinkedHashMap<>(input);
+        decorated.putIfAbsent("intelligence", spec.intelligence().id());
+        decorated.putIfAbsent("safety", spec.safety().id());
+        return decorated;
     }
 
     private static boolean survivalCheatCapability(GoalPlan plan, GoalSpec spec, String capability) {
@@ -343,6 +379,55 @@ public final class GoalEngine {
 
     private static boolean preconditionsPass(GoalStep step, Map<String, Object> state) {
         return failedPreconditions(step, state).isEmpty();
+    }
+
+    private static String validateGeneratedPlan(GoalPlan plan, GoalSpec spec) {
+        if (plan == null || plan.segments().isEmpty()) return "model generated an empty goal plan";
+        if (plan.id().length() > 128 || plan.goal().length() > 4_096) {
+            return "model generated an oversized plan identity or goal";
+        }
+        if (plan.segments().size() > 16) return "model generated too many goal segments";
+        if (!Boolean.TRUE.equals(plan.metadata().get("completionPredicateReady"))) {
+            return "model plan must declare metadata.completionPredicateReady=true";
+        }
+        var totalSteps = 0;
+        var ids = new java.util.HashSet<String>();
+        var hasAssertion = false;
+        for (var segment : plan.segments()) {
+            if (segment.id().length() > 128) return "model generated an oversized segment id";
+            if (segment.steps().isEmpty() || segment.steps().size() > 32) {
+                return "model generated an empty or oversized segment: " + segment.id();
+            }
+            totalSteps += segment.steps().size();
+            if (!segment.assertions().isEmpty()) hasAssertion = true;
+            for (var step : segment.steps()) {
+                if (step.id().length() > 128) return "model generated an oversized step id";
+                if (!ids.add(step.id())) return "model generated duplicate step id: " + step.id();
+                if (!step.assertions().isEmpty()) hasAssertion = true;
+                var capability = step.capability();
+                if (step.kind() != GoalStepKind.ASSERT && (capability == null
+                        || !(capability.startsWith("minecraft.") || capability.startsWith("lodestone.")))) {
+                    return "model generated an unsupported capability namespace: " + capability;
+                }
+                if (capability != null && capability.length() > 256) {
+                    return "model generated an oversized capability id";
+                }
+                if (survivalScoped(plan, spec) && survivalUnsafeGeneratedCapability(plan, spec, capability)) {
+                    return "model generated an unsafe command, text, or raw-input action for a survival-scoped goal";
+                }
+            }
+        }
+        if (totalSteps > 256) return "model generated too many goal steps";
+        return hasAssertion ? null : "model plan must include at least one terminal assertion";
+    }
+
+    private static boolean survivalUnsafeGeneratedCapability(GoalPlan plan, GoalSpec spec,
+                                                             String capability) {
+        if (survivalCheatCapability(plan, spec, capability)) return true;
+        if (capability == null || "minecraft.input.release-all".equals(capability)) return false;
+        return capability.equals("minecraft.chat.send")
+                || capability.equals("minecraft.ui.text.insert")
+                || capability.startsWith("minecraft.input.");
     }
 
     @SuppressWarnings("unchecked")
@@ -427,7 +512,8 @@ public final class GoalEngine {
     private GoalRunReport report(String planId, GoalSpec spec, GoalStatus status, String message, long started,
                                  int completedSteps, int completedSegments, List<Map<String, Object>> trace,
                                  Map<String, Object> state) {
-        var selectedModel = spec.mode() == GoalMode.REALTIME
+        var selectedModel = "model-generated".equals(state.get("planSource")) ? modelProvider.id()
+                : spec.mode() == GoalMode.REALTIME
                 ? spec.intelligence().modelReplanningEnabled() ? modelProvider.id() : "deterministic-realtime"
                 : "script-interpreter";
         return new GoalRunReport(UUID.randomUUID().toString(), planId, spec.goal(), spec.mode(), status, message,

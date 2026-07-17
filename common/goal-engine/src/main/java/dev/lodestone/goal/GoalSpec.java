@@ -6,7 +6,15 @@ import java.util.Locale;
 public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
                        long maxDurationMs, boolean dryRun, GoalPlan customPlan,
                        boolean suppressInGameMessages, GoalIntelligence intelligence,
-                       GoalSafety safety, GoalControls controls) {
+                       GoalSafety safety, GoalControls controls, String worldSeed) {
+    public GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
+                    long maxDurationMs, boolean dryRun, GoalPlan customPlan,
+                    boolean suppressInGameMessages, GoalIntelligence intelligence,
+                    GoalSafety safety, GoalControls controls) {
+        this(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
+                suppressInGameMessages, intelligence, safety, controls, null);
+    }
+
     public GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
                     long maxDurationMs, boolean dryRun, GoalPlan customPlan) {
         this(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan, false,
@@ -40,6 +48,14 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
         intelligence = intelligence == null ? GoalIntelligence.GUARDED_V1 : intelligence;
         safety = safety == null ? GoalSafety.BALANCED : safety;
         controls = controls == null ? GoalControls.defaults() : controls;
+        worldSeed = worldSeed == null || worldSeed.isBlank() ? null : worldSeed.trim();
+        if (worldSeed != null) {
+            try {
+                Long.parseLong(worldSeed);
+            } catch (NumberFormatException invalid) {
+                throw new IllegalArgumentException("worldSeed must be a signed 64-bit Java seed");
+            }
+        }
         if (maxSteps < 1 || maxSteps > 1_000) {
             throw new IllegalArgumentException("maxSteps must be between 1 and 1000");
         }

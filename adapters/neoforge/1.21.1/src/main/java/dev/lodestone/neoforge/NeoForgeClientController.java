@@ -34,6 +34,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -851,6 +852,15 @@ public final class NeoForgeClientController {
             var durationMs = numberOrDefault(input, "durationMs", 100);
             if (durationMs < 1 || durationMs > 10_000) {
                 throw new IllegalArgumentException("durationMs must be between 1 and 10000");
+            }
+            if (input.containsKey("intelligence") || input.containsKey("safety")) {
+                var policy = NeoForgeGoalPolicy.from(input);
+                if (client.gameMode != null && client.gameMode.getPlayerMode() == GameType.SURVIVAL
+                        && policy.fallProtectionEnabled() && forward > 0
+                        && NeoForgeGoalActionGuard.unsafeForwardDrop(client, client.player)) {
+                    throw new IllegalStateException("goal safety blocked movement toward an unsafe forward drop");
+                }
+                durationMs = Math.min(durationMs, policy.highSafety() ? 250 : 500);
             }
 
             var next = new LinkedHashMap<String, KeyMapping>();

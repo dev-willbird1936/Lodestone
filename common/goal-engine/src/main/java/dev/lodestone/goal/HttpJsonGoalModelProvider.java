@@ -2,8 +2,8 @@
 package dev.lodestone.goal;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import dev.lodestone.protocol.JsonSupport;
 
 import java.net.URI;
@@ -92,6 +92,72 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                         "preconditions", step.preconditions().stream().map(GoalAssertion::toMap).toList(),
                         "assertionCount", step.assertions().size())).toList(),
                 "response", "Return JSON only: {candidateIndex: integer, rationale: string}. Choose only an eligible candidate; do not invent capabilities or bypass a precondition. When safety is high, select recovery or observation before progress if the player is threatened, falling, on fire, in lava, in water, or facing an unsafe drop."));
+        var decision = requestJson(prompt).orElse(null);
+        if (decision == null || !decision.isJsonObject()) return Optional.empty();
+        try {
+            var object = decision.getAsJsonObject();
+            var index = object.has("candidateIndex") ? object.get("candidateIndex").getAsInt()
+                    : object.get("candidate_index").getAsInt();
+            if (index < 0 || index >= request.candidates().size()) return Optional.empty();
+            return Optional.of(new GoalDecision(index,
+                    object.has("rationale") ? object.get("rationale").getAsString() : "model selection"));
+        } catch (Exception ignored) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<GoalPlan> plan(GoalPlanRequest request) {
+        var spec = request.spec();
+        var prompt = JsonSupport.MAPPER.toJson(Map.of(
+                "goal", spec.goal(),
+                "mode", spec.mode().toString(),
+                "policy", Map.of(
+                        "intelligence", spec.intelligence().id(),
+                        "safety", spec.safety().id(),
+                        "observation", spec.controls().observation(),
+                        "combatPolicy", spec.controls().combatPolicy(),
+                        "allowBlockBreaking", spec.controls().allowBlockBreaking(),
+                        "allowBlockPlacing", spec.controls().allowBlockPlacing(),
+                        "allowCommands", spec.controls().allowCommands()),
+                "builtInTasks", request.builtInTasks(),
+                "planContract", Map.of(
+                        "segments", "non-empty array, at most 16 segments",
+                        "stepsPerSegment", "at least one and at most 32 steps",
+                        "stepKinds", List.of("observe", "invoke", "assert"),
+                        "stateHandoff", "outputs are available under steps.<id>; use ${steps.<id>.<field>} for later inputs",
+                        "preconditions", "assertion-shaped and checked before invoke steps",
+                        "terminal", "metadata.completionPredicateReady must be true and at least one assertion must prove the goal",
+                        "allowedCapabilityFamilies", List.of("minecraft.*", "lodestone.*")),
+                "prerequisiteRules", Map.of(
+                        "highestIntelligence", "adaptive-v1 must plan the shortest legitimate prerequisite chain before the stated action, then verify each handoff from fresh observation",
+                        "earlySurvival", "logs, leaves, and other genuinely hand-harvestable starter resources may be gathered by hand; do not mine down blindly to search for stone",
+                        "toolTiers", Map.of(
+                                "stoneOrCobblestone", "obtain and equip a wooden or better pickaxe before mining",
+                                "ironOrCopper", "obtain and equip a stone or better pickaxe before mining",
+                                "diamondOrEmerald", "obtain and equip an iron or better pickaxe before mining",
+                                "logs", "obtain and equip an axe when one is required for efficient tree work",
+                                "dirtSandGravel", "use a shovel when it materially improves the route",
+                                "hostileMob", "obtain or select a weapon before engaging unless escaping is safer"),
+                        "recovery", "if a target requires a missing tool, stop the attack, observe inventory and nearby loaded chunks, acquire the tool naturally, equip it, and only then retry",
+                        "navigation", "prefer safe walkable routes through loaded chunks; never use a fall, water, lava, teleport, command, or direct world mutation as a shortcut"),
+                "instructions", "Return JSON only. Create a bounded declarative plan, starting with observations when the world state is unknown. Never emit shell, JavaScript, Python, seed manipulation, teleportation, direct inventory mutation, direct world mutation, chat commands, text injection, or raw minecraft.input key/mouse actions for a survival goal. Use typed minecraft.player.move and minecraft.player.interact calls or an existing native minecraft.goal.* actor for normal player actions. For adaptive-v1, a plan that attacks a tool-required block before proving the correct tool is equipped is invalid; include the natural gathering, crafting, equipping, and verification steps first. Do not turn a failed attack into repeated retries. Declare metadata.gameMode as survival for a survival goal and include explicit terminal assertions.",
+                "response", "Return the plan object directly: {id, goal, metadata, segments}."));
+        var root = requestJson(prompt).orElse(null);
+        if (root == null || !root.isJsonObject()) return Optional.empty();
+        try {
+            var object = root.getAsJsonObject();
+            var plan = object.has("plan") ? object.get("plan") : root;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> raw = (Map<String, Object>) JsonSupport.MAPPER.fromJson(plan,
+                    new TypeToken<Map<String, Object>>() { }.getType());
+            return Optional.of(GoalPlan.fromMap(raw));
+        } catch (Exception ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<JsonElement> requestJson(String prompt) {
         var body = JsonSupport.MAPPER.toJson(Map.of(
                 "model", id,
                 "reasoning_effort", reasoningEffort,
@@ -105,18 +171,14 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
             var response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) return Optional.empty();
             var root = JsonParser.parseString(response.body());
-            var decision = root;
             if (root.isJsonObject() && root.getAsJsonObject().has("choices")) {
-                var content = root.getAsJsonObject().getAsJsonArray("choices").get(0).getAsJsonObject()
-                        .getAsJsonObject("message").get("content").getAsString();
-                decision = JsonParser.parseString(content);
+                var choices = root.getAsJsonObject().getAsJsonArray("choices");
+                if (choices.size() == 0) return Optional.empty();
+                var content = choices.get(0).getAsJsonObject().getAsJsonObject("message").get("content");
+                if (content == null || !content.isJsonPrimitive()) return Optional.empty();
+                return Optional.of(JsonParser.parseString(content.getAsString()));
             }
-            var object = decision.getAsJsonObject();
-            var index = object.has("candidateIndex") ? object.get("candidateIndex").getAsInt()
-                    : object.get("candidate_index").getAsInt();
-            if (index < 0 || index >= request.candidates().size()) return Optional.empty();
-            return Optional.of(new GoalDecision(index,
-                    object.has("rationale") ? object.get("rationale").getAsString() : "model selection"));
+            return Optional.of(root);
         } catch (Exception ignored) {
             return Optional.empty();
         }

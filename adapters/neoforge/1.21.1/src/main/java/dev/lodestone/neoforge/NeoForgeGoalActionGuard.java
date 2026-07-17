@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.neoforge;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+
+import java.util.Map;
 
 /** Deterministic action vetoes for normal-input goal actors. */
 final class NeoForgeGoalActionGuard {
@@ -34,5 +37,18 @@ final class NeoForgeGoalActionGuard {
         if (state.isAir() || state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES)
                 || player.getMainHandItem().isCorrectToolForDrops(state)) return null;
         return state.getBlock().getName().getString();
+    }
+
+    static boolean unsafeForwardDrop(Minecraft client, LocalPlayer player) {
+        var feet = player.blockPosition();
+        var ahead = feet.relative(player.getDirection());
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, NeoForgeGoalPolicy.from(Map.of(
+                "intelligence", "guarded-v1", "safety", "high")));
+        if (snapshot.walkable(ahead)) return false;
+        for (var dy = -1; dy >= -4; dy--) {
+            var candidate = new BlockPos(ahead.getX(), feet.getY() + dy, ahead.getZ());
+            if (snapshot.walkable(candidate)) return dy <= -2;
+        }
+        return true;
     }
 }

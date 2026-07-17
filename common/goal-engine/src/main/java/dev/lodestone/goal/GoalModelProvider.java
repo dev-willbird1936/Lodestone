@@ -20,5 +20,10 @@ public interface GoalModelProvider {
         return false;
     }
 
+    /** Optional bounded plan synthesis for adaptive natural-language goals. */
+    default Optional<GoalPlan> plan(GoalPlanRequest request) {
+        return Optional.empty();
+    }
+
     Optional<GoalDecision> choose(GoalDecisionRequest request);
 }
