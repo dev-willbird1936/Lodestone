@@ -3316,6 +3316,20 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     "safe intelligent path unavailable before reaching " + label);
             return false;
         }
+        if (navigationPoseDrifted(player)) {
+            navigationPath = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), routeTarget,
+                    policy, arrival);
+            navigationIndex = navigationStartIndex(player, navigationPath);
+            navigationStuckTicks = 0;
+            navigationLastDistance = Double.POSITIVE_INFINITY;
+            safetyDiagnostics.add("navigation-replan:pose-drift:" + label + ":from="
+                    + player.blockPosition() + ":target=" + routeTarget);
+            inputActions.add("observe:replan-from-current-pose:" + label);
+            if (navigationPath.isEmpty() && policy.smartNavigation()) {
+                throw new IllegalStateException("safe intelligent navigation could not continue toward " + label);
+            }
+            if (navigationPath.isEmpty()) return false;
+        }
         while (navigationIndex < navigationPath.size()) {
             var waypoint = navigationPath.get(navigationIndex);
             if (player.distanceToSqr(Vec3.atCenterOf(waypoint)) <= 1.0) navigationIndex++;
@@ -3362,6 +3376,15 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         client.options.keyJump.setDown(player.onGround() && waypoint.getY() > player.getY() + 0.35);
         inputActions.add("move:safety-weighted-route:" + label);
         return false;
+    }
+
+    /** Replan when movement or a terrain edge leaves the actor outside the validated route envelope. */
+    private boolean navigationPoseDrifted(LocalPlayer player) {
+        var current = player.blockPosition();
+        return navigationPath.stream().noneMatch(waypoint ->
+                Math.abs(waypoint.getX() - current.getX()) <= 1
+                        && Math.abs(waypoint.getY() - current.getY()) <= 1
+                        && Math.abs(waypoint.getZ() - current.getZ()) <= 1);
     }
 
     private int navigationStartIndex(LocalPlayer player, List<BlockPos> path) {
