@@ -796,7 +796,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             var candidates = new ArrayList<BlockPos>();
             for (var direction : List.of(Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST)) {
                 for (int distance = 1; distance <= 3; distance++) {
-                    for (int yOffset = -1; yOffset <= 2; yOffset++) {
+                    for (int yOffset = -3; yOffset <= 4; yOffset++) {
                         var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
                         if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidates.contains(candidate)) continue;
@@ -843,8 +843,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var bestScore = Double.POSITIVE_INFINITY;
         for (var target : resourceSource.blocks().stream().limit(32).toList()) {
             for (var direction : Direction.Plane.HORIZONTAL) {
-                for (int distance = 2; distance <= 6; distance++) {
-                    for (int yOffset = -2; yOffset <= 2; yOffset++) {
+                for (int distance = 2; distance <= 8; distance++) {
+                    for (int yOffset = -6; yOffset <= 6; yOffset++) {
                         var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
                         if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidate.distSqr(player.blockPosition()) < 9.0
