@@ -162,6 +162,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private NeoForgeStarterResourceCatalog.Source resourceSource;
     private BlockPos resourceMiningVantage;
     private boolean resourceApproachOnly;
+    private final HashSet<Long> rejectedResourceVantages = new HashSet<>();
     private BlockPos resourceRejectionAnchor;
     private int localResourceVantageRejections;
     private final HashSet<UUID> rejectedCollectibles = new HashSet<>();
@@ -547,6 +548,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 resourceSource = sources.getFirst();
                 resourceMiningVantage = null;
                 resourceApproachOnly = false;
+                rejectedResourceVantages.clear();
                 rejectedCollectibles.clear();
                 collectibleTargetId = null;
                 resetNavigation();
@@ -611,7 +613,27 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             resetNavigation();
             inputActions.add("observe:reachable-starter-resource-mining-vantage:" + resourceMiningVantage);
         }
-        if (navigateTo(client, resourceMiningVantage, 0.8, "starter resource mining vantage")) {
+        boolean reachedMiningVantage;
+        try {
+            reachedMiningVantage = navigateTo(client, resourceMiningVantage, 0.8,
+                    "starter resource mining vantage");
+        } catch (IllegalStateException failure) {
+            var message = String.valueOf(failure.getMessage());
+            if (!message.startsWith("safe intelligent path unavailable before reaching ")
+                    && !message.startsWith("safe intelligent navigation could not continue toward ")
+                    && !message.startsWith("safe intelligent navigation remained blocked during ")) {
+                throw failure;
+            }
+            safetyDiagnostics.add("resource-replan:reject-vantage-route:" + resourceMiningVantage);
+            rejectedResourceVantages.add(resourceMiningVantage.asLong());
+            resourceMiningVantage = null;
+            resourceApproachOnly = false;
+            resetNavigation();
+            stopMovement(client);
+            waitTicks = 2;
+            return;
+        }
+        if (reachedMiningVantage) {
             stopMovement(client);
             if (resourceApproachOnly) {
                 // A safe approach cell is progress, not yet permission to mine. Re-read the
@@ -746,6 +768,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 for (int distance = 1; distance <= 3; distance++) {
                     for (int yOffset = -1; yOffset <= 2; yOffset++) {
                         var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
+                        if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidates.contains(candidate)) continue;
                         var eye = new Vec3(candidate.getX() + 0.5, candidate.getY() + 1.62,
                                 candidate.getZ() + 0.5);
@@ -793,6 +816,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 for (int distance = 2; distance <= 6; distance++) {
                     for (int yOffset = -2; yOffset <= 2; yOffset++) {
                         var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
+                        if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidate.distSqr(player.blockPosition()) < 9.0
                                 || !snapshot.bufferedWalkable(candidate)) continue;
                         var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate,
@@ -3415,6 +3439,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 + " acquisitionStepMoveTicks=" + prerequisiteStepMovementTicks
                 + " navigationDestination=" + (navigationDestination == null ? "none" : navigationDestination)
                 + " navigationIndex=" + navigationIndex + "/" + navigationPath.size()
+                + " resourceVantage=" + (resourceMiningVantage == null ? "none" : resourceMiningVantage)
+                + " resourceApproachOnly=" + resourceApproachOnly
+                + " rejectedResourceVantages=" + rejectedResourceVantages.size()
                 + " acquisitionRetreat=" + (prerequisiteRetreatOrigin == null
                 ? "none" : prerequisiteRetreatOrigin)
                 + " acquisitionGate=" + prerequisiteGateOutcome);
