@@ -2659,7 +2659,19 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         return new NeoForgeLivenessWatchdog.Sample(NeoForgeLivenessWatchdog.activityKey(stage.name()),
                 player.getX(), player.getY(), player.getZ(),
                 inventoryRevision(player), localWorldRevision(client, player.blockPosition(), 2),
-                movementExpected() && genericLivenessEnabled(stage.name(), prerequisitePhase));
+                movementExpected() && genericLivenessEnabled(stage.name(), prerequisitePhase)
+                        && !smartNavigationOwnsLiveness());
+    }
+
+    /** Smart A* routes have their own waypoint timeout and route rejection contract. */
+    private boolean smartNavigationOwnsLiveness() {
+        if (!policy.smartNavigation() || navigationDestination == null) return false;
+        return switch (stage) {
+            case NAVIGATE_LOOT, NAVIGATE_STARTER_RESOURCE -> true;
+            case MINE_STARTER_RESOURCE -> resourceMiningVantage != null;
+            case MINE_STONE, MINE_IRON, MINE_GRAVEL -> miningVantage != null;
+            default -> false;
+        };
     }
 
     static boolean genericLivenessEnabled(String stageName) {
