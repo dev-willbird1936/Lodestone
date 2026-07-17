@@ -40,11 +40,34 @@ final class NeoForgeSafePathPlanner {
      */
     static List<BlockPos> findToAny(ClientLevel level, BlockPos start, Collection<BlockPos> targets,
                                     NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        return findToAny(level, start, targets, policy, arrival, false);
+    }
+
+    /**
+     * Find a route from a currently walkable but not fully buffered origin. This is used only
+     * for recovery into a high-safety work surface; every destination and subsequent edge still
+     * has to satisfy the full buffered-walkable contract.
+     */
+    static List<BlockPos> findFromWalkableOrigin(ClientLevel level, BlockPos start,
+                                                  Collection<BlockPos> targets,
+                                                  NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        return findToAny(level, start, targets, policy, arrival, true);
+    }
+
+    private static List<BlockPos> findToAny(ClientLevel level, BlockPos start,
+                                            Collection<BlockPos> targets,
+                                            NeoForgeGoalPolicy policy, ArrivalSpec arrival,
+                                            boolean allowWalkableOrigin) {
         if (targets.isEmpty()) return List.of();
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
         var origin = start.immutable();
-        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
-                snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
+        var originAllowed = NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
+                snapshot.bufferedWalkable(origin), policy.highSafety());
+        if (!originAllowed && allowWalkableOrigin) {
+            originAllowed = snapshot.walkable(origin)
+                    && !snapshot.hazard(origin) && !snapshot.hazard(origin.above());
+        }
+        if (!originAllowed) return List.of();
         var goalKeys = new HashSet<Long>();
         for (var target : targets) goalKeys.add(target.asLong());
         var singleTarget = targets.size() == 1 ? targets.iterator().next() : null;

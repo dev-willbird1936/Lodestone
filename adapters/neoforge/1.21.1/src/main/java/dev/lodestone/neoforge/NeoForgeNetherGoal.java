@@ -1720,7 +1720,10 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             return;
         }
         if (prerequisiteResource == null || !prerequisiteResource.id().equals(resource.id())) {
-            prerequisiteRetreatOrigin = requirePlayer(client).blockPosition().immutable();
+            // Establish the retreat anchor only after the actor has reached a fully buffered
+            // work surface. A walkable origin can be safe for the body while its surrounding
+            // buffer is unsafe; high-safety acquisition first relocates to a buffered cell.
+            prerequisiteRetreatOrigin = null;
             prerequisiteDirection = null;
             prerequisiteCommittedSteps = 0;
             prerequisitePlanRejections = 0;
@@ -1758,7 +1761,10 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
         var from = player.blockPosition().immutable();
         if (!snapshot.bufferedWalkable(from)) {
-            throw new IllegalStateException("PREREQUISITE_SAFETY_VETO: unsafe excavation origin " + from);
+            if (!relocateToSafeExcavationOrigin(client, snapshot)) return;
+            snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+            from = player.blockPosition().immutable();
+            if (!snapshot.bufferedWalkable(from)) return;
         }
         if (prerequisiteRetreatOrigin == null) prerequisiteRetreatOrigin = from;
         if (!safeRetreatPath(client, from)) {
@@ -1796,6 +1802,47 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         safetyDiagnostics.add("prerequisite-staircase:preflight-reject:no-safe-step:"
                 + resource.id() + ":origin=" + from + ":attempt=" + prerequisitePlanRejections);
         waitTicks = 4;
+    }
+
+    private boolean relocateToSafeExcavationOrigin(Minecraft client, NeoForgeWorldSnapshot snapshot) {
+        var player = requirePlayer(client);
+        var from = player.blockPosition().immutable();
+        if (!snapshot.walkable(from) || snapshot.hazard(from) || snapshot.hazard(from.above())) {
+            throw new IllegalStateException("PREREQUISITE_SAFETY_VETO: unsafe excavation body origin " + from);
+        }
+        var candidates = new ArrayList<BlockPos>();
+        for (int radius = 1; radius <= 8; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                    for (int dy = -2; dy <= 2; dy++) {
+                        var candidate = from.offset(dx, dy, dz);
+                        if (snapshot.bufferedWalkable(candidate) && !candidates.contains(candidate)) {
+                            candidates.add(candidate.immutable());
+                        }
+                    }
+                }
+            }
+        }
+        var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.45, 0.8);
+        var path = NeoForgeSafePathPlanner.findFromWalkableOrigin(client.level, from, candidates,
+                policy, arrival);
+        if (path.size() < 2) {
+            throw new IllegalStateException("PREREQUISITE_SAFETY_VETO: no buffered excavation origin reachable from "
+                    + from);
+        }
+        var target = path.getLast().immutable();
+        if (!target.equals(navigationDestination) || !arrival.equals(navigationArrival)) {
+            navigationDestination = target;
+            navigationArrival = arrival;
+            navigationPath = path;
+            navigationIndex = navigationStartIndex(player, path);
+            navigationStuckTicks = 0;
+            navigationLastDistance = Double.POSITIVE_INFINITY;
+            inputActions.add("observe:relocate-to-buffered-excavation-origin:" + from + "->" + target);
+        }
+        navigateWithSafePath(client, target, 0.45, "buffered excavation origin");
+        return false;
     }
 
     private NeoForgePrerequisiteAcquisitionPlanner.StairStep preflightPrerequisiteStep(
