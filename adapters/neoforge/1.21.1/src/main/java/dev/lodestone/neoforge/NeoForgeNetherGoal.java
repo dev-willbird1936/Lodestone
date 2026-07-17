@@ -167,6 +167,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private int localResourceVantageRejections;
     private final HashSet<UUID> rejectedCollectibles = new HashSet<>();
     private UUID collectibleTargetId;
+    private BlockPos collectibleSupportBlock;
     private BlockPos miningVantageTarget;
     private BlockPos miningVantage;
     private String miningSearchKind = "";
@@ -551,6 +552,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 rejectedResourceVantages.clear();
                 rejectedCollectibles.clear();
                 collectibleTargetId = null;
+                collectibleSupportBlock = null;
                 resetNavigation();
                 announce(client, "Observed a starter wood source at " + resourceSource.anchor()
                         + " (" + resourceSource.provenance() + "); walking there to gather wood by hand");
@@ -1049,6 +1051,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var target = drops.stream().filter(entity -> entity.getUUID().equals(collectibleTargetId))
                 .findFirst().orElse(drops.isEmpty() ? null : drops.getFirst());
         if (target == null) {
+            if (collectibleSupportBlock != null && clearCollectibleSupport(client)) return;
             stopMovement(client);
             if (stageTicks > 100) abandonStarterResource(client, "no-equivalent-drop-observed");
             return;
@@ -1174,6 +1177,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         selectHotbar(client, slot);
         lookAt(player, facePoint(placement.support(), Direction.UP));
         if (stageTicks % 12 == 1) {
+            collectibleSupportBlock = placement.target().immutable();
             KeyMapping.click(client.options.keyUse.getKey());
             inputActions.add("use:place-safe-collectible-support:" + placement.target());
         }
@@ -1182,12 +1186,64 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private int findSafeSupportBlockSlot(LocalPlayer player) {
         for (var slot = 0; slot < 9; slot++) {
             var stack = player.getInventory().getItem(slot);
-            if (!(stack.getItem() instanceof BlockItem) || stack.is(ItemTags.LOGS)
-                    || stack.is(ItemTags.PLANKS) || stack.is(Items.CRAFTING_TABLE)
+            if (!(stack.getItem() instanceof BlockItem) || stack.is(Items.CRAFTING_TABLE)
                     || stack.is(Items.FURNACE) || stack.is(Items.OBSIDIAN)) continue;
             return slot;
         }
         return -1;
+    }
+
+    /** Recover a drop that landed on foliage/terrain by dismantling the temporary normal-input support. */
+    private boolean clearCollectibleSupport(Minecraft client) {
+        var support = collectibleSupportBlock;
+        if (support == null) return false;
+        var player = requirePlayer(client);
+        var state = client.level.getBlockState(support);
+        if (state.isAir()) {
+            collectibleSupportBlock = null;
+            inputActions.add("observe:collectible-support-cleared");
+            return false;
+        }
+        if (!state.is(BlockTags.LOGS) && !state.is(BlockTags.PLANKS)) {
+            collectibleSupportBlock = null;
+            return false;
+        }
+        var supportItem = state.getBlock().asItem();
+        if (!player.getMainHandItem().is(supportItem)) {
+            var slot = hotbarSlot(player, supportItem);
+            if (slot < 0) return false;
+            selectHotbar(client, slot);
+            return true;
+        }
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        lookAt(player, Vec3.atCenterOf(support));
+        var hit = player.pick(5.0F, 0.0F, false);
+        if (hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(support)
+                && snapshot.safeMiningSite(player.blockPosition(), support,
+                player.getEyePosition(), Vec3.atCenterOf(support))) {
+            clickAndHoldAttack(client, "clear-temporary-collectible-support");
+            inputActions.add("attack:clear-temporary-collectible-support:" + support);
+            return true;
+        }
+        var vantage = findResourceMiningVantage(client, support);
+        if (vantage != null && !new NeoForgeSafePathPlanner.ArrivalSpec(1.8, 0.8)
+                .reached(player.getX(), player.getY(), player.getZ(), vantage)) {
+            try {
+                navigateTo(client, vantage, 1.8, "temporary-collectible-support-vantage");
+                inputActions.add("move:temporary-collectible-support-vantage:" + vantage);
+            } catch (IllegalStateException failure) {
+                var message = String.valueOf(failure.getMessage());
+                if (!message.startsWith("safe intelligent path unavailable before reaching ")
+                        && !message.startsWith("safe intelligent navigation could not continue toward ")
+                        && !message.startsWith("safe intelligent navigation remained blocked during ")) {
+                    throw failure;
+                }
+                collectibleSupportBlock = null;
+                safetyDiagnostics.add("collectible-replan:temporary-support-vantage-unreachable:" + vantage);
+                return false;
+            }
+        }
+        return true;
     }
 
     private void abandonStarterResource(Minecraft client, String reason) {
@@ -1201,6 +1257,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         resourceMiningVantage = null;
         resourceApproachOnly = false;
         collectibleTargetId = null;
+        collectibleSupportBlock = null;
         rejectedCollectibles.clear();
         mineIndex = 0;
         resetNavigation();
