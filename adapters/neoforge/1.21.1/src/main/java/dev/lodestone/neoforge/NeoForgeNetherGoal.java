@@ -684,8 +684,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         }
         if (state.isAir()) {
             stopAttack(client);
-            handMinedLogs++;
-            mineIndex++;
+            var progress = NeoForgeMiningAccounting.blockBecameAir(mineIndex, handMinedLogs);
+            handMinedLogs = progress.handMinedLogs();
+            mineIndex = progress.nextMineIndex();
             stageTicks = 0;
             inputActions.add("read:block-broken-by-hand:" + target);
             waitTicks = 10;
@@ -697,7 +698,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 player.getEyePosition(), Vec3.atCenterOf(target))) {
             stopAttack(client);
             safetyDiagnostics.add("mining-hazard-gate:reject-starter-resource-target:" + target);
-            mineIndex++;
+            skipStarterResourceTarget(target, "hazard-gate");
             stageTicks = 0;
             waitTicks = 5;
             return;
@@ -716,7 +717,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                         stopAttack(client);
                         safetyDiagnostics.add("mining-replan:skip-occluded-resource-target:" + target
                                 + ":blocker=" + blocker.getBlockPos());
-                        mineIndex++;
+                        skipStarterResourceTarget(target, "occluded-by=" + blocker.getBlockPos());
                         stageTicks = 0;
                         waitTicks = 5;
                     }
@@ -739,7 +740,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                         }
                         safetyDiagnostics.add("mining-replan:reject-stalled-resource-vantage:" + target
                                 + ":vantage=" + vantage);
-                        mineIndex++;
+                        skipStarterResourceTarget(target, "stalled-vantage=" + vantage);
                         stageTicks = 0;
                         waitTicks = 5;
                     }
@@ -752,7 +753,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 if (stageTicks <= 60) return;
                 safetyDiagnostics.add("mining-replan:reject-occluded-resource-target:" + target
                         + ":vantage=" + vantage);
-                mineIndex++;
+                skipStarterResourceTarget(target, "occluded-vantage=" + vantage);
                 stageTicks = 0;
                 waitTicks = 5;
                 return;
@@ -760,7 +761,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             if (stageTicks > 180) {
                 stopAttack(client);
                 safetyDiagnostics.add("mining-replan:skip-unreachable-starter-resource:" + target);
-                mineIndex++;
+                skipStarterResourceTarget(target, "unreachable");
                 stageTicks = 0;
                 waitTicks = 5;
                 return;
@@ -771,10 +772,17 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         if (stageTicks > 240) {
             stopAttack(client);
             safetyDiagnostics.add("mining-replan:skip-stalled-starter-resource:" + target);
-            mineIndex++;
+            skipStarterResourceTarget(target, "stalled-break");
             stageTicks = 0;
             waitTicks = 5;
         }
+    }
+
+    private void skipStarterResourceTarget(BlockPos target, String reason) {
+        var progress = NeoForgeMiningAccounting.skippedTarget(mineIndex, handMinedLogs, reason);
+        mineIndex = progress.nextMineIndex();
+        safetyDiagnostics.add("mining-replan:skipped-target:" + target + ":reason=" + reason
+                + ":handMinedLogs=" + progress.handMinedLogs());
     }
 
     private BlockPos findResourceMiningVantage(Minecraft client, BlockPos target) {
@@ -1069,9 +1077,15 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         collectibleTargetId = target.getUUID();
         var vantage = findCollectibleVantage(client, target.position());
         var blocker = visibleCollectibleBlocker(client, target.position());
+        var directPickupOrigin = vantage == null && blocker == null
+                ? findDirectCollectiblePickupOrigin(client, target.position()) : null;
+        if (vantage == null) {
+            safetyDiagnostics.add("collectible-recovery:visible-drop-no-safe-vantage:" + target.getUUID());
+        }
         var support = findCollectibleSupportPlacement(client, target.position());
         var alternative = NeoForgeCollectibleRecovery.choose(new NeoForgeCollectibleRecovery.Options(
-                vantage != null, blocker != null, support != null, drops.size() > 1));
+                vantage != null, blocker != null, support != null, drops.size() > 1,
+                directPickupOrigin != null));
         switch (alternative) {
             case SAFE_VANTAGE -> {
                 stopAttack(client);
@@ -1081,6 +1095,22 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     client.options.keyJump.setDown(player.onGround() && target.getY() > player.getY() + 0.7);
                 }
                 inputActions.add("move:equivalent-collectible-safe-vantage:" + target.getUUID());
+            }
+            case DIRECT_PICKUP_ORIGIN -> {
+                stopAttack(client);
+                lookAt(player, target.position());
+                stopMovement(client);
+                var dx = target.getX() - player.getX();
+                var dz = target.getZ() - player.getZ();
+                var horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+                if (horizontalDistance > 1.1) {
+                    client.options.keyUp.setDown(true);
+                    inputActions.add("move:key.forward:direct-safe-collectible-pickup-origin");
+                }
+                client.options.keyJump.setDown(player.onGround() && target.getY() > player.getY() + 0.7);
+                inputActions.add("observe:direct-safe-collectible-pickup-origin:" + directPickupOrigin);
+                safetyDiagnostics.add("collectible-recovery:retained-visible-drop-at-direct-pickup-origin:"
+                        + target.getUUID() + ":origin=" + directPickupOrigin);
             }
             case CLEAR_BREAKABLE_BLOCKER -> {
                 stopMovement(client);
@@ -1100,6 +1130,18 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             }
             case EXHAUSTED -> abandonStarterResource(client, "collectible-local-scope-exhausted");
         }
+    }
+
+    private BlockPos findDirectCollectiblePickupOrigin(Minecraft client, Vec3 collectible) {
+        var player = requirePlayer(client);
+        var origin = player.blockPosition().immutable();
+        var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
+        if (!snapshot.walkable(origin) || snapshot.hazard(origin) || snapshot.hazard(origin.above())) return null;
+        var dx = collectible.x - player.getX();
+        var dy = collectible.y - player.getY();
+        var dz = collectible.z - player.getZ();
+        if (Math.sqrt(dx * dx + dz * dz) > 1.5 || Math.abs(dy) > 1.8) return null;
+        return origin;
     }
 
     private BlockPos findCollectibleVantage(Minecraft client, Vec3 collectible) {
