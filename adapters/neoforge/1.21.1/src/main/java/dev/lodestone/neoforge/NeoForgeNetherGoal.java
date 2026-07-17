@@ -798,7 +798,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var player = requirePlayer(client);
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.8, 0.8);
-            for (var target : resourceSource.blocks().stream().limit(32).toList()) {
+            for (var target : resourceSource.blocks().stream().limit(16).toList()) {
             if (!client.level.getBlockState(target).is(BlockTags.LOGS)) continue;
             var candidates = new ArrayList<BlockPos>();
             for (var direction : List.of(Direction.SOUTH, Direction.NORTH, Direction.EAST, Direction.WEST)) {
@@ -821,7 +821,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             candidates.sort(Comparator.comparingDouble(candidate -> player.distanceToSqr(Vec3.atCenterOf(candidate))));
             BlockPos best = null;
             var bestPathLength = Integer.MAX_VALUE;
-            for (var candidate : candidates.stream().limit(24).toList()) {
+            for (var candidate : candidates.stream().limit(12).toList()) {
                 var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate,
                         policy, arrival);
                 var retreat = NeoForgeSafePathPlanner.find(client.level, candidate,
@@ -848,14 +848,16 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.8, 0.8);
         BlockPos best = null;
         var bestScore = Double.POSITIVE_INFINITY;
-        for (var target : resourceSource.blocks().stream().limit(32).toList()) {
+        var routeChecks = 0;
+        for (var target : resourceSource.blocks().stream().limit(16).toList()) {
             for (var direction : Direction.Plane.HORIZONTAL) {
-                for (int distance = 2; distance <= 8; distance++) {
-                    for (int yOffset = -6; yOffset <= 6; yOffset++) {
+                for (int distance = 2; distance <= 6; distance++) {
+                    for (int yOffset = -5; yOffset <= 5; yOffset++) {
                         var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
                         if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidate.distSqr(player.blockPosition()) < 9.0
                                 || !snapshot.bufferedWalkable(candidate)) continue;
+                        if (++routeChecks > 96) return best;
                         var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate,
                                 policy, arrival);
                         var retreat = NeoForgeSafePathPlanner.find(client.level, candidate,
