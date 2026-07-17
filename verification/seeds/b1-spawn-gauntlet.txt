@@ -1,0 +1,29 @@
+# B1 "Spawn Gauntlet" fixed seed list: 20 fresh worlds, survive 90s + reach a waypoint 32 blocks
+# away horizontally. The task spec asks for seeds "covering hillside, cliff-edge, snowy-slope, and
+# forest spawns" - these 20 values are an arbitrary fixed spread, NOT pre-classified by spawn
+# terrain: this repo has no way to confirm a seed's spawn biome/terrain without actually
+# generating the 1.21.1 world, so no biome claim is made here. Each run's actual spawn terrain
+# (biome, local collision grid, fall-risk) is read from that run's own worldObservation telemetry
+# after the fact. If the realized spread across these 20 turns out not to cover enough terrain
+# diversity (e.g. everything lands in plains), swap in replacements and say so explicitly in the
+# benchmark report - never assume diversity that wasn't actually observed.
+1
+2
+3
+4
+5
+100
+-100
+99999
+-99999
+314159265
+271828182
+8675309
+-8675309
+1122334455
+-1122334455
+20260717
+55555555555
+-55555555555
+918273645
+-918273645

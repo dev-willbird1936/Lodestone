@@ -1,0 +1,28 @@
+# B2 "Ten Trees, Ten Worlds" fixed seed list for survival.wooden-axe-mine-tree.
+#
+# These are arbitrary fixed Java world seeds, not pre-classified by spawn biome/terrain: this
+# repo has no way to know a seed's spawn biome without actually generating the world, and 1.21.1
+# world generation is version-specific, so any claimed seed->biome mapping from outside knowledge
+# would be an unverified guess. Each run's actual spawn conditions are read from that run's own
+# worldObservation telemetry after the fact, not assumed here.
+#
+# Seed 302304127329527063 is kept first deliberately: it is the exact seed already exercised for
+# ~25 minutes across the 2026-07-17 live-debugging session (a snowy-slopes spawn, per that
+# session's own notes) that produced the 0/4 flagship-task baseline this benchmark is measuring
+# improvement against. Keeping it gives an apples-to-apples before/after comparison for at least
+# one seed, in addition to the aggregate pass rate across all ten.
+#
+# If empirical runs show a seed has no reachable trees within the actor's bounded exploration
+# budget as a genuine environment issue (e.g. spawn is open ocean/ice spikes with nothing nearby)
+# rather than an actor bug, that seed may be swapped for another arbitrary one - any such swap
+# must be called out explicitly in the benchmark report, never silently.
+302304127329527063
+-8172974586314107235
+44210
+9007199254740881
+-193847562910345
+1000000007
+7777777777777
+-42
+123456789012345
+2026071700
