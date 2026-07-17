@@ -97,6 +97,14 @@ final class NeoForgeSafePathPlanner {
                     if (!withinBounds(origin, candidate)
                             || policy.highSafety() && !snapshot.bufferedWalkable(candidate)
                             || !policy.highSafety() && !snapshot.walkable(candidate)) continue;
+                    // A client cannot traverse a diagonal height change as one movement edge.
+                    // It must first enter the same-height horizontal cell, then step up/down.
+                    // Reject the shortcut unless that transit cell is safe; reconstruction below
+                    // inserts it into the returned route so the input driver can actually follow
+                    // the edge instead of holding forward against a ledge forever.
+                    if (dy != 0 && (policy.highSafety()
+                            ? !snapshot.bufferedWalkable(horizontal)
+                            : !snapshot.walkable(horizontal))) continue;
                     // A normal player can safely step down one block; larger drops are
                     // fall damage, not navigation. Adaptive intelligence keeps this rule
                     // even with balanced safety so planning quality cannot trade health for
@@ -120,7 +128,20 @@ final class NeoForgeSafePathPlanner {
             cursor = previous.getOrDefault(cursor, Long.MIN_VALUE);
         }
         Collections.reverse(path);
-        return List.copyOf(path);
+        if (path.size() < 2) return List.copyOf(path);
+        var expanded = new ArrayList<BlockPos>(path.size() + 4);
+        expanded.add(path.getFirst());
+        for (int index = 1; index < path.size(); index++) {
+            var from = path.get(index - 1);
+            var to = path.get(index);
+            if (from.getY() != to.getY()
+                    && (from.getX() != to.getX() || from.getZ() != to.getZ())) {
+                var transit = new BlockPos(to.getX(), from.getY(), to.getZ()).immutable();
+                if (!expanded.getLast().equals(transit)) expanded.add(transit);
+            }
+            if (!expanded.getLast().equals(to)) expanded.add(to);
+        }
+        return List.copyOf(expanded);
     }
 
     /**
