@@ -7,8 +7,10 @@ import net.minecraft.core.Direction;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -27,15 +29,29 @@ final class NeoForgeSafePathPlanner {
 
     static List<BlockPos> find(ClientLevel level, BlockPos start, BlockPos target,
                                NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        return findToAny(level, start, List.of(target), policy, arrival);
+    }
+
+    /**
+     * Find one safe route to any member of a target set in a single search. This is important for
+     * adaptive resource acquisition: trying every legal mining cell with a separate A* search can
+     * monopolize the client thread even when each individual search has a visit bound.
+     */
+    static List<BlockPos> findToAny(ClientLevel level, BlockPos start, Collection<BlockPos> targets,
+                                    NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
+        if (targets.isEmpty()) return List.of();
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
         var origin = start.immutable();
         if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
                 snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
+        var goalKeys = new HashSet<Long>();
+        for (var target : targets) goalKeys.add(target.asLong());
+        var singleTarget = targets.size() == 1 ? targets.iterator().next() : null;
 
         var queue = new PriorityQueue<Node>();
         var previous = new HashMap<Long, Long>();
         var cost = new HashMap<Long, Double>();
-        queue.add(new Node(origin, 0.0, heuristic(origin, target)));
+        queue.add(new Node(origin, 0.0, heuristic(origin, targets)));
         previous.put(origin.asLong(), Long.MIN_VALUE);
         cost.put(origin.asLong(), 0.0);
         BlockPos reached = null;
@@ -43,7 +59,9 @@ final class NeoForgeSafePathPlanner {
 
         while (!queue.isEmpty() && visited++ < MAX_VISITED) {
             var current = queue.remove();
-            if (arrival.reached(current.position(), target)) {
+            if (singleTarget != null
+                    ? arrival.reached(current.position(), singleTarget)
+                    : goalKeys.contains(current.position().asLong())) {
                 reached = current.position();
                 break;
             }
@@ -65,7 +83,7 @@ final class NeoForgeSafePathPlanner {
                     cost.put(candidate.asLong(), nextCost);
                     previous.put(candidate.asLong(), current.position().asLong());
                     queue.add(new Node(candidate.immutable(), nextCost,
-                            nextCost + heuristic(candidate, target)));
+                            nextCost + heuristic(candidate, targets)));
                 }
             }
         }
@@ -220,6 +238,12 @@ final class NeoForgeSafePathPlanner {
     private static double heuristic(BlockPos from, BlockPos target) {
         return Math.abs(from.getX() - target.getX()) + Math.abs(from.getZ() - target.getZ())
                 + Math.abs(from.getY() - target.getY()) * 1.5;
+    }
+
+    private static double heuristic(BlockPos from, Collection<BlockPos> targets) {
+        var best = Double.POSITIVE_INFINITY;
+        for (var target : targets) best = Math.min(best, heuristic(from, target));
+        return best;
     }
 
     private record Node(BlockPos position, double cost, double priority) implements Comparable<Node> {

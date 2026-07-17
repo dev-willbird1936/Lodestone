@@ -846,9 +846,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var player = requirePlayer(client);
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.8, 0.8);
-        BlockPos best = null;
-        var bestScore = Double.POSITIVE_INFINITY;
-        var routeChecks = 0;
+        var candidates = new ArrayList<BlockPos>();
         for (var target : resourceSource.blocks().stream().limit(16).toList()) {
             for (var direction : Direction.Plane.HORIZONTAL) {
                 for (int distance = 2; distance <= 6; distance++) {
@@ -857,22 +855,20 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                         if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidate.distSqr(player.blockPosition()) < 9.0
                                 || !snapshot.bufferedWalkable(candidate)) continue;
-                        if (++routeChecks > 96) return best;
-                        var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate,
-                                policy, arrival);
-                        var retreat = NeoForgeSafePathPlanner.find(client.level, candidate,
-                                player.blockPosition(), policy, arrival);
-                        if (!snapshot.safeMiningPath(path) || !snapshot.safeMiningPath(retreat)) continue;
-                        var score = path.size() + player.distanceToSqr(Vec3.atCenterOf(candidate)) * 0.05;
-                        if (score < bestScore) {
-                            best = candidate.immutable();
-                            bestScore = score;
-                        }
+                        if (!candidates.contains(candidate)) candidates.add(candidate.immutable());
                     }
                 }
             }
         }
-        return best;
+        if (candidates.isEmpty()) return null;
+        var path = NeoForgeSafePathPlanner.findToAny(client.level, player.blockPosition(), candidates,
+                policy, arrival);
+        if (!snapshot.safeMiningPath(path)) return null;
+        // Every route edge already disallows drops greater than one block. With a static chunk
+        // snapshot, reversing this route is equally safe and avoids a second full A* search.
+        inputActions.add("observe:resource-approach-candidates=" + candidates.size()
+                + ":route=" + path.size());
+        return path.getLast().immutable();
     }
 
     private MiningTargetPreparation prepareMiningTarget(Minecraft client, BlockPos target, String label) {
