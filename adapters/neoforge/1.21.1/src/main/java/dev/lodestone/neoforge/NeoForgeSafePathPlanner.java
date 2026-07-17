@@ -20,6 +20,11 @@ final class NeoForgeSafePathPlanner {
     private static final int MAX_VISITED = 45_000;
     private static final int MAX_HORIZONTAL_RADIUS = 96;
     private static final int MAX_VERTICAL_RADIUS = 32;
+    private static final int[] DY_OFFSETS = {1, 0, -1, -2, -3};
+    private static final Direction[][] DIAGONALS = {
+            {Direction.NORTH, Direction.EAST}, {Direction.NORTH, Direction.WEST},
+            {Direction.SOUTH, Direction.EAST}, {Direction.SOUTH, Direction.WEST},
+    };
 
     private NeoForgeSafePathPlanner() { }
 
@@ -103,31 +108,27 @@ final class NeoForgeSafePathPlanner {
             }
             for (var direction : Direction.Plane.HORIZONTAL) {
                 var horizontal = current.position().relative(direction);
-                for (var dy : new int[]{1, 0, -1, -2, -3}) {
-                    var candidate = new BlockPos(horizontal.getX(), current.position().getY() + dy,
-                            horizontal.getZ());
-                    if (!withinBounds(origin, candidate)
-                            || policy.highSafety() && !snapshot.bufferedWalkable(candidate)
-                            || !policy.highSafety() && !snapshot.walkable(candidate)) continue;
-                    // A client cannot traverse a diagonal height change as one movement edge.
-                    // It must first enter the same-height horizontal cell, then step up/down.
-                    // Reject the shortcut unless that transit cell is safe; reconstruction below
-                    // inserts it into the returned route so the input driver can actually follow
-                    // the edge instead of holding forward against a ledge forever.
-                    if (dy != 0 && (policy.highSafety()
-                            ? !snapshot.bufferedWalkable(horizontal)
-                            : !snapshot.walkable(horizontal))) continue;
-                    // A normal player can safely step down one block; larger drops are
-                    // fall damage, not navigation. Adaptive intelligence keeps this rule
-                    // even with balanced safety so planning quality cannot trade health for
-                    // a shorter route.
-                    if (current.position().getY() - candidate.getY() > 1) continue;
-                    var nextCost = cost.get(current.position().asLong()) + edgeCost(current.position(), candidate, policy);
-                    if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) continue;
-                    cost.put(candidate.asLong(), nextCost);
-                    previous.put(candidate.asLong(), current.position().asLong());
-                    queue.add(new Node(candidate.immutable(), nextCost,
-                            nextCost + heuristic(candidate, targets)));
+                for (var dy : DY_OFFSETS) {
+                    relaxNeighbor(current.position(), horizontal, dy, origin, policy, snapshot,
+                            targets, cost, previous, queue);
+                }
+            }
+            // Medium+ intelligence also considers the 4 diagonal directions (a client can move
+            // along both axes in one input tick). A diagonal is only safe when at least one
+            // flanking cardinal cell is passable (both, under high safety) - otherwise the move
+            // would clip through a solid corner that doesn't exist in the real collision model.
+            // Diagonal-plus-climb needs no separate handling: relaxNeighbor's existing transit,
+            // descent-cap, and destination checks are already direction-agnostic.
+            if (policy.safeNavigationPlanningEnabled()) {
+                for (var pair : DIAGONALS) {
+                    var flankA = current.position().relative(pair[0]);
+                    var flankB = current.position().relative(pair[1]);
+                    if (!cornerClear(flankA, flankB, policy, snapshot)) continue;
+                    var diagonal = flankA.relative(pair[1]);
+                    for (var dy : DY_OFFSETS) {
+                        relaxNeighbor(current.position(), diagonal, dy, origin, policy, snapshot,
+                                targets, cost, previous, queue);
+                    }
                 }
             }
         }
@@ -154,6 +155,52 @@ final class NeoForgeSafePathPlanner {
             if (!expanded.getLast().equals(to)) expanded.add(to);
         }
         return List.copyOf(expanded);
+    }
+
+    /** Shared A* relax step for both the cardinal and diagonal neighbor loops in {@link #findToAny}. */
+    private static void relaxNeighbor(BlockPos current, BlockPos horizontal, int dy, BlockPos origin,
+                                       NeoForgeGoalPolicy policy, NeoForgeWorldSnapshot snapshot,
+                                       Collection<BlockPos> targets, HashMap<Long, Double> cost,
+                                       HashMap<Long, Long> previous, PriorityQueue<Node> queue) {
+        var candidate = new BlockPos(horizontal.getX(), current.getY() + dy, horizontal.getZ());
+        if (!withinBounds(origin, candidate)
+                || policy.highSafety() && !snapshot.bufferedWalkable(candidate)
+                || !policy.highSafety() && !snapshot.walkable(candidate)) return;
+        // A client cannot traverse a diagonal height change as one movement edge. It must first
+        // enter the same-height horizontal cell, then step up/down. Reject the shortcut unless
+        // that transit cell is safe; reconstruction below inserts it into the returned route so
+        // the input driver can actually follow the edge instead of holding forward against a
+        // ledge forever.
+        if (dy != 0 && (policy.highSafety()
+                ? !snapshot.bufferedWalkable(horizontal)
+                : !snapshot.walkable(horizontal))) return;
+        // A normal player can safely step down one block; larger drops are fall damage, not
+        // navigation. Adaptive intelligence keeps this rule even with balanced safety so
+        // planning quality cannot trade health for a shorter route.
+        if (current.getY() - candidate.getY() > 1) return;
+        var nextCost = cost.get(current.asLong()) + edgeCost(current, candidate, policy);
+        if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) return;
+        cost.put(candidate.asLong(), nextCost);
+        previous.put(candidate.asLong(), current.asLong());
+        queue.add(new Node(candidate.immutable(), nextCost, nextCost + heuristic(candidate, targets)));
+    }
+
+    /**
+     * A diagonal move is only legal when the player couldn't be clipping through a solid corner
+     * that doesn't exist in the real collision model: at least one flanking cardinal cell must be
+     * passable, or both under high safety.
+     */
+    private static boolean cornerClear(BlockPos flankA, BlockPos flankB, NeoForgeGoalPolicy policy,
+                                        NeoForgeWorldSnapshot snapshot) {
+        var highSafety = policy.highSafety();
+        var flankAPasses = highSafety ? snapshot.bufferedWalkable(flankA) : snapshot.walkable(flankA);
+        var flankBPasses = highSafety ? snapshot.bufferedWalkable(flankB) : snapshot.walkable(flankB);
+        return cornerClear(flankAPasses, flankBPasses, highSafety);
+    }
+
+    /** Pure corner-cut decision, isolated from world access so it's directly unit-testable. */
+    static boolean cornerClear(boolean flankAPasses, boolean flankBPasses, boolean requireBoth) {
+        return requireBoth ? flankAPasses && flankBPasses : flankAPasses || flankBPasses;
     }
 
     /**
@@ -345,9 +392,10 @@ final class NeoForgeSafePathPlanner {
                 && Math.abs(candidate.getY() - origin.getY()) <= MAX_VERTICAL_RADIUS;
     }
 
-    private static double edgeCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy) {
+    static double edgeCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy) {
+        var diagonal = from.getX() != to.getX() && from.getZ() != to.getZ();
         var vertical = Math.abs(to.getY() - from.getY());
-        var cost = 1.0 + vertical * (policy.highSafety() ? 4.0 : 1.5);
+        var cost = (diagonal ? Math.sqrt(2.0) : 1.0) + vertical * (policy.highSafety() ? 4.0 : 1.5);
         if (policy.safety() == NeoForgeGoalPolicy.Safety.BALANCED && to.getY() < from.getY()) cost += 1.0;
         if (policy.intelligence() == NeoForgeGoalPolicy.Intelligence.ADAPTIVE_V1
                 && to.getY() < from.getY()) cost += 12.0;
