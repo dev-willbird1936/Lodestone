@@ -712,7 +712,35 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             var vantage = findResourceMiningVantage(client, target);
             if (vantage != null) {
                 stopAttack(client);
-                navigateTo(client, vantage, 1.8, "starter-resource-vantage");
+                var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(1.8, 0.8);
+                if (!arrival.reached(player.getX(), player.getY(), player.getZ(), vantage)) {
+                    try {
+                        navigateTo(client, vantage, 1.8, "starter-resource-vantage");
+                    } catch (IllegalStateException failure) {
+                        var message = String.valueOf(failure.getMessage());
+                        if (!message.startsWith("safe intelligent path unavailable before reaching ")
+                                && !message.startsWith("safe intelligent navigation could not continue toward ")
+                                && !message.startsWith("safe intelligent navigation remained blocked during ")) {
+                            throw failure;
+                        }
+                        safetyDiagnostics.add("mining-replan:reject-stalled-resource-vantage:" + target
+                                + ":vantage=" + vantage);
+                        mineIndex++;
+                        stageTicks = 0;
+                        waitTicks = 5;
+                    }
+                    return;
+                }
+                // Reaching a legal vantage is not proof that the target is mineable. If
+                // the ray is still occluded after a short bounded observation window,
+                // reject this target and try another connected log/source rather than
+                // looping forever at the same cell.
+                if (stageTicks <= 60) return;
+                safetyDiagnostics.add("mining-replan:reject-occluded-resource-target:" + target
+                        + ":vantage=" + vantage);
+                mineIndex++;
+                stageTicks = 0;
+                waitTicks = 5;
                 return;
             }
             if (stageTicks > 180) {
