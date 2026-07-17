@@ -628,7 +628,24 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private void navigateStarterResource(Minecraft client) {
         if (verticalRecoveryGoal != null && verticalRecoveryGoal.equals(resourceSource.anchor())) {
-            navigateTo(client, resourceSource.anchor(), 0.8, "vertical route recovery");
+            try {
+                navigateTo(client, resourceSource.anchor(), 0.8, "vertical route recovery");
+            } catch (IllegalStateException failure) {
+                var message = String.valueOf(failure.getMessage());
+                if (!isRecoverableSafeNavigationFailure(message)) throw failure;
+                if (verticalRecoveryWaypoint != null) {
+                    rejectedVerticalRecoveryWaypoints.add(verticalRecoveryWaypoint.asLong());
+                }
+                safetyDiagnostics.add("navigation-replan:reject-vertical-recovery-route:"
+                        + verticalRecoveryWaypoint + ":source=" + resourceSource.anchor());
+                inputActions.add("observe:replan-vertical-recovery-route");
+                clearVerticalRecovery(false);
+                resourceMiningVantage = null;
+                resourceApproachOnly = false;
+                resetNavigation();
+                stopMovement(client);
+                waitTicks = 2;
+            }
             return;
         }
         if (resourceMiningVantage == null) {
@@ -672,9 +689,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     "starter resource mining vantage");
         } catch (IllegalStateException failure) {
             var message = String.valueOf(failure.getMessage());
-            if (!message.startsWith("safe intelligent path unavailable before reaching ")
-                    && !message.startsWith("safe intelligent navigation could not continue toward ")
-                    && !message.startsWith("safe intelligent navigation remained blocked during ")) {
+            if (!isRecoverableSafeNavigationFailure(message)) {
                 throw failure;
             }
             safetyDiagnostics.add("resource-replan:reject-vantage-route:" + resourceMiningVantage);
@@ -1444,6 +1459,13 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     static boolean starterWoodSufficientForCrafting(int logCount) {
         return logCount >= MIN_LOGS_FOR_STARTER_CRAFTING;
+    }
+
+    static boolean isRecoverableSafeNavigationFailure(String message) {
+        return message != null
+                && (message.startsWith("safe intelligent path unavailable before reaching ")
+                || message.startsWith("safe intelligent navigation could not continue toward ")
+                || message.startsWith("safe intelligent navigation remained blocked during "));
     }
 
     private void openInventory(Minecraft client) {
