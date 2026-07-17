@@ -58,6 +58,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private static final double MINING_VANTAGE_TOLERANCE = 0.45;
     private static final int MAX_SEARCH_ATTEMPTS = 18;
     private static final int LOGS_REQUIRED = 5;
+    // Three logs provide twelve planks, enough for the table, sticks, and wooden pick.
+    // Do not keep searching an exhausted local source once this ordinary prerequisite is met.
+    private static final int MIN_LOGS_FOR_STARTER_CRAFTING = 3;
     private static final int COBBLESTONE_REQUIRED = 11;
     private static final int RAW_IRON_REQUIRED = 4;
     private static final int STARTER_RESOURCE_SCAN_HORIZONTAL_RADIUS = 32;
@@ -75,6 +78,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private final List<String> inputActions = new ArrayList<>();
     private final List<String> safetyDiagnostics = new ArrayList<>();
     private final HashSet<BlockPos> rejectedResourceSources = new HashSet<>();
+    private NeoForgeAcquisitionScope.Scope exhaustedStarterResourceScope;
+    private int exhaustedStarterResourceNoFrontierAttempts;
+    private final HashSet<Long> attemptedStarterResourceTargets = new HashSet<>();
     private final NeoForgeMiningTargetSearch miningTargetSearch = new NeoForgeMiningTargetSearch();
     private final NeoForgeLivenessWatchdog livenessWatchdog = new NeoForgeLivenessWatchdog();
     private final NeoForgeFrontierWatchdog frontierWatchdog = new NeoForgeFrontierWatchdog();
@@ -298,6 +304,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     return;
                 }
                 if (stage == Stage.NAVIGATE_STARTER_RESOURCE && resourceSource != null) {
+                    rememberExhaustedStarterResourceScope(client, resourceSource);
                     rejectedResourceSources.add(resourceSource.anchor().immutable());
                     safetyDiagnostics.add("resource-replan:supervisor-abandoned-local-source:"
                             + resourceSource.anchor());
@@ -535,6 +542,33 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private void findStarterResource(Minecraft client) {
         var player = requirePlayer(client);
+        var logs = countLogs(player);
+        if (exhaustedStarterResourceScope != null
+                && exhaustedStarterResourceScope.measuredExpansionBeyond(
+                client.level.dimension().location().toString(), player.blockPosition(), "logs")) {
+            var cleared = exhaustedStarterResourceScope;
+            exhaustedStarterResourceScope = null;
+            exhaustedStarterResourceNoFrontierAttempts = 0;
+            rejectedResourceSources.remove(cleared.anchor());
+            safetyDiagnostics.add("resource-scope:measured-expansion-beyond=" + cleared.anchor());
+            inputActions.add("observe:starter-resource-scope-expanded-beyond-hysteresis");
+        }
+        if (starterWoodSufficientForCrafting(logs)) {
+            stopMovement(client);
+            safetyDiagnostics.add("resource-replan:starter-wood-sufficient-for-crafting:logs=" + logs);
+            inputActions.add("observe:advance-after-starter-resource-exhaustion:logs=" + logs);
+            transition(Stage.OPEN_INVENTORY, 20);
+            return;
+        }
+        if (exhaustedStarterResourceScope != null && stageTicks == 1) {
+            if (NeoForgeAcquisitionScope.boundedNoFrontier(++exhaustedStarterResourceNoFrontierAttempts)) {
+                throw new IllegalStateException("LIVENESS_EXHAUSTED: starter resource scope remained exhausted "
+                        + "without measured safe expansion: " + exhaustedStarterResourceScope.anchor());
+            }
+            safetyDiagnostics.add("resource-scope:preserve-exhausted-local-scan:attempt="
+                    + exhaustedStarterResourceNoFrontierAttempts);
+            inputActions.add("observe:preserve-exhausted-starter-resource-scope");
+        }
         if (resourceRejectionAnchor != null
                 && player.blockPosition().distManhattan(resourceRejectionAnchor) >= 4) {
             resourceRejectionAnchor = null;
@@ -550,7 +584,16 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         if (stageTicks == 1 || stageTicks % 20 == 1) {
             var sources = scanStarterResourceSources(client);
             if (!sources.isEmpty()) {
-                resourceSource = sources.getFirst();
+                resourceSource = sources.stream()
+                        .filter(source -> exhaustedStarterResourceScope == null
+                                || !exhaustedStarterResourceScope.blocksCandidate(
+                                client.level.dimension().location().toString(), source.anchor(), "logs"))
+                        .findFirst().orElse(null);
+                if (resourceSource == null) {
+                    safetyDiagnostics.add("resource-scope:all-observed-sources-still-within-exhausted-scope");
+                    exploreSafely(client, "starter-resource-scope-expansion");
+                    return;
+                }
                 resourceMiningVantage = null;
                 resourceApproachOnly = false;
                 rejectedResourceVantages.clear();
@@ -558,6 +601,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 rejectedCollectibleVantages.clear();
                 collectibleTargetId = null;
                 collectibleSupportBlock = null;
+                attemptedStarterResourceTargets.clear();
                 handMinedLogs = 0;
                 resetNavigation();
                 announce(client, "Observed a starter wood source at " + resourceSource.anchor()
@@ -603,6 +647,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     navigateTo(client, resourceSource.anchor(), 0.8, "vertical route recovery");
                     return;
                 }
+                rememberExhaustedStarterResourceScope(client, resourceSource);
                 rejectedResourceSources.add(resourceSource.anchor().immutable());
                 var player = requirePlayer(client);
                 if (resourceRejectionAnchor == null
@@ -678,6 +723,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             return;
         }
         var target = resourceSource.blocks().get(mineIndex);
+        attemptedStarterResourceTargets.add(target.asLong());
         var state = client.level.getBlockState(target);
         if (!state.is(BlockTags.LOGS) && !state.isAir()) {
             stopAttack(client);
@@ -1040,6 +1086,16 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     private void collectStarterResource(Minecraft client) {
         var player = requirePlayer(client);
+        var logs = countLogs(player);
+        // This is only a bounded trigger to attempt ordinary crafting. Recipe and UI postconditions
+        // below remain authoritative and must still prove every conversion and crafted tool.
+        if (starterWoodSufficientForCrafting(logs)) {
+            stopMovement(client);
+            safetyDiagnostics.add("resource-replan:starter-wood-sufficient-during-collection:logs=" + logs);
+            inputActions.add("observe:advance-after-collection-to-crafting:logs=" + logs);
+            transition(Stage.OPEN_INVENTORY, 20);
+            return;
+        }
         if (countLogs(player) == 0 && handMinedLogs == 0
                 && mineIndex >= Math.min(LOGS_REQUIRED, resourceSource.blocks().size())) {
             safetyDiagnostics.add("mining-replan:resource-source-produced-no-logs:"
@@ -1345,9 +1401,13 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private void abandonStarterResource(Minecraft client, String reason) {
         stopMovement(client);
         stopAttack(client);
-        if (resourceSource != null) rejectedResourceSources.add(resourceSource.anchor().immutable());
+        if (resourceSource != null) {
+            rememberExhaustedStarterResourceScope(client, resourceSource);
+            rejectedResourceSources.add(resourceSource.anchor().immutable());
+        }
+        var logs = countLogs(requirePlayer(client));
         safetyDiagnostics.add("resource-replan:" + reason + ":inventory="
-                + countLogs(requirePlayer(client)) + ":required=" + LOGS_REQUIRED
+                + logs + ":required=" + LOGS_REQUIRED
                 + ":source=" + (resourceSource == null ? "none" : resourceSource.anchor()));
         resourceSource = null;
         resourceMiningVantage = null;
@@ -1359,7 +1419,31 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         handMinedLogs = 0;
         mineIndex = 0;
         resetNavigation();
-        transition(Stage.FIND_STARTER_RESOURCE, 15);
+        if (starterWoodSufficientForCrafting(logs)) {
+            safetyDiagnostics.add("resource-replan:advance-to-starter-crafting:logs=" + logs);
+            inputActions.add("observe:advance-after-collectible-timeout-to-crafting:logs=" + logs);
+            transition(Stage.OPEN_INVENTORY, 20);
+        } else {
+            transition(Stage.FIND_STARTER_RESOURCE, 15);
+        }
+    }
+
+    private void rememberExhaustedStarterResourceScope(Minecraft client,
+                                                        NeoForgeStarterResourceCatalog.Source source) {
+        var dimension = client.level.dimension().location().toString();
+        exhaustedStarterResourceScope = NeoForgeAcquisitionScope.mergeExhausted(dimension, source.anchor(),
+                STARTER_RESOURCE_SCAN_HORIZONTAL_RADIUS, "logs", attemptedStarterResourceTargets,
+                source.blocks(), exhaustedStarterResourceScope);
+        exhaustedStarterResourceNoFrontierAttempts = 0;
+        safetyDiagnostics.add("resource-scope:exhausted:dimension=" + dimension
+                + ":anchor=" + exhaustedStarterResourceScope.anchor()
+                + ":radius=" + exhaustedStarterResourceScope.radius()
+                + ":kind=" + exhaustedStarterResourceScope.resourceKind()
+                + ":attemptedTargets=" + exhaustedStarterResourceScope.attemptedTargets().size());
+    }
+
+    static boolean starterWoodSufficientForCrafting(int logCount) {
+        return logCount >= MIN_LOGS_FOR_STARTER_CRAFTING;
     }
 
     private void openInventory(Minecraft client) {
