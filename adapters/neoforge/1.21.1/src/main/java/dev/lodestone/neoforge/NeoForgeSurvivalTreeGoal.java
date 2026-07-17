@@ -46,6 +46,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private static final int HAND_LOGS_REQUIRED = 3;
     private static final int MAX_TOTAL_TICKS = 9_000;
     private static final int MAX_SEARCH_ATTEMPTS = 16;
+    private static final int ELECTION_PROBE_BUDGET = 9_000;
+    private static final int MAX_TREE_RE_ELECTIONS = 6;
 
     private InvocationContext invocation;
     private CompletableFuture<Map<String, Object>> result;
@@ -97,6 +99,15 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private boolean navigationDirectFallback;
     private double navigationLastDistance = Double.POSITIVE_INFINITY;
     private int obstructionBreaks;
+    private final Set<Long> blacklistedTrees = new HashSet<>();
+    private List<TreePlan> candidateTrees = List.of();
+    private final List<TreePlan> electedTrees = new ArrayList<>();
+    private int candidateProbeIndex;
+    private int treeReElections;
+    private int totalNavigationReplans;
+    private double distanceTraveled;
+    private double lastTickX = Double.NaN;
+    private double lastTickZ = Double.NaN;
 
     NeoForgeSurvivalTreeGoal(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
         this.invocation = invocation;
@@ -138,7 +149,13 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         if (done() || paused) return;
         try {
             invocation.cancellation().throwIfCancelled();
-            if (++totalTicks > MAX_TOTAL_TICKS) throw new IllegalStateException("survival tree goal exceeded its bounded input budget");
+            if (++totalTicks > MAX_TOTAL_TICKS) {
+                throw new IllegalStateException("TIMEOUT_BUDGET: cause=timeout:" + stageCause()
+                        + "; survival tree goal exceeded its bounded input budget"
+                        + telemetrySuffix());
+            }
+            failFastOnDeath(client);
+            trackDistance(client);
 
             if (supervisor.tick(client)) return;
 
@@ -154,6 +171,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             switch (stage) {
                 case WAIT_WORLD -> waitForFreshWorld(client);
                 case SEARCH_TREES -> searchTrees(client);
+                case ELECT_TREES -> electTrees(client);
                 case EXPLORE -> explore(client);
                 case NAVIGATE_RESOURCE -> navigateResource(client);
                 case MINE_RESOURCE -> mineResource(client);
@@ -209,24 +227,180 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         transition(Stage.SEARCH_TREES, 40);
     }
 
+    /**
+     * A dead player cannot act; grinding the remaining budget against a death screen only
+     * hides the cause. Fail immediately with the observed damage source so retry policy and
+     * benchmarks can distinguish a suffocation death from a navigation stall.
+     */
+    private void failFastOnDeath(Minecraft client) {
+        var player = client.player;
+        if (player == null || (!player.isDeadOrDying() && player.getHealth() > 0.0F)) return;
+        var source = player.getLastDamageSource();
+        var cause = source == null ? "unknown" : source.type().msgId();
+        throw new IllegalStateException("PLAYER_DIED: cause=died:" + cause
+                + "; player died during " + stage + " at " + player.blockPosition()
+                + telemetrySuffix());
+    }
+
+    private void trackDistance(Minecraft client) {
+        var player = client.player;
+        if (player == null) return;
+        if (!Double.isNaN(lastTickX)) {
+            var dx = player.getX() - lastTickX;
+            var dz = player.getZ() - lastTickZ;
+            var step = Math.sqrt(dx * dx + dz * dz);
+            if (step < 1.5) distanceTraveled += step;
+        }
+        lastTickX = player.getX();
+        lastTickZ = player.getZ();
+    }
+
+    private String stageCause() {
+        return switch (stage) {
+            case WAIT_WORLD -> "world-setup";
+            case SEARCH_TREES, ELECT_TREES, EXPLORE -> "search";
+            case NAVIGATE_RESOURCE, NAVIGATE_TARGET -> "navigation";
+            case MINE_RESOURCE, COLLECT_RESOURCE, MINE_TARGET -> "mining";
+            case VERIFY, COMPLETE_DELAY -> "verify";
+            default -> "crafting";
+        };
+    }
+
+    /** Bounded machine-parseable run counters appended to every terminal failure message. */
+    private String telemetrySuffix() {
+        return " | telemetry{stage=" + stage
+                + ",ticks=" + totalTicks
+                + ",replans=" + totalNavigationReplans
+                + ",reElections=" + treeReElections
+                + ",obstructionBreaks=" + obstructionBreaks
+                + ",safetyInterventions=" + safetyDiagnostics.size()
+                + ",distance=" + rounded(distanceTraveled)
+                + ",blocksMined=" + (handMinedLogs + targetMinedLogs)
+                + "}";
+    }
+
     private void searchTrees(Minecraft client) {
         var plans = scanTrees(client);
+        var reachableCandidates = plans.stream()
+                .filter(plan -> !blacklistedTrees.contains(plan.base().asLong())).toList();
         var scanDiagnostic = "tree scan: observed=" + plans.size()
+                + ", candidates=" + reachableCandidates.size()
+                + ", blacklisted=" + blacklistedTrees.size()
                 + ", player=" + requirePlayer(client).blockPosition() + ", pass=" + (searchAttempts + 1);
         navigationDiagnostics.add(scanDiagnostic);
         announce(client, scanDiagnostic);
-        if (plans.size() >= 2) {
-            resourceTree = plans.get(0);
-            targetTree = plans.get(1);
-            resetNavigation();
-            announce(client, "Found two natural trees - walking to gather wood by hand");
-            transition(Stage.NAVIGATE_RESOURCE, 20);
+        var needed = treesNeeded();
+        if (reachableCandidates.size() >= needed) {
+            candidateTrees = reachableCandidates;
+            candidateProbeIndex = 0;
+            electedTrees.clear();
+            transition(Stage.ELECT_TREES, 0);
             return;
         }
         if (searchAttempts >= MAX_SEARCH_ATTEMPTS) {
-            throw new IllegalStateException("fewer than two small trees were observed after bounded visible exploration");
+            throw new IllegalStateException("TARGET_UNREACHABLE: cause=resource:exhausted; fewer than "
+                    + needed + " reachable small trees after bounded visible exploration; blacklisted="
+                    + blacklistedTrees.size() + telemetrySuffix());
         }
         transition(Stage.EXPLORE, 0);
+    }
+
+    private int treesNeeded() {
+        // After the axe exists, a re-election only needs a replacement target tree; restarting
+        // the hand-mining phase against a fresh resource tree would repeat completed work.
+        return woodenAxeCrafted ? 1 : 2;
+    }
+
+    /**
+     * Probe one candidate per tick with a reduced search budget before committing to it.
+     * Geometric proximity alone elected trees across ravines and under overhangs; a candidate
+     * only becomes the resource or target tree once a route to it is actually plannable. Probe
+     * exhaustion means "prefer another candidate", never "proven unreachable".
+     */
+    private void electTrees(Minecraft client) {
+        var needed = treesNeeded();
+        var player = requirePlayer(client);
+        while (electedTrees.size() < needed && candidateProbeIndex < candidateTrees.size()) {
+            var candidate = candidateTrees.get(candidateProbeIndex);
+            if (!policy.smartNavigation()) {
+                electedTrees.add(candidate);
+                candidateProbeIndex++;
+                continue;
+            }
+            var route = NeoForgeSafePathPlanner.probe(client.level, player.blockPosition(),
+                    candidate.base(), policy, ELECTION_PROBE_BUDGET);
+            candidateProbeIndex++;
+            if (route.isEmpty()) {
+                navigationDiagnostics.add("tree election: probe rejected " + candidate.base()
+                        + " (no bounded route)");
+                continue;
+            }
+            electedTrees.add(candidate);
+            navigationDiagnostics.add("tree election: probe accepted " + candidate.base()
+                    + " (waypoints=" + route.size() + ")");
+            // One probe per tick keeps candidate screening off the client tick's critical path.
+            if (electedTrees.size() < needed) return;
+        }
+        if (electedTrees.size() >= needed) {
+            resetNavigation();
+            if (needed == 1) {
+                targetTree = electedTrees.get(0);
+                announce(client, "Re-elected reachable target tree - walking with WOODEN AXE");
+                transition(Stage.NAVIGATE_TARGET, 20);
+            } else {
+                resourceTree = electedTrees.get(0);
+                targetTree = electedTrees.get(1);
+                announce(client, "Found two reachable natural trees - walking to gather wood by hand");
+                transition(Stage.NAVIGATE_RESOURCE, 20);
+            }
+            return;
+        }
+        if (candidateProbeIndex >= candidateTrees.size()) {
+            navigationDiagnostics.add("tree election: exhausted " + candidateTrees.size()
+                    + " candidates with " + electedTrees.size() + "/" + needed + " reachable");
+            if (searchAttempts >= MAX_SEARCH_ATTEMPTS) {
+                throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; no route to "
+                        + needed + " candidate trees after " + searchAttempts + " exploration passes"
+                        + telemetrySuffix());
+            }
+            transition(Stage.EXPLORE, 0);
+        }
+    }
+
+    /**
+     * A navigation failure toward an elected tree is a wrong election, not a terminal goal
+     * failure. Blacklist the tree and re-elect from the remaining candidates, bounded so a
+     * hostile world still terminates with a typed cause.
+     */
+    private boolean blacklistAndReElect(Minecraft client, TreePlan tree, String label,
+                                        IllegalStateException failure) {
+        if (tree == null || !isRecoverableNavigationFailure(failure.getMessage())) return false;
+        if (++treeReElections > MAX_TREE_RE_ELECTIONS) {
+            throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; " + label
+                    + " re-election budget exhausted after " + MAX_TREE_RE_ELECTIONS
+                    + " blacklisted trees; last=" + tree.base() + "; " + failure.getMessage()
+                    + telemetrySuffix());
+        }
+        blacklistedTrees.add(tree.base().asLong());
+        stopMovement(client);
+        resetNavigation();
+        var diagnostic = "navigation failure toward " + label + " at " + tree.base()
+                + " - blacklisting and re-electing (" + treeReElections + "/" + MAX_TREE_RE_ELECTIONS
+                + "): " + failure.getMessage();
+        navigationDiagnostics.add(diagnostic);
+        safetyDiagnostics.add("tree-re-election:" + label.replace(' ', '-') + ":" + tree.base());
+        announce(client, "Route to " + label + " failed - selecting a different tree");
+        transition(Stage.SEARCH_TREES, 10);
+        return true;
+    }
+
+    private static boolean isRecoverableNavigationFailure(String message) {
+        if (message == null) return false;
+        return message.contains("route unavailable to")
+                || message.contains("route remained unavailable to")
+                || message.contains("remained obstructed before reaching")
+                || message.contains("navigation timed out before reaching")
+                || message.contains("detours remained obstructed before reaching");
     }
 
     private void explore(Minecraft client) {
@@ -247,11 +421,15 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     }
 
     private void navigateResource(Minecraft client) {
-        if (navigate(client, resourceTree.base(), "resource tree")) {
-            stopMovement(client);
-            mineIndex = 0;
-            announce(client, "Gathering wood by HAND - 0/" + HAND_LOGS_REQUIRED + " logs");
-            transition(Stage.MINE_RESOURCE, 20);
+        try {
+            if (navigate(client, resourceTree.base(), "resource tree")) {
+                stopMovement(client);
+                mineIndex = 0;
+                announce(client, "Gathering wood by HAND - 0/" + HAND_LOGS_REQUIRED + " logs");
+                transition(Stage.MINE_RESOURCE, 20);
+            }
+        } catch (IllegalStateException failure) {
+            if (!blacklistAndReElect(client, resourceTree, "resource tree", failure)) throw failure;
         }
     }
 
@@ -285,7 +463,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         lookAt(player, target);
         clickAndHoldAttack(client, "hand");
         inputActions.add("attack:key.attack-held-by-hand");
-        if (stageTicks > 360) throw new IllegalStateException("hand mining failed to break observed log " + target);
+        if (stageTicks > 360) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:mining; "
+                + "hand mining failed to break observed log " + target + telemetrySuffix());
     }
 
     private void collectResource(Minecraft client) {
@@ -324,9 +503,10 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                     || (player.onGround() && stageTicks % 40 < 5));
             inputActions.add("move:search-near-resource-tree-for-drops");
         }
-        if (stageTicks > 600) throw new IllegalStateException("hand-mined log drops were not collected through movement; inventory="
+        if (stageTicks > 600) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:collection; "
+                + "hand-mined log drops were not collected through movement; inventory="
                 + logs + ", observedDrops=" + drops.size() + ", player=" + player.blockPosition()
-                + ", resourceTree=" + resourceTree.base());
+                + ", resourceTree=" + resourceTree.base() + telemetrySuffix());
     }
 
     private void openInventory(Minecraft client) {
@@ -576,11 +756,15 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     }
 
     private void navigateTarget(Minecraft client) {
-        if (navigate(client, targetTree.base(), "target tree")) {
-            stopMovement(client);
-            mineIndex = 0;
-            announce(client, "Target tree reached - mining every log with WOODEN AXE");
-            transition(Stage.MINE_TARGET, 25);
+        try {
+            if (navigate(client, targetTree.base(), "target tree")) {
+                stopMovement(client);
+                mineIndex = 0;
+                announce(client, "Target tree reached - mining every log with WOODEN AXE");
+                transition(Stage.MINE_TARGET, 25);
+            }
+        } catch (IllegalStateException failure) {
+            if (!blacklistAndReElect(client, targetTree, "target tree", failure)) throw failure;
         }
     }
 
@@ -629,7 +813,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         }
         clickAndHoldAttack(client, "wooden-axe");
         inputActions.add("attack:key.attack-held-with-wooden-axe");
-        if (stageTicks > 260) throw new IllegalStateException("axe mining failed to break observed target log " + target);
+        if (stageTicks > 260) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:mining; "
+                + "axe mining failed to break observed target log " + target + telemetrySuffix());
     }
 
     private boolean breakVisibleMiningObstruction(Minecraft client, BlockPos target) {
@@ -655,7 +840,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         stopAttack(client);
         var player = requirePlayer(client);
         if (!player.isAlive() || player.getHealth() <= 0.0F) {
-            throw new IllegalStateException("player died before wooden-axe tree terminal readback");
+            throw new IllegalStateException("PLAYER_DIED: cause=died:unknown; "
+                    + "player died before wooden-axe tree terminal readback" + telemetrySuffix());
         }
         var remaining = (int) targetTree.logs().stream()
                 .filter(position -> client.level.getBlockState(position).is(BlockTags.LOGS)).count();
@@ -710,6 +896,13 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 Map.entry("policyMode", policy.mode()), Map.entry("toolPrerequisiteGuard", policy.toolPrerequisiteGuardEnabled()),
                 Map.entry("obstructionBreaks", obstructionBreaks),
                 Map.entry("safetyInterventions", List.copyOf(safetyDiagnostics)),
+                Map.entry("safetyInterventionCount", safetyDiagnostics.size()),
+                Map.entry("navigationReplans", totalNavigationReplans),
+                Map.entry("treeReElections", treeReElections),
+                Map.entry("blacklistedTrees", blacklistedTrees.size()),
+                Map.entry("distanceTraveled", rounded(distanceTraveled)),
+                Map.entry("blocksMined", handMinedLogs + targetMinedLogs),
+                Map.entry("elapsedTicks", totalTicks),
                 Map.entry("observation", policy.observation()), Map.entry("combatPolicy", policy.combatPolicy()),
                 Map.entry("allowBlockBreaking", policy.allowBlockBreaking()),
                 Map.entry("allowBlockPlacing", policy.allowBlockPlacing()),
@@ -746,7 +939,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             navigationReplans = 0;
             navigationDetourTicks = 0;
             if (navigationPath.isEmpty() && policy.smartNavigation()) {
-                throw new IllegalStateException("safe intelligent route unavailable to " + label);
+                throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
+                        + "safe intelligent route unavailable to " + label + telemetrySuffix());
             }
             navigationDirectFallback = navigationPath.isEmpty();
             navigationLastDistance = Double.POSITIVE_INFINITY;
@@ -795,11 +989,13 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 navigationLastDistance = Double.POSITIVE_INFINITY;
                 return false;
             }
+            totalNavigationReplans++;
             if (++navigationReplans > 5) {
-                throw new IllegalStateException("normal-input route remained obstructed before reaching " + label
+                throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:navigation; "
+                        + "normal-input route remained obstructed before reaching " + label
                         + "; player=" + player.blockPosition() + ", target=" + target
                         + ", distance=" + rounded(horizontal) + ", waypoint=" + waypoint
-                        + ", replans=" + navigationReplans);
+                        + ", replans=" + navigationReplans + telemetrySuffix());
             }
             navigationPath = findNavigationPath(client, target);
             navigationIndex = navigationPath.size() > 1 ? 1 : 0;
@@ -807,7 +1003,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             navigationLastDistance = Double.POSITIVE_INFINITY;
             if (navigationPath.isEmpty()) {
                 if (policy.smartNavigation()) {
-                    throw new IllegalStateException("safe intelligent route remained unavailable to " + label);
+                    throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
+                            + "safe intelligent route remained unavailable to " + label + telemetrySuffix());
                 }
                 navigationDirectFallback = true;
                 navigationDetourTicks = 50;
@@ -835,10 +1032,11 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         var stepUp = waypoint.getY() > player.getY() + 0.35;
         setMovement(client, true, horizontal > 7.0, player.isInWater() || (player.onGround()
                 && (stepUp || navigationStuckTicks > 25 || stageTicks % 45 < 3)));
-        if (stageTicks > 3_600) throw new IllegalStateException("visible navigation timed out before reaching " + label
+        if (stageTicks > 3_600) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:navigation; "
+                + "visible navigation timed out before reaching " + label
                 + "; player=" + player.blockPosition() + ", target=" + target
                 + ", distance=" + rounded(horizontal) + ", waypoint=" + waypoint
-                + ", pathIndex=" + navigationIndex + "/" + navigationPath.size());
+                + ", pathIndex=" + navigationIndex + "/" + navigationPath.size() + telemetrySuffix());
         return false;
     }
 
@@ -854,6 +1052,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         if (navigationStuckTicks > 90) {
             stopMovement(client);
             navigationReplans++;
+            totalNavigationReplans++;
             var recoveredPath = findNavigationPath(client, target);
             if (!recoveredPath.isEmpty()) {
                 navigationPath = recoveredPath;
@@ -867,9 +1066,11 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 return false;
             }
             if (navigationReplans > 10) {
-                throw new IllegalStateException("normal-input detours remained obstructed before reaching " + label
+                throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:navigation; "
+                        + "normal-input detours remained obstructed before reaching " + label
                         + "; player=" + player.blockPosition() + ", target=" + target
-                        + ", distance=" + rounded(horizontal) + ", detours=" + navigationReplans);
+                        + ", distance=" + rounded(horizontal) + ", detours=" + navigationReplans
+                        + telemetrySuffix());
             }
             navigationDetourTicks = 55;
             navigationDetourSign = navigationReplans % 2 == 0 ? 1 : -1;
@@ -896,9 +1097,11 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         inputActions.add("look:direct-visible-route-to-" + label.replace(' ', '-'));
         setMovement(client, true, horizontal > 7.0, player.isInWater()
                 || (player.onGround() && (navigationDetourTicks > 0 || stageTicks % 35 < 5)));
-        if (stageTicks > 3_600) throw new IllegalStateException("visible fallback navigation timed out before reaching "
+        if (stageTicks > 3_600) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:navigation; "
+                + "visible fallback navigation timed out before reaching "
                 + label + "; player=" + player.blockPosition() + ", target=" + target
-                + ", distance=" + rounded(horizontal) + ", detours=" + navigationReplans);
+                + ", distance=" + rounded(horizontal) + ", detours=" + navigationReplans
+                + telemetrySuffix());
         return false;
     }
 
@@ -1236,6 +1439,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private enum Stage {
         WAIT_WORLD,
         SEARCH_TREES,
+        ELECT_TREES,
         EXPLORE,
         NAVIGATE_RESOURCE,
         MINE_RESOURCE,

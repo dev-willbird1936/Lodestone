@@ -40,7 +40,7 @@ final class NeoForgeSafePathPlanner {
      */
     static List<BlockPos> findToAny(ClientLevel level, BlockPos start, Collection<BlockPos> targets,
                                     NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
-        return findToAny(level, start, targets, policy, arrival, false);
+        return findToAny(level, start, targets, policy, arrival, false, MAX_VISITED);
     }
 
     /**
@@ -51,13 +51,25 @@ final class NeoForgeSafePathPlanner {
     static List<BlockPos> findFromWalkableOrigin(ClientLevel level, BlockPos start,
                                                   Collection<BlockPos> targets,
                                                   NeoForgeGoalPolicy policy, ArrivalSpec arrival) {
-        return findToAny(level, start, targets, policy, arrival, true);
+        return findToAny(level, start, targets, policy, arrival, true, MAX_VISITED);
+    }
+
+    /**
+     * Election-time reachability probe with a reduced visit budget. Candidate screening runs on
+     * the client tick, so a run of unreachable candidates must not each burn the full search
+     * budget; the committed route is still planned with the full budget afterwards. A probe that
+     * exhausts its reduced budget means "prefer another candidate", never "proven unreachable".
+     */
+    static List<BlockPos> probe(ClientLevel level, BlockPos start, BlockPos target,
+                                NeoForgeGoalPolicy policy, int maxVisited) {
+        return findToAny(level, start, List.of(target), policy, new ArrivalSpec(3.0, 5.0),
+                false, Math.min(maxVisited, MAX_VISITED));
     }
 
     private static List<BlockPos> findToAny(ClientLevel level, BlockPos start,
                                             Collection<BlockPos> targets,
                                             NeoForgeGoalPolicy policy, ArrivalSpec arrival,
-                                            boolean allowWalkableOrigin) {
+                                            boolean allowWalkableOrigin, int maxVisited) {
         if (targets.isEmpty()) return List.of();
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
         var origin = start.immutable();
@@ -81,7 +93,7 @@ final class NeoForgeSafePathPlanner {
         BlockPos reached = null;
         var visited = 0;
 
-        while (!queue.isEmpty() && visited++ < MAX_VISITED) {
+        while (!queue.isEmpty() && visited++ < maxVisited) {
             var current = queue.remove();
             if (singleTarget != null
                     ? arrival.reached(current.position(), singleTarget)
