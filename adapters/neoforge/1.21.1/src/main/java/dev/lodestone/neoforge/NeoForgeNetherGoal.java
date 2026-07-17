@@ -1217,11 +1217,14 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 safetyDiagnostics.add("collectible-replan:retarget-equivalent:" + target.getUUID());
             }
             case EXHAUSTED -> {
+                var exhaustedTarget = target.getUUID();
+                rejectedCollectibles.add(exhaustedTarget);
+                collectibleTargetId = null;
                 resetNavigation();
                 stopMovement(client);
                 stageTicks = Math.min(stageTicks, 650);
-                safetyDiagnostics.add("collectible-replan:visible-drop-no-safe-route:" + target.getUUID());
-                inputActions.add("observe:retain-visible-collectible-for-bounded-replan:" + target.getUUID());
+                safetyDiagnostics.add("collectible-replan:reject-exhausted-visible-drop:" + exhaustedTarget);
+                inputActions.add("observe:retain-visible-collectible-for-bounded-replan:" + exhaustedTarget);
             }
         }
     }
