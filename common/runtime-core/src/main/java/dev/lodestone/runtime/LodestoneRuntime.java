@@ -1032,7 +1032,7 @@ public final class LodestoneRuntime implements AutoCloseable {
                 var cause = unwrap(failure);
                 var status = isCancellation(cause) ? ResultEnvelope.Status.CANCELLED : ResultEnvelope.Status.ERROR;
                 var error = StructuredError.of(status == ResultEnvelope.Status.CANCELLED
-                                ? "CANCELLED" : "ADAPTER_FAILURE",
+                                ? "CANCELLED" : adapterErrorCode(cause),
                         safeMessage(cause), status != ResultEnvelope.Status.CANCELLED);
                 if (completeError(replay, request.requestId(), status, error)) {
                     recordAudit(request, trace, auditOutcome(status));
@@ -1186,8 +1186,32 @@ public final class LodestoneRuntime implements AutoCloseable {
         }
         var status = isCancellation(cause) ? ResultEnvelope.Status.CANCELLED : ResultEnvelope.Status.ERROR;
         return ResultEnvelope.error(requestId, status,
-                new StructuredError(status == ResultEnvelope.Status.CANCELLED ? "CANCELLED" : "ADAPTER_FAILURE",
+                new StructuredError(status == ResultEnvelope.Status.CANCELLED
+                        ? "CANCELLED" : adapterErrorCode(cause),
                         safeMessage(cause), status != ResultEnvelope.Status.CANCELLED, Map.of()));
+    }
+
+    /**
+     * Actors report typed failures as an ALLCAPS {@code CODE:} message prefix. Lift that prefix
+     * into the structured error code so shared failure classification sees the actor's
+     * vocabulary instead of the generic wrapper code.
+     */
+    private static String adapterErrorCode(Throwable cause) {
+        var message = safeMessage(cause);
+        if (message != null) {
+            var colon = message.indexOf(':');
+            if (colon >= 4 && colon <= 40) {
+                var prefix = message.substring(0, colon);
+                var typed = true;
+                for (var index = 0; index < prefix.length() && typed; index++) {
+                    var character = prefix.charAt(index);
+                    typed = character == '_' || (character >= 'A' && character <= 'Z')
+                            || (character >= '0' && character <= '9');
+                }
+                if (typed) return prefix;
+            }
+        }
+        return "ADAPTER_FAILURE";
     }
 
     private void pruneIdempotency() {

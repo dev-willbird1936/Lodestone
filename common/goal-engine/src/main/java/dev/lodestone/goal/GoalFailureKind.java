@@ -7,6 +7,7 @@ import dev.lodestone.protocol.ResultEnvelope;
 public enum GoalFailureKind {
     NONE,
     PLAYER_OVERRIDE,
+    PLAYER_DIED,
     PRECONDITION_FAILED,
     NO_PROGRESS,
     PATH_FAILED,
@@ -23,12 +24,14 @@ public enum GoalFailureKind {
         var code = result.error() == null || result.error().code() == null
                 ? "" : result.error().code().toUpperCase(java.util.Locale.ROOT);
         if (code.contains("PLAYER_OVERRIDE")) return PLAYER_OVERRIDE;
+        if (code.contains("DIED") || code.contains("DEATH")) return PLAYER_DIED;
         if (code.contains("PRECONDITION")) return PRECONDITION_FAILED;
         if (code.contains("POSTCONDITION")) return POSTCONDITION_FAILED;
         if (code.contains("SAFETY") || code.contains("SURVIVAL_POLICY") || code.contains("HAZARD")) {
             return SAFETY_REJECTED;
         }
-        if (code.contains("NO_PROGRESS") || code.contains("STUCK")) return NO_PROGRESS;
+        if (code.contains("NO_PROGRESS") || code.contains("STUCK")
+                || code.contains("TIMEOUT_BUDGET")) return NO_PROGRESS;
         if (code.contains("PATH") || code.contains("NAVIGATION")) return PATH_FAILED;
         if (code.contains("UNREACHABLE") || code.contains("TARGET")) return TARGET_UNREACHABLE;
         if (code.contains("OBSTRUCT")) return OBSTRUCTED;

@@ -35,6 +35,10 @@ public final class GoalRecoveryCoordinator {
             return new Decision(RecoveryDecision.ABORT_STEP, failure, 0,
                     "safety or declared precondition must be fixed before retry");
         }
+        if (failure == GoalFailureKind.PLAYER_DIED) {
+            return new Decision(RecoveryDecision.ABORT_STEP, failure, 0,
+                    "a death is terminal for this run; retry policy belongs to the caller");
+        }
         if (failure == GoalFailureKind.TRANSIENT
                 && retries.getOrDefault(stepId, 0) < MAX_RETRIES_PER_STEP) {
             var attempt = retries.merge(stepId, 1, Integer::sum);

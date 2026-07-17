@@ -195,6 +195,7 @@ public final class GoalEngine {
                                 && spec.mode() == GoalMode.REALTIME && !pending.isEmpty()) {
                             continue;
                         }
+                        state.put("failureCause", failureCause(failureKind, result));
                         pendingFailure = failureFor(result);
                         trace.add(trace(selected, result, elapsedMs(stepStarted)));
                         break;
@@ -203,6 +204,7 @@ public final class GoalEngine {
                     trace.add(trace(selected, result, elapsedMs(stepStarted)));
                     completedSteps++;
                     if (elapsedMs(started) >= spec.maxDurationMs()) {
+                        state.put("failureCause", "timeout:duration-budget");
                         pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT,
                                 "goal duration budget exhausted after step: " + selected.id());
                         break;
@@ -222,6 +224,7 @@ public final class GoalEngine {
                                 && spec.mode() == GoalMode.REALTIME && !pending.isEmpty()) {
                             continue;
                         }
+                        state.putIfAbsent("failureCause", "postcondition:" + selected.id());
                         pendingFailure = new ExecutionFailure(GoalStatus.FAILED,
                                 "step postcondition failed: " + selected.id());
                         break;
@@ -254,6 +257,7 @@ public final class GoalEngine {
                 }
                 if (pendingFailure != null) break;
                 if (!assertionsPass(segment.assertions(), state)) {
+                    state.putIfAbsent("failureCause", "postcondition:" + segment.id());
                     pendingFailure = new ExecutionFailure(GoalStatus.FAILED, "segment postcondition failed: " + segment.id());
                     break;
                 }
@@ -274,6 +278,7 @@ public final class GoalEngine {
                         completedSteps, completedSegments, trace, state);
             }
         } catch (RuntimeException failure) {
+            state.putIfAbsent("failureCause", extractDeclaredCause(safeMessage(failure), "error:unhandled"));
             finalReport = report(plan.id(), spec, GoalStatus.FAILED, safeMessage(failure), started,
                     completedSteps, completedSegments, trace, state);
         } finally {
@@ -615,6 +620,40 @@ public final class GoalEngine {
                 : "script-interpreter";
         return new GoalRunReport(UUID.randomUUID().toString(), planId, spec.goal(), spec.mode(), status, message,
                 elapsedMs(started), completedSteps, completedSegments, selectedModel, trace, state);
+    }
+
+    /**
+     * Machine-readable failure cause for terminal reports. Actors embed an explicit
+     * {@code cause=<vocabulary>;} marker in typed failure messages; when present it wins,
+     * otherwise the shared failure kind supplies a stable fallback. Callers and benchmark
+     * harnesses branch retry policy on this value, so it must stay a small fixed vocabulary.
+     */
+    static String failureCause(GoalFailureKind kind, ResultEnvelope result) {
+        var message = result == null || result.error() == null ? null : result.error().message();
+        var declared = extractDeclaredCause(message, null);
+        if (declared != null) return declared;
+        return switch (kind == null ? GoalFailureKind.UNKNOWN : kind) {
+            case PLAYER_DIED -> "died:unknown";
+            case NO_PROGRESS -> "stall:unknown";
+            case PATH_FAILED, TARGET_UNREACHABLE -> "target:unreachable";
+            case OBSTRUCTED -> "target:obstructed";
+            case SAFETY_REJECTED -> "safety:rejected";
+            case PRECONDITION_FAILED -> "precondition:failed";
+            case POSTCONDITION_FAILED -> "postcondition:failed";
+            case PLAYER_OVERRIDE -> "player:override";
+            case WORLD_CHANGED -> "world:changed";
+            case TRANSIENT -> "transient:error";
+            default -> "error:unclassified";
+        };
+    }
+
+    private static String extractDeclaredCause(String message, String fallback) {
+        if (message == null) return fallback;
+        var marker = message.indexOf("cause=");
+        if (marker < 0) return fallback;
+        var end = message.indexOf(';', marker);
+        var cause = (end > marker ? message.substring(marker + 6, end) : message.substring(marker + 6)).trim();
+        return cause.isEmpty() || cause.length() > 64 ? fallback : cause;
     }
 
     private static long elapsedMs(long started) {
