@@ -134,6 +134,11 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
             case "raw", "lowest", "raw-v1" -> Intelligence.RAW_V1;
             case "guarded", "medium", "guarded-v1" -> Intelligence.GUARDED_V1;
             case "adaptive", "highest", "adaptive-v1" -> Intelligence.ADAPTIVE_V1;
+            // deliberate-v1's extra behavior (realtime lookahead-plan consultation, situational
+            // deliberation budget) lives entirely at the engine/model-provider layer above this
+            // adapter; this loader has no separate tier for it and intentionally reuses
+            // adaptive-v1's guardrails, prerequisite planning, and obstruction mining unchanged.
+            case "deliberate", "deliberate-v1", "perfect", "xhigh" -> Intelligence.ADAPTIVE_V1;
             default -> throw new IllegalArgumentException("unknown goal intelligence: " + value);
         };
     }
