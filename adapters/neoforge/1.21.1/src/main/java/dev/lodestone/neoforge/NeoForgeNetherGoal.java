@@ -2584,7 +2584,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
 
     static boolean genericLivenessEnabled(String stageName, int prerequisitePhase) {
         return !stageName.equals("PLAN_PREREQUISITE_ACQUISITION")
-                && (!stageName.equals("EXCAVATE_PREREQUISITE_ROUTE") || prerequisitePhase == 2);
+                && !stageName.equals("EXCAVATE_PREREQUISITE_ROUTE");
     }
 
     private void scheduleLivenessRecovery(Minecraft client) {

@@ -66,7 +66,7 @@ final class NeoForgeLivenessWatchdogTest {
         assertFalse(NeoForgeNetherGoal.genericLivenessEnabled("PLAN_PREREQUISITE_ACQUISITION"));
         assertFalse(NeoForgeNetherGoal.genericLivenessEnabled("EXCAVATE_PREREQUISITE_ROUTE"));
         assertFalse(NeoForgeNetherGoal.genericLivenessEnabled("EXCAVATE_PREREQUISITE_ROUTE", 1));
-        assertTrue(NeoForgeNetherGoal.genericLivenessEnabled("EXCAVATE_PREREQUISITE_ROUTE", 2));
+        assertFalse(NeoForgeNetherGoal.genericLivenessEnabled("EXCAVATE_PREREQUISITE_ROUTE", 2));
         assertTrue(NeoForgeNetherGoal.genericLivenessEnabled("FIND_STONE"));
         assertTrue(NeoForgeNetherGoal.genericLivenessEnabled("NAVIGATE_STARTER_RESOURCE"));
 
