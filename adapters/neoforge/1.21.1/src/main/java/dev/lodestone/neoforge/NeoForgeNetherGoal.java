@@ -3318,7 +3318,13 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
      */
     private boolean supervisorMovementExpected(Minecraft client) {
         if (stage == Stage.PLAN_PREREQUISITE_ACQUISITION) return false;
-        if (stage != Stage.EXCAVATE_PREREQUISITE_ROUTE) return movementExpected();
+        if (stage != Stage.EXCAVATE_PREREQUISITE_ROUTE) {
+            // Adaptive navigation has a validated A* route and its own bounded replan
+            // contract.  Do not let the generic obstruction escape rewrite that route
+            // while the safety supervisor still handles hazards, falls, threats, and
+            // unsafe tool use below the movement contract.
+            return policy.smartNavigation() ? false : movementExpected();
+        }
         if (prerequisitePlan == null || prerequisitePlan.steps().isEmpty()) return false;
         var step = prerequisitePlan.steps().getFirst();
         // Step movement has its own bounded transaction and liveness sample.  Keep it
