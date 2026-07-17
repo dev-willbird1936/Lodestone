@@ -642,14 +642,16 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         if (reachedMiningVantage) {
             stopMovement(client);
             if (resourceApproachOnly) {
-                // A safe approach cell is progress, not yet permission to mine. Re-read the
-                // loaded chunks from this new pose so foliage/terrain occlusion can be handled
-                // by the ordinary vantage search rather than rejecting the whole source.
                 resourceApproachOnly = false;
-                resourceMiningVantage = null;
-                resetNavigation();
-                inputActions.add("observe:rescan-starter-resource-from-approach-cell");
-                waitTicks = 3;
+                // The approach cell is deliberately selected close enough to the source to
+                // interact with it. Promote the current pose directly into the mining stage;
+                // rescanning from the same pose can select the same approach cell forever when
+                // the source is occluded by leaves or terrain.
+                resourceMiningVantage = requirePlayer(client).blockPosition().immutable();
+                mineIndex = 0;
+                resourceBlocksToMine = Math.max(1, LOGS_REQUIRED - countLogs(requirePlayer(client)));
+                inputActions.add("observe:promote-safe-resource-approach-to-mining");
+                transition(Stage.MINE_STARTER_RESOURCE, 15);
                 return;
             }
             mineIndex = 0;
@@ -852,8 +854,8 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var candidates = new ArrayList<BlockPos>();
         for (var target : resourceSource.blocks().stream().limit(16).toList()) {
             for (var direction : Direction.Plane.HORIZONTAL) {
-                for (int distance = 2; distance <= 6; distance++) {
-                    for (int yOffset = -5; yOffset <= 5; yOffset++) {
+                for (int distance = 2; distance <= 4; distance++) {
+                    for (int yOffset = -2; yOffset <= 2; yOffset++) {
                         var candidate = target.relative(direction, distance).offset(0, yOffset, 0);
                         if (rejectedResourceVantages.contains(candidate.asLong())) continue;
                         if (candidate.distSqr(player.blockPosition()) < 9.0
