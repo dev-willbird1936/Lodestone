@@ -24,6 +24,11 @@ final class NeoForgeSurvivalInvariant {
         return walkable && (!highSafety || bufferedWalkable);
     }
 
+    static boolean verticalRecoveryOriginAllowed(boolean walkable, boolean hazard,
+                                                  boolean hazardAbove) {
+        return walkable && !hazard && !hazardAbove;
+    }
+
     static boolean allowHorizontalWaterInput(boolean verifiedRoute, boolean horizontalEdge) {
         return verifiedRoute && horizontalEdge;
     }

@@ -153,8 +153,8 @@ final class NeoForgeSafePathPlanner {
                                            NeoForgeGoalPolicy policy, java.util.Set<Long> rejected) {
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy);
         var origin = start.immutable();
-        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
-                snapshot.bufferedWalkable(origin), false)) return List.of();
+        if (!NeoForgeSurvivalInvariant.verticalRecoveryOriginAllowed(snapshot.walkable(origin),
+                snapshot.hazard(origin), snapshot.hazard(origin.above()))) return List.of();
 
         var queue = new PriorityQueue<Node>();
         var previous = new HashMap<Long, Long>();

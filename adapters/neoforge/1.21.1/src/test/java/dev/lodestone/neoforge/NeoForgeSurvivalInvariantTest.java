@@ -38,6 +38,14 @@ final class NeoForgeSurvivalInvariantTest {
     }
 
     @Test
+    void verticalRecoveryAllowsSafeUnbufferedOriginOnly() {
+        assertTrue(NeoForgeSurvivalInvariant.verticalRecoveryOriginAllowed(true, false, false));
+        assertFalse(NeoForgeSurvivalInvariant.verticalRecoveryOriginAllowed(false, false, false));
+        assertFalse(NeoForgeSurvivalInvariant.verticalRecoveryOriginAllowed(true, true, false));
+        assertFalse(NeoForgeSurvivalInvariant.verticalRecoveryOriginAllowed(true, false, true));
+    }
+
+    @Test
     void horizontalWaterInputRequiresVerifiedRetreatEdge() {
         assertFalse(NeoForgeSurvivalInvariant.allowHorizontalWaterInput(false, true));
         assertFalse(NeoForgeSurvivalInvariant.allowHorizontalWaterInput(true, false));
