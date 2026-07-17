@@ -69,6 +69,21 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                 Map.of("target", "singleplayer"), false);
         var createScreen = GoalStep.invoke("open-create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_new_world"), false);
+        var createWorldSetup = new ArrayList<GoalSegment>();
+        if (spec.worldSeed() != null) {
+            createWorldSetup.add(new GoalSegment("open-world-options",
+                    "Open the normal world-generation options tab.",
+                    List.of(GoalStep.invoke("open-world-options", "lodestone.ui.navigate", "1.0",
+                            Map.of("target", "world_tab"), false)), List.of()));
+            createWorldSetup.add(new GoalSegment("focus-world-seed",
+                    "Focus the normal world seed text field.",
+                    List.of(GoalStep.invoke("focus-world-seed", "lodestone.ui.navigate", "1.0",
+                            Map.of("target", "world_seed"), false)), List.of()));
+            createWorldSetup.add(new GoalSegment("insert-world-seed",
+                    "Enter the requested Java seed through normal UI text input.",
+                    List.of(GoalStep.invoke("insert-world-seed", "minecraft.ui.text.insert", "1.0",
+                            Map.of("text", spec.worldSeed()), false)), List.of()));
+        }
         var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
                 Map.of("target", "create_world"), false);
         var finalAssertions = new GoalAssertion[]{
@@ -128,18 +143,21 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                             .toArray(GoalAssertion[]::new));
             workflowSteps.add(workflow);
         }
-        return new GoalPlan("survival.wooden-axe-mine-tree", goal, List.of(
-                new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
-                        List.of(open), List.of()),
-                new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
-                        List.of(createScreen), List.of()),
-                new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
-                        List.of(createWorld), List.of()),
-                new GoalSegment("survival-gameplay", "Use normal look, movement, attack, inventory, and crafting-table input until the full predicate is proven.",
-                        workflowSteps, List.of())),
+        var segments = new ArrayList<GoalSegment>();
+        segments.add(new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
+                List.of(open), List.of()));
+        segments.add(new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
+                List.of(createScreen), List.of()));
+        segments.addAll(createWorldSetup);
+        segments.add(new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
+                List.of(createWorld), List.of()));
+        segments.add(new GoalSegment("survival-gameplay", "Use normal look, movement, attack, inventory, and crafting-table input until the full predicate is proven.",
+                workflowSteps, List.of()));
+        return new GoalPlan("survival.wooden-axe-mine-tree", goal, List.copyOf(segments),
                 Map.of("taskId", "survival.wooden-axe-mine-tree", "gameMode", "survival",
                         "craftingRequired", true,
                         "adaptiveTreeTraversalRequired", true, "authenticPlayerInputRequired", true,
+                        "randomFreshWorldRequired", spec.worldSeed() == null,
                         "completionPredicateReady", true));
     }
 

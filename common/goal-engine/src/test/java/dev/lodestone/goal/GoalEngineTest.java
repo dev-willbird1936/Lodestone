@@ -395,6 +395,44 @@ class GoalEngineTest {
     }
 
     @Test
+    void woodenAxePlanEntersRequestedSeedThroughCreateWorldUi() {
+        var spec = new GoalSpec("mine an entire tree with a wooden axe", GoalMode.REALTIME,
+                "survival.wooden-axe-mine-tree", 256, 480_000, false, null, true,
+                GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults(),
+                "281475037711136");
+
+        var plan = new BuiltinGoalPlanner().plan(spec).plan();
+        var seedSegments = plan.segments().stream()
+                .filter(segment -> List.of("open-world-options", "focus-world-seed",
+                        "insert-world-seed", "create-fresh-world").contains(segment.id()))
+                .toList();
+        var createSteps = seedSegments.stream().flatMap(segment -> segment.steps().stream()).toList();
+
+        assertEquals(List.of("open-world-options", "focus-world-seed", "insert-world-seed", "create-world"),
+                createSteps.stream().map(GoalStep::id).toList());
+        assertEquals(List.of("open-world-options", "focus-world-seed", "insert-world-seed", "create-fresh-world"),
+                seedSegments.stream().map(GoalSegment::id).toList());
+        assertEquals(Map.of("target", "world_tab"), createSteps.get(0).input());
+        assertEquals(Map.of("target", "world_seed"), createSteps.get(1).input());
+        assertEquals("minecraft.ui.text.insert", createSteps.get(2).capability());
+        assertEquals(Map.of("text", "281475037711136"), createSteps.get(2).input());
+        assertEquals(false, plan.metadata().get("randomFreshWorldRequired"));
+    }
+
+    @Test
+    void woodenAxePlanOmitsSeedSegmentsWhenNoSeedRequested() {
+        var spec = new GoalSpec("mine an entire tree with a wooden axe", GoalMode.REALTIME,
+                "survival.wooden-axe-mine-tree", 256, 480_000, false, null, true,
+                GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults());
+
+        var plan = new BuiltinGoalPlanner().plan(spec).plan();
+
+        assertEquals(List.of("open-singleplayer", "open-create-world", "create-fresh-world", "survival-gameplay"),
+                plan.segments().stream().map(GoalSegment::id).toList());
+        assertEquals(true, plan.metadata().get("randomFreshWorldRequired"));
+    }
+
+    @Test
     void durationBudgetTurnsACompletedLateActionIntoTimeout() {
         var plan = new GoalPlan("slow", "slow", List.of(new GoalSegment("run", "run", List.of(
                 new GoalStep("slow", GoalStepKind.OBSERVE, "test.observe", "1.0", Map.of(),
