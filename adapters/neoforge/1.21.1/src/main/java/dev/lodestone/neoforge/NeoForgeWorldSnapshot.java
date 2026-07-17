@@ -28,18 +28,25 @@ final class NeoForgeWorldSnapshot {
 
     private final ClientLevel level;
     private final NeoForgeGoalPolicy policy;
+    private final LocalPlayer player;
     private final int featherFallingLevel;
     private final boolean slowFalling;
-    private final List<ThreatFact> nearbyThreats;
-    private final List<BlockPos> nearbyLava;
+    // Lazy and memoized rather than precomputed in the constructor: capture() runs on dozens of
+    // per-tick calls that never touch mob/lava data (adjacentSafeEscape, tickObstructionClear,
+    // standable, ...), and these two scans are the expensive ones (an entity AABB query and up to
+    // ~3200 block reads). Deferring to first access keeps every other call site free, while still
+    // computing at most once per search: a single snapshot instance is reused across an entire
+    // findToAny while-loop, so the first edge that asks pays for it and every later edge in that
+    // same search reuses the cached result.
+    private List<ThreatFact> nearbyThreats;
+    private List<BlockPos> nearbyLava;
 
     private NeoForgeWorldSnapshot(ClientLevel level, NeoForgeGoalPolicy policy, LocalPlayer player) {
         this.level = level;
         this.policy = policy;
+        this.player = player;
         this.featherFallingLevel = computeFeatherFallingLevel(player);
         this.slowFalling = player.hasEffect(MobEffects.SLOW_FALLING) || player.hasEffect(MobEffects.LEVITATION);
-        this.nearbyThreats = computeNearbyThreats(level, player);
-        this.nearbyLava = computeNearbyLava(level, player.blockPosition());
     }
 
     static NeoForgeWorldSnapshot capture(ClientLevel level, NeoForgeGoalPolicy policy, LocalPlayer player) {
@@ -58,11 +65,13 @@ final class NeoForgeWorldSnapshot {
 
     /** Bounded, once-per-search snapshot of nearby hostile/targeting mobs. */
     List<ThreatFact> nearbyThreats() {
+        if (nearbyThreats == null) nearbyThreats = computeNearbyThreats(level, player);
         return nearbyThreats;
     }
 
     /** Bounded, once-per-search snapshot of nearby lava-fluid positions. */
     List<BlockPos> nearbyLava() {
+        if (nearbyLava == null) nearbyLava = computeNearbyLava(level, player.blockPosition());
         return nearbyLava;
     }
 
