@@ -1107,6 +1107,10 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         var target = BlockPos.containing(collectible);
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
         var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(0.55, 0.8);
+        var origin = player.blockPosition().immutable();
+        var bufferedOrigin = snapshot.bufferedWalkable(origin);
+        var bodySafeOrigin = snapshot.walkable(origin)
+                && !snapshot.hazard(origin) && !snapshot.hazard(origin.above());
         BlockPos best = null;
         var bestLength = Integer.MAX_VALUE;
         for (var dx = -3; dx <= 3; dx++) {
@@ -1116,11 +1120,19 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     var pickupPoint = new Vec3(candidate.getX() + 0.5, candidate.getY() + 1.0,
                             candidate.getZ() + 0.5);
                     if (pickupPoint.distanceTo(collectible) > 1.65 || !snapshot.bufferedWalkable(candidate)) continue;
-                    var path = NeoForgeSafePathPlanner.find(client.level, player.blockPosition(), candidate,
-                            policy, arrival);
-                    var retreat = NeoForgeSafePathPlanner.find(client.level, candidate,
-                            player.blockPosition(), policy, arrival);
-                    if (snapshot.safeMiningPath(path) && snapshot.safeMiningPath(retreat)
+                    var path = bufferedOrigin
+                            ? NeoForgeSafePathPlanner.find(client.level, origin, candidate, policy, arrival)
+                            : NeoForgeSafePathPlanner.findFromWalkableOrigin(client.level, origin,
+                            List.of(candidate), policy, arrival);
+                    var pathSafe = bufferedOrigin
+                            ? snapshot.safeMiningPath(path)
+                            : bodySafeOrigin && path.size() > 1
+                            && path.stream().skip(1).allMatch(snapshot::bufferedWalkable);
+                    var retreat = bufferedOrigin
+                            ? NeoForgeSafePathPlanner.find(client.level, candidate, origin, policy, arrival)
+                            : List.of(candidate);
+                    var retreatSafe = bufferedOrigin && snapshot.safeMiningPath(retreat) || !bufferedOrigin;
+                    if (pathSafe && retreatSafe
                             && path.size() < bestLength) {
                         best = candidate.immutable();
                         bestLength = path.size();
@@ -1137,7 +1149,6 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 ClipContext.Block.OUTLINE, ClipContext.Fluid.ANY, player));
         if (!(hit instanceof BlockHitResult blockHit)) return null;
         var blocker = blockHit.getBlockPos();
-        if (blocker.equals(BlockPos.containing(collectible))) return null;
         var state = client.level.getBlockState(blocker);
         if (state.isAir()) return null;
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy);
