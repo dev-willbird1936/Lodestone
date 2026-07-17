@@ -78,6 +78,37 @@ final class NeoForgeSafePathPlannerTest {
         assertEquals(0.0, NeoForgeSafePathPlanner.estimatedFallDamage(50, 3.0, 1.0, 0, true), 1e-9);
     }
 
+    @Test
+    void mineCandidateRequiresASolidObstructionOverIntactSupportAndNoFluid() {
+        // feet solid, support intact, no fluid: obstruction in the feet cell alone.
+        assertTrue(NeoForgeSafePathPlanner.mineCandidateEligible(true, false, true, true, true));
+        // head solid instead: still an obstruction (2-tall hitbox), still eligible.
+        assertTrue(NeoForgeSafePathPlanner.mineCandidateEligible(false, true, true, true, true));
+        // both solid: still a single-edge mine, both cells collected as targets by the caller.
+        assertTrue(NeoForgeSafePathPlanner.mineCandidateEligible(true, true, true, true, true));
+        // neither feet nor head solid: nothing to mine.
+        assertFalse(NeoForgeSafePathPlanner.mineCandidateEligible(false, false, true, true, true));
+        // missing support: this is the place case, not mine, even with a solid feet cell.
+        assertFalse(NeoForgeSafePathPlanner.mineCandidateEligible(true, false, false, true, true));
+        // fluid present: mining wouldn't produce a walkable cell, never eligible.
+        assertFalse(NeoForgeSafePathPlanner.mineCandidateEligible(true, false, true, false, true));
+        assertFalse(NeoForgeSafePathPlanner.mineCandidateEligible(true, false, true, true, false));
+    }
+
+    @Test
+    void placeCandidateRequiresAnOpenFeetAndHeadOverAMissingSupportAndNoFluid() {
+        // clear feet/head, no fluid, missing support: a genuine floor gap.
+        assertTrue(NeoForgeSafePathPlanner.placeCandidateEligible(false, false, false, true, true));
+        // support already intact: nothing to fill.
+        assertFalse(NeoForgeSafePathPlanner.placeCandidateEligible(false, false, true, true, true));
+        // feet or head obstructed: this is the mine case, not place.
+        assertFalse(NeoForgeSafePathPlanner.placeCandidateEligible(true, false, false, true, true));
+        assertFalse(NeoForgeSafePathPlanner.placeCandidateEligible(false, true, false, true, true));
+        // fluid present: placement site isn't safe to consider here.
+        assertFalse(NeoForgeSafePathPlanner.placeCandidateEligible(false, false, false, false, true));
+        assertFalse(NeoForgeSafePathPlanner.placeCandidateEligible(false, false, false, true, false));
+    }
+
     private static NeoForgeGoalPolicy policy(String intelligence, String safety) {
         return NeoForgeGoalPolicy.from(Map.of("intelligence", intelligence, "safety", safety));
     }

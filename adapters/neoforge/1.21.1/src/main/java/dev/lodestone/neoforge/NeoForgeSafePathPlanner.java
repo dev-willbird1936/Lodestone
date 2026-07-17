@@ -32,7 +32,11 @@ final class NeoForgeSafePathPlanner {
 
     private NeoForgeSafePathPlanner() { }
 
-    /** Whether reaching a path step requires mining or placing a block first. */
+    /**
+     * Whether reaching a path step requires mining or placing a block first. A cell that would
+     * need both a mine and a place is out of v1 scope; if ever needed, model it as two consecutive
+     * {@link PathStep}s at the same position rather than adding a 4th composite kind.
+     */
     enum MutationKind { NONE, MINE, PLACE }
 
     /**
@@ -219,9 +223,7 @@ final class NeoForgeSafePathPlanner {
                                        HashMap<Long, Long> previous, HashMap<Long, MutationKind> incomingKind,
                                        HashMap<Long, List<BlockPos>> incomingTargets, PriorityQueue<Node> queue) {
         var candidate = new BlockPos(horizontal.getX(), current.getY() + dy, horizontal.getZ());
-        if (!withinBounds(origin, candidate)
-                || policy.highSafety() && !snapshot.bufferedWalkable(candidate)
-                || !policy.highSafety() && !snapshot.walkable(candidate)) return;
+        if (!withinBounds(origin, candidate)) return;
         // A client cannot traverse a diagonal height change as one movement edge. It must first
         // enter the same-height horizontal cell, then step up/down. Reject the shortcut unless
         // that transit cell is safe; reconstruction below inserts it into the returned route so
@@ -234,15 +236,82 @@ final class NeoForgeSafePathPlanner {
         // navigation. Adaptive intelligence keeps this rule even with balanced safety so
         // planning quality cannot trade health for a shorter route.
         if (current.getY() - candidate.getY() > 1) return;
-        var nextCost = cost.get(current.asLong()) + edgeCost(current, candidate, policy, snapshot, player);
+
+        if (policy.highSafety() ? snapshot.bufferedWalkable(candidate) : snapshot.walkable(candidate)) {
+            offerEdge(current, candidate, MutationKind.NONE, List.of(), policy, snapshot, player, targets,
+                    cost, previous, incomingKind, incomingTargets, queue);
+            return;
+        }
+        // Only adaptive intelligence considers reaching an otherwise-blocked cell by mining an
+        // obstruction or placing a support block; NeoForgePathCostExtensions prices (and can
+        // outright veto via POSITIVE_INFINITY) both, so proposing the edge here never bypasses a
+        // legality gate - it only ever gives A* the option, purely additive over the plain check
+        // above. RAW_V1/GUARDED_V1 never reach this branch, so they stay provably unaffected.
+        if (policy.intelligence() != NeoForgeGoalPolicy.Intelligence.ADAPTIVE_V1) return;
+        var mutation = mutationCandidate(snapshot, candidate);
+        if (mutation == null) return;
+        offerEdge(current, candidate, mutation.kind(), mutation.targets(), policy, snapshot, player, targets,
+                cost, previous, incomingKind, incomingTargets, queue);
+    }
+
+    /** Inserts (or skips, if not an improvement) one proposed edge - a plain move or a mutation alike. */
+    private static void offerEdge(BlockPos current, BlockPos candidate, MutationKind kind,
+                                   List<BlockPos> mutationTargets, NeoForgeGoalPolicy policy,
+                                   NeoForgeWorldSnapshot snapshot, LocalPlayer player, Collection<BlockPos> targets,
+                                   HashMap<Long, Double> cost, HashMap<Long, Long> previous,
+                                   HashMap<Long, MutationKind> incomingKind,
+                                   HashMap<Long, List<BlockPos>> incomingTargets, PriorityQueue<Node> queue) {
+        var nextCost = cost.get(current.asLong())
+                + edgeCost(current, candidate, policy, snapshot, player, kind, mutationTargets);
         if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) return;
         cost.put(candidate.asLong(), nextCost);
         previous.put(candidate.asLong(), current.asLong());
-        // Plain movement only for now; mine/place candidate edges are a later, separate addition
-        // once the real cost formulas that make them meaningful exist (NeoForgePathCostExtensions).
-        incomingKind.put(candidate.asLong(), MutationKind.NONE);
-        incomingTargets.put(candidate.asLong(), List.of());
+        incomingKind.put(candidate.asLong(), kind);
+        incomingTargets.put(candidate.asLong(), mutationTargets);
         queue.add(new Node(candidate.immutable(), nextCost, nextCost + heuristic(candidate, targets)));
+    }
+
+    /**
+     * Why a cell that fails the plain walkability check could still become a MINE or PLACE edge:
+     * either a single solid, breakable obstruction sits in the feet and/or head cell (mine
+     * whichever of the two are actually solid), or the support block below is missing entirely (a
+     * floor gap, fillable by placing). A cell can never need both in this v1 scope - see
+     * {@link MutationKind}'s doc.
+     */
+    private record MutationCandidate(MutationKind kind, List<BlockPos> targets) { }
+
+    private static MutationCandidate mutationCandidate(NeoForgeWorldSnapshot snapshot, BlockPos candidate) {
+        var level = snapshot.level();
+        var head = candidate.above();
+        var support = candidate.below();
+        if (!level.hasChunkAt(candidate) || !level.hasChunkAt(head) || !level.hasChunkAt(support)) return null;
+        var feetSolid = !level.getBlockState(candidate).getCollisionShape(level, candidate).isEmpty();
+        var headSolid = !level.getBlockState(head).getCollisionShape(level, head).isEmpty();
+        var supportSolid = !level.getBlockState(support).getCollisionShape(level, support).isEmpty();
+        var feetFluidEmpty = level.getFluidState(candidate).isEmpty();
+        var headFluidEmpty = level.getFluidState(head).isEmpty();
+        if (mineCandidateEligible(feetSolid, headSolid, supportSolid, feetFluidEmpty, headFluidEmpty)) {
+            var mutationTargets = new ArrayList<BlockPos>(2);
+            if (feetSolid) mutationTargets.add(candidate);
+            if (headSolid) mutationTargets.add(head);
+            return new MutationCandidate(MutationKind.MINE, List.copyOf(mutationTargets));
+        }
+        if (placeCandidateEligible(feetSolid, headSolid, supportSolid, feetFluidEmpty, headFluidEmpty)) {
+            return new MutationCandidate(MutationKind.PLACE, List.of(support));
+        }
+        return null;
+    }
+
+    /** Pure obstruction-shape decision, isolated from world access so it's directly unit-testable. */
+    static boolean mineCandidateEligible(boolean feetSolid, boolean headSolid, boolean supportSolid,
+                                          boolean feetFluidEmpty, boolean headFluidEmpty) {
+        return supportSolid && feetFluidEmpty && headFluidEmpty && (feetSolid || headSolid);
+    }
+
+    /** Pure floor-gap decision, isolated from world access so it's directly unit-testable. */
+    static boolean placeCandidateEligible(boolean feetSolid, boolean headSolid, boolean supportSolid,
+                                           boolean feetFluidEmpty, boolean headFluidEmpty) {
+        return !feetSolid && !headSolid && feetFluidEmpty && headFluidEmpty && !supportSolid;
     }
 
     /**
