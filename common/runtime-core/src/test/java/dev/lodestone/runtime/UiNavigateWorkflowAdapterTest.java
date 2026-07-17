@@ -90,6 +90,79 @@ final class UiNavigateWorkflowAdapterTest {
     }
 
     @Test
+    void createNewWorldRejectsAnAlreadyAdvancedCreateWorldScreenInsteadOfMisclicking() throws Exception {
+        var adapter = new FakeUiAdapter("2.0", "2.0",
+                call -> state("screen-1", "a", "CreateWorldScreen",
+                        "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                        List.of(widget("n0", "Create New World"))),
+                UiNavigateWorkflowAdapterTest::click);
+        try (var runtime = runtime()) {
+            runtime.registerAdapter(adapter);
+            var result = runtime.invoke(request(runtime, "create_new_world")).get(1, TimeUnit.SECONDS);
+
+            assertEquals(ResultEnvelope.Status.ERROR, result.status());
+            assertTrue(result.error().message().contains("create_new_world"));
+            assertTrue(result.error().message().contains("SelectWorldScreen"));
+            assertEquals(0, adapter.clickCalls.get());
+        }
+    }
+
+    @Test
+    void createWorldRejectsTheWorldSelectScreenInsteadOfMisclicking() throws Exception {
+        var adapter = new FakeUiAdapter("2.0", "2.0",
+                call -> state("screen-1", "a", "SelectWorldScreen",
+                        "net.minecraft.client.gui.screens.worldselection.SelectWorldScreen",
+                        List.of(widget("n0", "Create New World"))),
+                UiNavigateWorkflowAdapterTest::click);
+        try (var runtime = runtime()) {
+            runtime.registerAdapter(adapter);
+            var result = runtime.invoke(request(runtime, "create_world")).get(1, TimeUnit.SECONDS);
+
+            assertEquals(ResultEnvelope.Status.ERROR, result.status());
+            assertTrue(result.error().message().contains("create_world"));
+            assertTrue(result.error().message().contains("CreateWorldScreen"));
+            assertEquals(0, adapter.clickCalls.get());
+        }
+    }
+
+    @Test
+    void createNewWorldClicksTheWorldSelectScreenButtonWhenThatScreenIsActive() throws Exception {
+        var adapter = new FakeUiAdapter("2.0", "2.0",
+                call -> call == 0
+                        ? state("screen-1", "a", "SelectWorldScreen",
+                                "net.minecraft.client.gui.screens.worldselection.SelectWorldScreen",
+                                List.of(widget("n0", "Create New World")))
+                        : state("screen-2", "b", "CreateWorldScreen",
+                                "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen", List.of()),
+                UiNavigateWorkflowAdapterTest::click);
+        try (var runtime = runtime()) {
+            runtime.registerAdapter(adapter);
+            var result = runtime.invoke(request(runtime, "create_new_world")).get(1, TimeUnit.SECONDS);
+
+            assertEquals(ResultEnvelope.Status.OK, result.status(), result::toString);
+            assertEquals("Create New World", result.output().get("label"));
+            assertEquals(1, adapter.clickCalls.get());
+        }
+    }
+
+    @Test
+    void createWorldClicksTheCreateWorldScreenButtonWhenThatScreenIsActive() throws Exception {
+        var adapter = new FakeUiAdapter("2.0", "2.0",
+                call -> state("screen-1", "a", "CreateWorldScreen",
+                        "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                        List.of(widget("n0", "Create New World"))),
+                UiNavigateWorkflowAdapterTest::click);
+        try (var runtime = runtime()) {
+            runtime.registerAdapter(adapter);
+            var result = runtime.invoke(request(runtime, "create_world")).get(1, TimeUnit.SECONDS);
+
+            assertEquals(ResultEnvelope.Status.OK, result.status(), result::toString);
+            assertEquals("Create New World", result.output().get("label"));
+            assertEquals(1, adapter.clickCalls.get());
+        }
+    }
+
+    @Test
     void quitDoesNotRequireAClientSnapshotAfterDispatch() throws Exception {
         var adapter = new FakeUiAdapter("2.0", "2.0",
                 call -> state("screen-1", "a", List.of(widget("n0", "Quit Game"))),
@@ -123,9 +196,14 @@ final class UiNavigateWorkflowAdapterTest {
 
     private static Map<String, Object> state(String token, String revisionCharacter,
                                               List<Map<String, Object>> widgets) {
+        return state(token, revisionCharacter, "title", "net.minecraft.client.gui.screens.TitleScreen", widgets);
+    }
+
+    private static Map<String, Object> state(String token, String revisionCharacter, String screen,
+                                              String screenClass, List<Map<String, Object>> widgets) {
         return Map.ofEntries(
-                Map.entry("open", true), Map.entry("inWorld", false), Map.entry("screen", "title"),
-                Map.entry("screenClass", "net.minecraft.client.gui.screens.TitleScreen"),
+                Map.entry("open", true), Map.entry("inWorld", false), Map.entry("screen", screen),
+                Map.entry("screenClass", screenClass),
                 Map.entry("title", "Minecraft"), Map.entry("screenToken", token),
                 Map.entry("snapshotRevision", revisionCharacter.repeat(64)), Map.entry("capturedAtTick", 1),
                 Map.entry("width", 426), Map.entry("height", 240), Map.entry("guiScale", 2),

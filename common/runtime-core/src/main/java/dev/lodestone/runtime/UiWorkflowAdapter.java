@@ -33,6 +33,21 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
     private static final String UI_CLICK_VERSION = "2.0";
     private static final int DEFAULT_TIMEOUT_MS = 30_000;
     private static final int DEFAULT_POLL_INTERVAL_MS = 500;
+    /**
+     * {@code create_new_world} (the world-select screen's button that opens world configuration)
+     * and {@code create_world} (the create-world screen's button that finalizes creation) are
+     * distinct workflow steps that happen to resolve to the identical vanilla "Create New World"
+     * label, since Minecraft genuinely reuses that label on both screens. Label matching alone
+     * cannot tell them apart, and Minecraft's Singleplayer screen auto-advances straight past an
+     * empty world list to the create-world screen - so without this check, a {@code create_new_world}
+     * step issued on a fresh install with no saves would silently click the create-world screen's
+     * confirm button instead of failing loudly. Pin each target to the screen its button actually
+     * lives on so a mismatch is rejected before any click is attempted, rather than resolving an
+     * ambiguous label against whichever screen happens to be open.
+     */
+    private static final Map<String, String> AMBIGUOUS_LABEL_SCREEN_HINTS = Map.of(
+            "create_new_world", "SelectWorldScreen",
+            "create_world", "CreateWorldScreen");
 
     private final CapabilityRegistry registry;
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -120,7 +135,7 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
                 .thenCompose(beforeResult -> {
                     var before = requireOk(beforeResult, "UI state read before navigation");
                     context.cancellation().throwIfCancelled();
-                    var selection = selectNavigationTarget(before, requestedLabel);
+                    var selection = selectNavigationTarget(before, target, requestedLabel);
                     var clickInput = Map.<String, Object>of(
                             "screenToken", requiredOutputString(before, "screenToken"),
                             "snapshotRevision", requiredOutputString(before, "snapshotRevision"),
@@ -159,6 +174,11 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
             case "back" -> "Back";
             case "cancel" -> "Cancel";
             case "done" -> "Done";
+            // Vanilla genuinely uses the same "Create New World" label for both the world-select
+            // screen's button (create_new_world) and the create-world screen's confirm button
+            // (create_world); see AMBIGUOUS_LABEL_SCREEN_HINTS and requireUnambiguousScreen for the
+            // screen-scoped disambiguation that keeps these two targets from resolving against
+            // each other's button.
             case "create_new_world", "create_world" -> "Create New World";
             case "world_tab" -> "World";
             case "world_seed" -> "Seed for the World Generator";
@@ -169,10 +189,12 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
         };
     }
 
-    private static NavigationSelection selectNavigationTarget(Map<String, Object> state, String requestedLabel) {
+    private static NavigationSelection selectNavigationTarget(Map<String, Object> state, String target,
+                                                             String requestedLabel) {
         if (!Boolean.TRUE.equals(state.get("open"))) {
             throw new IllegalArgumentException("UI navigation requires an open screen");
         }
+        requireUnambiguousScreen(target, state);
         if (!(state.get("widgets") instanceof List<?> widgets)) {
             throw new IllegalStateException("UI state omitted its widgets projection");
         }
@@ -211,6 +233,20 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
                     + " label '" + label + "': " + matches.size() + " clickable widgets");
         }
         return matches.get(0);
+    }
+
+    private static void requireUnambiguousScreen(String target, Map<String, Object> state) {
+        var expectedScreenHint = AMBIGUOUS_LABEL_SCREEN_HINTS.get(target);
+        if (expectedScreenHint == null) return;
+        var screen = state.get("screen") instanceof String value ? value : "";
+        var screenClass = state.get("screenClass") instanceof String value ? value : "";
+        if (screen.contains(expectedScreenHint) || screenClass.contains(expectedScreenHint)) return;
+        var activeScreen = screenClass.isBlank() ? screen : screenClass;
+        throw new IllegalArgumentException("navigation target '" + target + "' requires " + expectedScreenHint
+                + " to be the active screen, but the active screen is '" + activeScreen + "'. 'create_new_world' "
+                + "(world-select screen) and 'create_world' (create-world screen) share the identical vanilla "
+                + "'Create New World' label, so Minecraft auto-advancing past an empty world list straight to "
+                + "the create-world screen would otherwise make this target resolve against the wrong button.");
     }
 
     private static String requiredOutputString(Map<String, Object> output, String field) {
