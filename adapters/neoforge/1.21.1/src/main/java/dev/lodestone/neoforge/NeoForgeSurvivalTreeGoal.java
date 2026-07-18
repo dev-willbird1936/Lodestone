@@ -446,12 +446,13 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             return;
         }
         var player = requirePlayer(client);
-        if (!player.getMainHandItem().isEmpty() && !isLogStack(player.getMainHandItem())) {
-            // A log specifically is benign: breaking one spawns its drop right at the player's
-            // feet, and ordinary vanilla auto-pickup can fill the main hand with it before this
-            // tick's check runs, ahead of the dedicated walk-to-drops collection stage. That is
-            // exactly the progress this stage exists to make, not a fault condition - only some
-            // other, genuinely unexpected item warrants stopping.
+        if (!player.getMainHandItem().isEmpty() && !isBenignHandMiningByproduct(player.getMainHandItem())) {
+            // A log, sapling, or stick is benign: breaking a log (or the leaves that decay
+            // alongside it) spawns its drop right at the player's feet, and ordinary vanilla
+            // auto-pickup can fill the main hand with it before this tick's check runs, ahead of
+            // the dedicated walk-to-drops collection stage. That is exactly the progress this
+            // stage exists to make, not a fault condition - only some other, genuinely unexpected
+            // item warrants stopping.
             throw new IllegalStateException("PRECONDITION_FAILED: cause=precondition:unexpected-held-item; "
                     + "hand-mining stage unexpectedly holds " + player.getMainHandItem().getItem()
                     + telemetrySuffix());
@@ -470,11 +471,81 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             handMinedLogs++;
             mineIndex++;
             stageTicks = 0;
+            miningTargetVantage = null;
+            miningVantageForTarget = null;
+            miningVantageAttempts = 0;
+            rejectedMiningVantages.clear();
             announce(client, "Hand-mined log " + handMinedLogs + "/" + HAND_LOGS_REQUIRED);
             waitTicks = 12;
             return;
         }
+        if (!target.equals(miningVantageForTarget)) {
+            miningVantageForTarget = target;
+            miningTargetVantage = null;
+            miningVantageAttempts = 0;
+            rejectedMiningVantages.clear();
+        }
+        if (miningTargetVantage != null) {
+            try {
+                if (navigate(client, miningTargetVantage, "mining vantage for resource log")) {
+                    stopMovement(client);
+                    miningTargetVantage = null;
+                    stageTicks = 0;
+                }
+            } catch (IllegalStateException failure) {
+                if (!isRecoverableNavigationFailure(failure.getMessage())) throw failure;
+                // Mirrors mineTarget()'s handling: the candidate vantage itself proved
+                // unreachable, not that the log is unseeable - exclude it and let the next
+                // relocation attempt pick a different one instead of aborting the whole goal.
+                navigationDiagnostics.add("hand-mining vantage route rejected " + miningTargetVantage
+                        + " - trying another: " + failure.getMessage());
+                rejectedMiningVantages.add(miningTargetVantage.asLong());
+                stopMovement(client);
+                resetNavigation();
+                miningTargetVantage = null;
+            }
+            return;
+        }
         lookAt(player, target);
+        var hit = player.pick(5.0, 0.0F, false);
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)
+                || !blockHit.getBlockPos().equals(target)) {
+            // Unlike mineTarget() against the target tree, this early hand-mining stage never
+            // had any aim verification at all - a stance that could never land the raycast on
+            // the observed log (the trunk's own geometry occluding it from the parked stance,
+            // the same class of problem mineTarget() already handles) would just grind the full
+            // 360-tick stall timeout with attack held uselessly the whole time. Verify the pick
+            // actually lands on the target and, if it does not, reposition with the same bounded,
+            // widening vantage search mineTarget() uses rather than attacking blind.
+            stopAttack(client);
+            if (policy.obstructionMiningEnabled() && breakVisibleMiningObstruction(client, target)) return;
+            if (policy.toolPrerequisiteGuardEnabled()) {
+                if (stageTicks > 20) {
+                    while (miningVantageAttempts < MAX_MINING_VANTAGE_ATTEMPTS) {
+                        miningVantageAttempts++;
+                        var vantage = findMiningTargetVantage(client, target, resourceTree.base(), miningVantageAttempts);
+                        if (vantage != null) {
+                            miningTargetVantage = vantage;
+                            stageTicks = 0;
+                            navigationDiagnostics.add("hand-mining vantage relocation "
+                                    + miningVantageAttempts + "/" + MAX_MINING_VANTAGE_ATTEMPTS
+                                    + " for resource log " + target + ": " + vantage);
+                            announce(client, "Resource log out of reach - repositioning for a clear line of sight");
+                            return;
+                        }
+                        navigationDiagnostics.add("hand-mining vantage relocation " + miningVantageAttempts + "/"
+                                + MAX_MINING_VANTAGE_ATTEMPTS + " for resource log " + target
+                                + " found no candidate in the widened search");
+                    }
+                    throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:obstructed; "
+                            + "hand-mining route cannot see resource log " + target
+                            + " after " + miningVantageAttempts + " vantage relocation attempts"
+                            + "; refusing to attack an unplanned obstruction" + telemetrySuffix());
+                }
+                navigationDiagnostics.add("hand-mining-target-not-visible:" + target);
+                return;
+            }
+        }
         clickAndHoldAttack(client, "hand");
         inputActions.add("attack:key.attack-held-by-hand");
         if (stageTicks > 360) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:mining; "
@@ -695,8 +766,10 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         var state = client.level.getBlockState(candidate);
         var supportPos = candidate.below();
         var support = client.level.getBlockState(supportPos);
-        if (!state.canBeReplaced() || !state.getFluidState().isEmpty()
-                || support.getCollisionShape(client.level, supportPos).isEmpty()
+        var supportShape = support.getCollisionShape(client.level, supportPos);
+        if (!state.canBeReplaced() || !state.getFluidState().isEmpty() || supportShape.isEmpty()
+                || !support.isFaceSturdy(client.level, supportPos, Direction.UP)
+                || !isFullUnitCube(supportShape.bounds())
                 || player.getBoundingBox().intersects(new net.minecraft.world.phys.AABB(candidate))) return false;
         var supportPoint = new net.minecraft.world.phys.Vec3(supportPos.getX() + 0.5,
                 supportPos.getY() + 1.0 - 0.001, supportPos.getZ() + 0.5);
@@ -705,6 +778,23 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 net.minecraft.world.level.ClipContext.Fluid.NONE, player));
         return hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
                 && hit.getBlockPos().equals(supportPos);
+    }
+
+    /**
+     * placeTable()'s runtime aim targets the support block's nominal cube center
+     * (support.getY() + 0.5) every tick until placement succeeds or the goal times out at 1200
+     * ticks. That aim only behaves consistently for a genuine full-cube support: a partial-height
+     * block (a dirt path, farmland, a slab, a snow layer, ...) can present a non-empty, even
+     * sturdy, collision shape while its real surface sits below the nominal cube top the aim
+     * assumes, so the placement raycast can miss forever with nothing ever changing to correct
+     * it. Require the support's actual collision bounds to fill the entire unit cube, matching
+     * what a normal full block would present, so findTablePlacement's ring search keeps scanning
+     * past any such candidate instead of committing to one that can never be aimed at reliably.
+     */
+    static boolean isFullUnitCube(net.minecraft.world.phys.AABB bounds) {
+        return bounds.minX <= 0.0 && bounds.maxX >= 1.0
+                && bounds.minY <= 0.0 && bounds.maxY >= 1.0
+                && bounds.minZ <= 0.0 && bounds.maxZ >= 1.0;
     }
 
     private void openTable(Minecraft client) {
@@ -929,9 +1019,9 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                     // with a confirmed line of sight, mirroring findTableInteractionVantage, and only
                     // escalate to a genuine failure once that repositioning itself is exhausted.
                     if (stageTicks > 20) {
-                        if (miningVantageAttempts < MAX_MINING_VANTAGE_ATTEMPTS) {
+                        while (miningVantageAttempts < MAX_MINING_VANTAGE_ATTEMPTS) {
                             miningVantageAttempts++;
-                            var vantage = findMiningTargetVantage(client, target);
+                            var vantage = findMiningTargetVantage(client, target, targetTree.base(), miningVantageAttempts);
                             if (vantage != null) {
                                 miningTargetVantage = vantage;
                                 stageTicks = 0;
@@ -941,6 +1031,9 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                                 announce(client, "Target log out of reach - repositioning for a clear line of sight");
                                 return;
                             }
+                            navigationDiagnostics.add("mining vantage relocation " + miningVantageAttempts + "/"
+                                    + MAX_MINING_VANTAGE_ATTEMPTS + " for target log " + target
+                                    + " found no candidate in the widened search");
                         }
                         throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:obstructed; "
                                 + "intelligent mining route cannot see target log " + target
@@ -959,29 +1052,33 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     }
 
     /**
-     * Search for a standable cell with a clear, in-range line of sight to a specific target-tree
-     * log. navigateTarget() only walks the player to the tree's base once, before mining begins;
-     * as mineIndex climbs the trunk, a log positioned higher up (or wedged into the trunk's far
-     * side) can end up more than 5 blocks from that fixed ground-level stance even though nothing
-     * underneath it changed. The vertical band deliberately spans from just below the tree's own
-     * base up to just above the target log itself, but is tried ground level first: a stance near
-     * the tree's own base only needs a modest horizontal shuffle plus a steeper look angle to
-     * regain reach on most logs, and is immediately walkable with no climbing, whereas a
-     * canopy-height platform (tried only once the ground-level ring is exhausted) may need real
-     * pathing to reach and can turn out not to be reachable at all. This otherwise mirrors
-     * findTableInteractionVantage's read-only standable/line-of-sight search, retargeted at
-     * whichever log mineIndex currently names instead of the fixed table position.
+     * Search for a standable cell with a clear, in-range line of sight to a specific tree log.
+     * navigateTarget()/navigateResource() only walk the player to the tree's base once, before
+     * mining begins; as mineIndex climbs the trunk, a log positioned higher up (or wedged into
+     * the trunk's far side) can end up more than 5 blocks from that fixed ground-level stance
+     * even though nothing underneath it changed. The vertical band deliberately spans from just
+     * below the tree's own base up to just above the target log itself, but is tried ground level
+     * first: a stance near the tree's own base only needs a modest horizontal shuffle plus a
+     * steeper look angle to regain reach on most logs, and is immediately walkable with no
+     * climbing, whereas a canopy-height platform (tried only once the ground-level ring is
+     * exhausted) may need real pathing to reach and can turn out not to be reachable at all. This
+     * otherwise mirrors findTableInteractionVantage's read-only standable/line-of-sight search,
+     * retargeted at whichever log mineIndex currently names instead of the fixed table position.
+     *
+     * <p>{@code attempt} (1-based, bounded by MAX_MINING_VANTAGE_ATTEMPTS) widens both the
+     * horizontal ring and the vertical band on each retry, so a second, third, or fourth call
+     * against the same unchanged target genuinely searches a larger candidate pool instead of
+     * deterministically repeating the first call's result.</p>
      */
-    private BlockPos findMiningTargetVantage(Minecraft client, BlockPos target) {
+    private BlockPos findMiningTargetVantage(Minecraft client, BlockPos target, BlockPos treeBase, int attempt) {
         var player = requirePlayer(client);
         var aim = net.minecraft.world.phys.Vec3.atCenterOf(target);
-        var minY = Math.min(targetTree.base().getY(), target.getY()) - 1;
-        var maxY = Math.max(target.getY() + 1, minY);
-        for (var radius = 1; radius <= 4; radius++) {
+        var bounds = vantageSearchBounds(target, treeBase, attempt);
+        for (var radius = 1; radius <= bounds.maxRadius(); radius++) {
             for (var dx = -radius; dx <= radius; dx++) {
                 for (var dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
-                    for (var y = minY; y <= maxY; y++) {
+                    for (var y = bounds.minY(); y <= bounds.maxY(); y++) {
                         var candidate = new BlockPos(target.getX() + dx, y, target.getZ() + dz);
                         if (rejectedMiningVantages.contains(candidate.asLong())
                                 || !isStandable(client.level, candidate)) continue;
@@ -998,6 +1095,24 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             }
         }
         return null;
+    }
+
+    /**
+     * Pure geometry for the horizontal ring radius and vertical search band
+     * findMiningTargetVantage uses at a given (1-based) attempt. Attempt 1 reproduces the
+     * original, unwidened bounds exactly; each later attempt widens both dimensions so a repeated
+     * search against the same unchanged target is genuinely larger, not a deterministic repeat of
+     * the first attempt's (possibly empty) result.
+     */
+    static VantageSearchBounds vantageSearchBounds(BlockPos target, BlockPos treeBase, int attempt) {
+        var verticalPad = attempt - 1;
+        var minY = Math.min(treeBase.getY(), target.getY()) - 1 - verticalPad;
+        var maxY = Math.max(target.getY() + 1, minY) + verticalPad;
+        var maxRadius = 4 + (attempt - 1) * 2;
+        return new VantageSearchBounds(maxRadius, minY, maxY);
+    }
+
+    record VantageSearchBounds(int maxRadius, int minY, int maxY) {
     }
 
     private boolean breakVisibleMiningObstruction(Minecraft client, BlockPos target) {
@@ -1537,6 +1652,18 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private static boolean isLogStack(ItemStack stack) {
         return !stack.isEmpty() && stack.getItem() instanceof BlockItem blockItem
                 && blockItem.getBlock().defaultBlockState().is(BlockTags.LOGS);
+    }
+
+    /**
+     * Every item a hand-mining tick's main hand can legitimately, incidentally end up holding
+     * ahead of the dedicated collection stage: a log itself (auto-picked-up from the block just
+     * broken), a sapling (an equally incidental drop from tree-adjacent leaf breakage or natural
+     * decay during hand-mining, regardless of which sapling variant matches whatever tree type
+     * was targeted), or a stick (another common incidental tree-adjacent drop). None of these
+     * represent a genuinely unexpected item warranting a precondition failure.
+     */
+    private static boolean isBenignHandMiningByproduct(ItemStack stack) {
+        return isLogStack(stack) || stack.is(ItemTags.SAPLINGS) || stack.is(Items.STICK);
     }
 
     private static void lookAt(LocalPlayer player, BlockPos target) {
