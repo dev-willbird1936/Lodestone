@@ -79,6 +79,26 @@ final class NeoForgeSafePathPlannerTest {
     }
 
     @Test
+    void descentAllowedNeverRestrictsLevelOrAscendingSteps() {
+        assertTrue(NeoForgeSafePathPlanner.descentAllowed(0, 1));
+        assertTrue(NeoForgeSafePathPlanner.descentAllowed(-1, 1));
+        assertTrue(NeoForgeSafePathPlanner.descentAllowed(-5, 0));
+    }
+
+    @Test
+    void descentAllowedDefaultCapMatchesTheOriginalHardcodedOneBlockRuleExactly() {
+        assertTrue(NeoForgeSafePathPlanner.descentAllowed(1, NeoForgeGoalPolicy.DEFAULT_MAX_DESCENT_BLOCKS));
+        assertFalse(NeoForgeSafePathPlanner.descentAllowed(2, NeoForgeGoalPolicy.DEFAULT_MAX_DESCENT_BLOCKS));
+    }
+
+    @Test
+    void descentAllowedRespectsAWidenedCapUpToButNotBeyondIt() {
+        assertTrue(NeoForgeSafePathPlanner.descentAllowed(2, 3));
+        assertTrue(NeoForgeSafePathPlanner.descentAllowed(3, 3));
+        assertFalse(NeoForgeSafePathPlanner.descentAllowed(4, 3));
+    }
+
+    @Test
     void mineCandidateRequiresASolidObstructionOverIntactSupportAndNoFluid() {
         // feet solid, support intact, no fluid: obstruction in the feet cell alone.
         assertTrue(NeoForgeSafePathPlanner.mineCandidateEligible(true, false, true, true, true));

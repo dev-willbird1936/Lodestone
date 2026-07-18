@@ -53,6 +53,16 @@ final class NeoForgeSpawnGauntletGoal {
     // box's own outer reach (candidate distance 32 + WAYPOINT_SEARCH_RADIUS 16). See
     // computeWaypoint's doc for why the annulus itself (not a per-direction box) is searched now.
     private static final double MAX_WAYPOINT_HORIZONTAL_DISTANCE = 48.0;
+    // The safe path planner's own DY_OFFSETS already enumerate neighbor candidates up to 3 blocks
+    // below the current position (NeoForgeSafePathPlanner.DY_OFFSETS); the only thing that ever
+    // rejected them was this actor's own descent cap, threaded through as
+    // NeoForgeGoalPolicy.maxDescentBlocks() (default 1, unchanged for every other actor). A 2-3
+    // block drop is real vanilla fall damage math away from ever being unsafe: the default real
+    // safeFallDistance is 3.0, so estimatedFallDamage already returns exactly zero for any drop this
+    // shallow (NeoForgeSafePathPlannerTest's existing fall-damage tests cover that formula). Relaxed
+    // only for this actor's own policy instance (see the constructor), not the shared default, so no
+    // other actor's edge set changes at all.
+    private static final int MAX_DESCENT_BLOCKS = 3;
     static final int MIN_ACTIVE_TICKS = 1_800;
     static final int MAX_ACTIVE_TICKS = 2_400;
 
@@ -83,7 +93,7 @@ final class NeoForgeSpawnGauntletGoal {
     NeoForgeSpawnGauntletGoal(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
         this.invocation = invocation;
         this.result = result;
-        this.policy = NeoForgeGoalPolicy.from(invocation.request().input());
+        this.policy = NeoForgeGoalPolicy.from(invocation.request().input()).withMaxDescentBlocks(MAX_DESCENT_BLOCKS);
         this.supervisor = new NeoForgeGoalSupervisor(policy, actions, diagnostics);
     }
 

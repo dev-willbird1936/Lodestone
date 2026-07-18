@@ -4,10 +4,22 @@ package dev.lodestone.neoforge;
 import java.util.Locale;
 import java.util.Map;
 
-/** Loader-local projection of common goal policy fields. */
+/**
+ * Loader-local projection of common goal policy fields.
+ *
+ * <p>{@code maxDescentBlocks} is deliberately not derived from any request field the way every
+ * other member here is: {@link #from} always sets it to {@link #DEFAULT_MAX_DESCENT_BLOCKS} (1),
+ * matching {@code NeoForgeSafePathPlanner}'s original hardcoded one-block-descent rule bit-for-bit
+ * for every actor that builds its policy directly from {@link #from}. A goal that has specifically
+ * verified it needs and can safely use a deeper drop (see {@code NeoForgeSpawnGauntletGoal}'s own
+ * policy construction) derives its own widened copy via {@link #withMaxDescentBlocks}, so relaxing
+ * it for one actor can never silently change another actor's edge set.
+ */
 record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String observation,
                           String combatPolicy, boolean allowBlockBreaking, boolean allowBlockPlacing,
-                          boolean allowCommands) {
+                          boolean allowCommands, int maxDescentBlocks) {
+    static final int DEFAULT_MAX_DESCENT_BLOCKS = 1;
+
     enum Intelligence {
         RAW_V1("raw-v1"), GUARDED_V1("guarded-v1"), ADAPTIVE_V1("adaptive-v1");
 
@@ -42,7 +54,17 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
                 parseSafety(input.get("safety")), observation, combatPolicy,
                 !Boolean.FALSE.equals(input.get("allowBlockBreaking")),
                 !Boolean.FALSE.equals(input.get("allowBlockPlacing")),
-                Boolean.TRUE.equals(input.get("allowCommands")));
+                Boolean.TRUE.equals(input.get("allowCommands")),
+                DEFAULT_MAX_DESCENT_BLOCKS);
+    }
+
+    /**
+     * Derives a copy of this policy with a different descent cap - see this record's own doc for
+     * why this exists instead of a request-driven field. Every other field is copied unchanged.
+     */
+    NeoForgeGoalPolicy withMaxDescentBlocks(int value) {
+        return new NeoForgeGoalPolicy(intelligence, safety, observation, combatPolicy,
+                allowBlockBreaking, allowBlockPlacing, allowCommands, value);
     }
 
     boolean supervisorEnabled() {

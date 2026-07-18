@@ -92,6 +92,40 @@ final class NeoForgeGoalPolicyCapabilityTest {
         assertFalse(placingDisabled.obstructionPlacementEnabled());
     }
 
+    /**
+     * Regression guard for the descent-cap widening: every actor that still builds its policy via
+     * {@code .from()} directly (i.e. everyone except {@code NeoForgeSpawnGauntletGoal}, which
+     * derives its own copy) must keep today's exact 1-block descent cap regardless of intelligence
+     * or safety tier - this is deliberately not gated by either dimension, unlike every other
+     * capability above.
+     */
+    @Test
+    void maxDescentBlocksDefaultsToOneForEveryIntelligenceAndSafetyCombination() {
+        for (var intelligence : new String[] {"raw-v1", "guarded-v1", "adaptive-v1"}) {
+            for (var safety : new String[] {"low", "balanced", "high"}) {
+                assertEquals(1, policy(intelligence, safety).maxDescentBlocks(),
+                        "unexpected default descent cap for " + intelligence + "/" + safety);
+            }
+        }
+        assertEquals(NeoForgeGoalPolicy.DEFAULT_MAX_DESCENT_BLOCKS, policy("guarded-v1", "balanced").maxDescentBlocks());
+    }
+
+    @Test
+    void withMaxDescentBlocksDerivesAWidenedCopyWithoutChangingAnyOtherField() {
+        var base = policy("guarded-v1", "balanced");
+        var widened = base.withMaxDescentBlocks(3);
+
+        assertEquals(3, widened.maxDescentBlocks());
+        assertEquals(1, base.maxDescentBlocks(), "the original policy instance must be unaffected");
+        assertEquals(base.intelligence(), widened.intelligence());
+        assertEquals(base.safety(), widened.safety());
+        assertEquals(base.observation(), widened.observation());
+        assertEquals(base.combatPolicy(), widened.combatPolicy());
+        assertEquals(base.allowBlockBreaking(), widened.allowBlockBreaking());
+        assertEquals(base.allowBlockPlacing(), widened.allowBlockPlacing());
+        assertEquals(base.allowCommands(), widened.allowCommands());
+    }
+
     private static NeoForgeGoalPolicy policy(String intelligence, String safety) {
         return NeoForgeGoalPolicy.from(Map.of("intelligence", intelligence, "safety", safety,
                 "observation", "loaded-chunks", "combatPolicy", "defensive"));

@@ -232,10 +232,13 @@ final class NeoForgeSafePathPlanner {
         if (dy != 0 && (policy.highSafety()
                 ? !snapshot.bufferedWalkable(horizontal)
                 : !snapshot.walkable(horizontal))) return;
-        // A normal player can safely step down one block; larger drops are fall damage, not
-        // navigation. Adaptive intelligence keeps this rule even with balanced safety so
-        // planning quality cannot trade health for a shorter route.
-        if (current.getY() - candidate.getY() > 1) return;
+        // A normal player can safely step down one block by default; larger drops are fall damage,
+        // not navigation. Policy-driven (NeoForgeGoalPolicy.maxDescentBlocks(), default 1) rather
+        // than hardcoded, but every actor that builds its policy via NeoForgeGoalPolicy.from()
+        // directly still gets exactly 1 - this stays the same rule, unaffected, for all of them.
+        // DY_OFFSETS already enumerates candidates down to a 3-block drop, so a policy backing this
+        // off up to 3 costs nothing extra here; it never manufactures a deeper candidate on its own.
+        if (!descentAllowed(current.getY() - candidate.getY(), policy.maxDescentBlocks())) return;
 
         if (policy.highSafety() ? snapshot.bufferedWalkable(candidate) : snapshot.walkable(candidate)) {
             offerEdge(current, candidate, MutationKind.NONE, List.of(), policy, snapshot, player, targets,
@@ -330,6 +333,16 @@ final class NeoForgeSafePathPlanner {
     /** Pure corner-cut decision, isolated from world access so it's directly unit-testable. */
     static boolean cornerClear(boolean flankAPasses, boolean flankBPasses, boolean requireBoth) {
         return requireBoth ? flankAPasses && flankBPasses : flankAPasses || flankBPasses;
+    }
+
+    /**
+     * Pure descent-cap decision, isolated from world access so it's directly unit-testable.
+     * {@code dropBlocks} is {@code current.getY() - candidate.getY()}: zero or negative (level or
+     * ascending) is always allowed regardless of the cap, which only ever restricts how far a
+     * single edge may descend.
+     */
+    static boolean descentAllowed(int dropBlocks, int maxDescentBlocks) {
+        return dropBlocks <= maxDescentBlocks;
     }
 
     /**
@@ -534,9 +547,12 @@ final class NeoForgeSafePathPlanner {
     /**
      * Real fall-damage cost layered on top of {@link #edgeCost(BlockPos, BlockPos, NeoForgeGoalPolicy)}'s
      * existing terms (which stay unchanged - they weight general descent preference, not damage risk).
-     * Every edge here is capped at a 1-block drop by the existing descent-cap check, under which
-     * real fall damage is always zero; this is deliberately still real and tested rather than a
-     * stub, so it is already correct if that cap is ever relaxed for a future recovery route.
+     * Every edge here is bounded by {@link #descentAllowed}'s policy-driven cap, still exactly
+     * 1 block by default (real fall damage always zero there); this is deliberately still real and
+     * tested rather than a stub, which is exactly why it needed no changes at all when {@code
+     * NeoForgeSpawnGauntletGoal} became the first actor to widen its own cap to 3 - the real vanilla
+     * formula (based on the player's own {@code safeFallDistance}, default 3.0) already returns zero
+     * for a drop that shallow, so this correctly keeps costing such a drop as ordinary movement.
      */
     private static double fallDamageCost(BlockPos from, BlockPos to, NeoForgeGoalPolicy policy,
                                           NeoForgeWorldSnapshot snapshot) {
