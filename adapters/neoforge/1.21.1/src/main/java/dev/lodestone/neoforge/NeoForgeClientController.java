@@ -90,6 +90,7 @@ public final class NeoForgeClientController {
         BRIDGE.tickNavigationGoal();
         BRIDGE.tickCombatGoal();
         BRIDGE.tickSpawnGauntletGoal();
+        BRIDGE.tickStoneToolsetGoal();
         var adapter = NeoForgeAdapter.active();
         if (adapter == null) {
             return;
@@ -223,6 +224,7 @@ public final class NeoForgeClientController {
         private NeoForgeNavigationGoal navigationGoal;
         private NeoForgeCombatGoal combatGoal;
         private NeoForgeSpawnGauntletGoal spawnGauntletGoal;
+        private NeoForgeStoneToolsetGoal stoneToolsetGoal;
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -254,7 +256,8 @@ public final class NeoForgeClientController {
                         "minecraft.goal.survival.reach-nether",
                         "minecraft.goal.navigation.safe-waypoint",
                         "minecraft.goal.combat.attack-nearest",
-                        "minecraft.goal.survival.spawn-gauntlet" -> true;
+                        "minecraft.goal.survival.spawn-gauntlet",
+                        "minecraft.goal.survival.stone-toolset" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
@@ -283,6 +286,9 @@ public final class NeoForgeClientController {
             }
             if ("minecraft.goal.survival.spawn-gauntlet".equals(capability)) {
                 return startSpawnGauntletGoal(invocation);
+            }
+            if ("minecraft.goal.survival.stone-toolset".equals(capability)) {
+                return startStoneToolsetGoal(invocation);
             }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
@@ -324,6 +330,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -369,6 +378,9 @@ public final class NeoForgeClientController {
                     if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     woolTreeZombieGoal = new NeoForgeWoolTreeZombieGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -400,6 +412,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -443,6 +458,9 @@ public final class NeoForgeClientController {
                     if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     navigationGoal = new NeoForgeNavigationGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -474,6 +492,9 @@ public final class NeoForgeClientController {
                     if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     combatGoal = new NeoForgeCombatGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -500,7 +521,8 @@ public final class NeoForgeClientController {
                             || (netherGoal != null && !netherGoal.done())
                             || (navigationGoal != null && !navigationGoal.done())
                             || (combatGoal != null && !combatGoal.done())
-                            || (spawnGauntletGoal != null && !spawnGauntletGoal.done())) {
+                            || (spawnGauntletGoal != null && !spawnGauntletGoal.done())
+                            || (stoneToolsetGoal != null && !stoneToolsetGoal.done())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -517,6 +539,47 @@ public final class NeoForgeClientController {
             if (current == null) return;
             current.tick(Minecraft.getInstance());
             if (current.done()) spawnGauntletGoal = null;
+        }
+
+        private CompletionStage<Map<String, Object>> startStoneToolsetGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if ((survivalTreeGoal != null && !survivalTreeGoal.done())
+                            || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
+                            || (netherGoal != null && !netherGoal.done())
+                            || (navigationGoal != null && !navigationGoal.done())
+                            || (combatGoal != null && !combatGoal.done())
+                            || (spawnGauntletGoal != null && !spawnGauntletGoal.done())) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    var token = String.valueOf(invocation.request().input().getOrDefault("continuationToken", ""));
+                    if (!token.isBlank()) {
+                        if (stoneToolsetGoal == null || stoneToolsetGoal.done() || !stoneToolsetGoal.paused()
+                                || !stoneToolsetGoal.continuationToken().equals(token)) {
+                            throw new IllegalStateException("stone toolset continuation token is stale or unknown");
+                        }
+                        stoneToolsetGoal.resume(invocation, result);
+                    } else {
+                        if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
+                            throw new IllegalStateException("a stone toolset goal is already running");
+                        }
+                        stoneToolsetGoal = new NeoForgeStoneToolsetGoal(invocation, result);
+                    }
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickStoneToolsetGoal() {
+            var current = stoneToolsetGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) stoneToolsetGoal = null;
         }
 
         private static Map<String, Object> screenshot(

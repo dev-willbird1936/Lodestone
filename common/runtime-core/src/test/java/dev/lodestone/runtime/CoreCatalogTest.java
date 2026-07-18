@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(55, CoreCatalog.load().size());
+        assertEquals(56, CoreCatalog.load().size());
     }
 
     @Test
@@ -54,6 +54,41 @@ final class CoreCatalogTest {
         assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
         assertTrue(SchemaValidator.validate(capability.inputSchema(),
                 Map.of("suppressInGameMessages", true)).isEmpty());
+    }
+
+    @Test
+    void stoneToolsetGoalRequiresWoodenPickaxeBeforeStoneMiningAndTerminalSurfaceProof() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.stone-toolset"))
+                .findFirst().orElseThrow();
+
+        assertTrue(capability.featureFlags().contains("authentic-input-only"));
+        assertTrue(capability.featureFlags().contains("no-commands"));
+        assertTrue(capability.featureFlags().contains("no-direct-world-mutation"));
+        assertTrue(capability.featureFlags().contains("full-stone-toolset"));
+        assertTrue(capability.featureFlags().contains("terminal-surface-readback"));
+        assertTrue(capability.featureFlags().contains("furnace-placement-readback"));
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("suppressInGameMessages", true, "checkpoint", "wooden-tools")).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("checkpoint", "craft-axe")).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.ofEntries(
+                Map.entry("freshWorld", true), Map.entry("survival", true), Map.entry("worldName", "New World"),
+                Map.entry("worldGameTimeAtStart", 20), Map.entry("handMinedLogs", 4),
+                Map.entry("planksCrafted", 16), Map.entry("sticksCrafted", 12),
+                Map.entry("craftingTableCrafted", true), Map.entry("woodenPickaxeCrafted", true),
+                Map.entry("woodenPickaxeEquipped", true), Map.entry("woodenAxeCrafted", true),
+                Map.entry("cobblestoneMinedCount", 18), Map.entry("stonePickaxeCrafted", true),
+                Map.entry("stoneAxeCrafted", true), Map.entry("stoneSwordCrafted", true),
+                Map.entry("stoneShovelCrafted", true), Map.entry("fullStoneToolsetCrafted", true),
+                Map.entry("furnaceCrafted", true), Map.entry("furnacePlaced", true),
+                Map.entry("initialSurfaceY", 68), Map.entry("finalPosition", Map.of("x", 3, "y", 68, "z", -2)),
+                Map.entry("endedOnSurface", true), Map.entry("playerAlive", true), Map.entry("healthAtEnd", 20.0),
+                Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
+                Map.entry("suppressInGameMessages", false), Map.entry("inGameMessagesEmitted", 10),
+                Map.entry("navigationDiagnostics", java.util.List.of("planned resource tree route")),
+                Map.entry("inputActions", java.util.List.of("move", "attack", "container-click")))).isEmpty());
     }
 
     @Test

@@ -18,6 +18,10 @@ public final class GoalTaskCatalog {
             task("survival.reach-nether", "survival", "Load a fresh survival world, assemble and light a Nether portal, and enter the Nether.",
                     "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.reach-nether"),
                     "Fresh-world survival is proven, then wood, stone, iron, gravel, water, and lava are gathered or observed naturally. Every frame block, ignition action, forward movement, and final Nether dimension transition is read back from normal client behavior; commands, teleportation, setup grants, and direct world mutation are forbidden."),
+            task("survival.stone-toolset", "survival",
+                    "Load a fresh survival world, hand-mine logs, craft a wooden tool chain including a wooden pickaxe, mine cobblestone with it, craft a full stone toolset, place a furnace, and end the run back on the surface.",
+                    "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.stone-toolset"),
+                    "Fresh-world survival is proven, starter logs are hand-mined, a wooden pickaxe and axe are crafted through visible menus, cobblestone is mined with the wooden pickaxe via a self-dug reversible staircase, a full stone toolset (pickaxe, axe, sword, shovel) is crafted, a furnace is crafted and placed, and terminal readback proves the player ended above ground rather than left in the mined staircase; commands and direct world mutation are forbidden."),
             task("survival.spawn-gauntlet", "survival",
                     "Load a fresh survival world, survive the opening 90 seconds without dying, and reach a waypoint discovered 32 blocks east of the observed spawn position.",
                     "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.spawn-gauntlet"),
@@ -83,6 +87,8 @@ public final class GoalTaskCatalog {
                         "guarded/adaptive: gather starter logs before visible crafting and equip the wooden axe before target-tree mining; raw-v1 retains low-level input behavior";
                 case "survival.reach-nether" ->
                         "gather starter tools before portal tools; complete portal tools before portal construction";
+                case "survival.stone-toolset" ->
+                        "craft the wooden tool chain (including the wooden pickaxe) before mining cobblestone; mine cobblestone before crafting stone tools and the furnace; end the run back on the surface";
                 case "survival.spawn-gauntlet" ->
                         "discover the spawn-relative east waypoint before movement; no crafting or gathering is required";
                 case "combat.attack-nearest" ->

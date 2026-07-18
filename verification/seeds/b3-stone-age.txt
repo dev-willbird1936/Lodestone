@@ -1,0 +1,28 @@
+# B3 "Stone Age" fixed seed list for survival.stone-toolset.
+#
+# These are arbitrary fixed Java world seeds, not pre-classified by spawn biome/terrain: this
+# repo has no way to know a seed's spawn biome, or how deep stone sits beneath the surface at the
+# spawn point, without actually generating the 1.21.1 world, so any claimed seed->terrain mapping
+# from outside knowledge would be an unverified guess. Each run's actual spawn conditions, hand-
+# mined logs, dug staircase depth, and terminal surface readback are read from that run's own
+# worldObservation telemetry and output map after the fact, never assumed here.
+#
+# The actor digs a bounded (<=48 step) reversible staircase from the surface to reach stone; every
+# vanilla Overworld biome puts stone within a handful of blocks of a typical spawn, but a genuinely
+# unusual spawn (e.g. a very deep pre-existing cavern, or terrain that exhausts the staircase's
+# direction-retry budget against real obstructions) could still fail for that specific seed as an
+# environment issue rather than an actor bug. If official scoring finds such a case, that seed may
+# be swapped for another arbitrary one - any such swap must be called out explicitly in the
+# benchmark report, never silently.
+#
+# Pass bar for this seed list: >=8/10 successful runs, each within an 8-minute per-seed cap.
+7
+-7
+20260718
+-20260718
+482589124
+-482589124
+9876543210
+-9876543210
+161803398875
+-161803398875

@@ -86,7 +86,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.goal.survival.reach-nether",
             "minecraft.goal.navigation.safe-waypoint",
             "minecraft.goal.combat.attack-nearest",
-            "minecraft.goal.survival.spawn-gauntlet");
+            "minecraft.goal.survival.spawn-gauntlet",
+            "minecraft.goal.survival.stone-toolset");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search", "minecraft.server.info.read",
             "minecraft.client.screenshot.capture",
@@ -102,7 +103,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.goal.survival.reach-nether",
             "minecraft.goal.navigation.safe-waypoint",
             "minecraft.goal.combat.attack-nearest",
-            "minecraft.goal.survival.spawn-gauntlet");
+            "minecraft.goal.survival.spawn-gauntlet",
+            "minecraft.goal.survival.stone-toolset");
     private static volatile NeoForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -177,6 +179,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.goal.navigation.safe-waypoint", this::clientCall);
         handlers.put("minecraft.goal.combat.attack-nearest", this::clientCall);
         handlers.put("minecraft.goal.survival.spawn-gauntlet", this::clientCall);
+        handlers.put("minecraft.goal.survival.stone-toolset", this::clientCall);
         return Map.copyOf(handlers);
     }
 

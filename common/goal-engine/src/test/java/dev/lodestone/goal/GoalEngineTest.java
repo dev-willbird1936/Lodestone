@@ -82,6 +82,63 @@ class GoalEngineTest {
     }
 
     @Test
+    void stoneToolsetPhasedCheckpointWorkflowMatchesForAdaptiveAndDeliberateIntelligence() {
+        for (var intelligence : List.of(GoalIntelligence.ADAPTIVE_V1, GoalIntelligence.DELIBERATE_V1)) {
+            var spec = new GoalSpec("load into a fresh survival world and craft a full stone toolset",
+                    GoalMode.REALTIME, "survival.stone-toolset", 256, 480_000, false, null, true,
+                    intelligence, GoalSafety.HIGH);
+            var plan = new BuiltinGoalPlanner().plan(spec).plan();
+            var workflowSteps = plan.segments().stream()
+                    .filter(segment -> "stone-age-gameplay".equals(segment.id()))
+                    .flatMap(segment -> segment.steps().stream())
+                    .toList();
+
+            assertEquals(List.of("gather-wooden-tools", "craft-stone-tools", "place-furnace-and-surface"),
+                    workflowSteps.stream().map(GoalStep::id).toList(),
+                    "checkpointed step shape mismatch for " + intelligence);
+            assertEquals("wooden-tools", workflowSteps.get(0).input().get("checkpoint"));
+            assertEquals("stone-tools", workflowSteps.get(1).input().get("checkpoint"));
+            assertEquals("complete", workflowSteps.get(2).input().get("checkpoint"));
+            assertTrue(workflowSteps.get(1).preconditions().stream().anyMatch(assertion ->
+                    assertion.path().equals("steps.gather-wooden-tools.checkpointComplete")
+                            && Boolean.TRUE.equals(assertion.expected())),
+                    "missing continuation precondition for " + intelligence);
+            assertTrue(workflowSteps.get(2).preconditions().stream().anyMatch(assertion ->
+                    assertion.path().equals("steps.craft-stone-tools.checkpointComplete")
+                            && Boolean.TRUE.equals(assertion.expected())),
+                    "missing continuation precondition for " + intelligence);
+            assertTrue(workflowSteps.get(2).assertions().stream().anyMatch(assertion ->
+                    assertion.path().equals("steps.place-furnace-and-surface.endedOnSurface")
+                            && Boolean.TRUE.equals(assertion.expected())),
+                    "missing terminal surface assertion for " + intelligence);
+        }
+
+        // Contrast: a tier below the checkpoint threshold still gets one monolithic step.
+        var guardedSpec = new GoalSpec("load into a fresh survival world and craft a full stone toolset",
+                GoalMode.REALTIME, "survival.stone-toolset", 256, 480_000, false, null, true,
+                GoalIntelligence.GUARDED_V1, GoalSafety.HIGH);
+        var guardedSteps = new BuiltinGoalPlanner().plan(guardedSpec).plan().segments().stream()
+                .filter(segment -> "stone-age-gameplay".equals(segment.id()))
+                .flatMap(segment -> segment.steps().stream())
+                .toList();
+        assertEquals(List.of("stone-toolset-workflow"), guardedSteps.stream().map(GoalStep::id).toList());
+    }
+
+    @Test
+    void stoneToolsetPlanOmitsSeedSegmentsWhenNoSeedRequested() {
+        var spec = new GoalSpec("craft a full stone toolset and place a furnace", GoalMode.REALTIME,
+                "survival.stone-toolset", 256, 480_000, false, null, true,
+                GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults());
+
+        var plan = new BuiltinGoalPlanner().plan(spec).plan();
+
+        assertEquals(List.of("open-singleplayer", "open-create-world", "create-fresh-world", "stone-age-gameplay"),
+                plan.segments().stream().map(GoalSegment::id).toList());
+        assertEquals(true, plan.metadata().get("randomFreshWorldRequired"));
+        assertEquals(true, plan.metadata().get("endsAboveGroundRequired"));
+    }
+
+    @Test
     void deliberateRealtimeConsultsLookaheadPlanAtEverySegmentBoundaryOnly() {
         var planCalls = new AtomicInteger();
         GoalModelProvider fakeProvider = new GoalModelProvider() {
@@ -454,6 +511,41 @@ class GoalEngineTest {
     }
 
     @Test
+    void stoneToolsetGoalRequiresAuthenticWorkflowAndHardTerminalPredicates() {
+        var planned = new BuiltinGoalPlanner().plan(GoalSpec.of("craft a full stone toolset and place a furnace",
+                GoalMode.SCRIPT, null, false));
+        assertTrue(planned.supported());
+        assertTrue(planned.plan().completionPredicateReady());
+        assertTrue(planned.plan().segments().stream().flatMap(segment -> segment.steps().stream())
+                .anyMatch(step -> "minecraft.goal.survival.stone-toolset".equals(step.capability())));
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
+                request -> java.util.Optional.of(new GoalDecision(0, "test")))
+                .run(new GoalSpec("craft a full stone toolset and place a furnace", GoalMode.SCRIPT, null, 20,
+                        10_000, false, planned.plan()), (capability, version, input, dryRun) -> {
+                    if ("minecraft.goal.survival.stone-toolset".equals(capability)) {
+                        return ResultEnvelope.ok("workflow", Map.ofEntries(
+                                Map.entry("freshWorld", true), Map.entry("survival", true),
+                                Map.entry("worldName", "New World"), Map.entry("worldGameTimeAtStart", 20),
+                                Map.entry("handMinedLogs", 4), Map.entry("planksCrafted", 16),
+                                Map.entry("sticksCrafted", 12), Map.entry("craftingTableCrafted", true),
+                                Map.entry("woodenPickaxeCrafted", true), Map.entry("woodenPickaxeEquipped", true),
+                                Map.entry("woodenAxeCrafted", true), Map.entry("cobblestoneMinedCount", 18),
+                                Map.entry("stonePickaxeCrafted", true), Map.entry("stoneAxeCrafted", true),
+                                Map.entry("stoneSwordCrafted", true), Map.entry("stoneShovelCrafted", true),
+                                Map.entry("fullStoneToolsetCrafted", true), Map.entry("furnaceCrafted", true),
+                                Map.entry("furnacePlaced", true), Map.entry("initialSurfaceY", 68),
+                                Map.entry("finalPosition", Map.of("x", 3, "y", 68, "z", -2)),
+                                Map.entry("endedOnSurface", true), Map.entry("playerAlive", true),
+                                Map.entry("healthAtEnd", 20.0), Map.entry("commandsUsed", false),
+                                Map.entry("directMutationUsed", false)));
+                    }
+                    return ResultEnvelope.ok(capability, Map.of("ok", true));
+                });
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals("all goal predicates passed", report.message());
+    }
+
+    @Test
     void woolTreeZombiePlanPropagatesCleanGameplayAndRequiresReactiveDefense() {
         var quiet = new GoalSpec("build a tree with wool and defend from a zombie using a diamond sword",
                 GoalMode.SCRIPT, "creative.wool-tree-zombie-defense", 256, 120_000,
@@ -479,6 +571,24 @@ class GoalEngineTest {
                 .filter(step -> "minecraft.goal.survival.wooden-axe-tree".equals(step.capability()))
                 .findFirst().orElseThrow();
         assertFalse((Boolean) oldWorkflow.input().get("suppressInGameMessages"));
+    }
+
+    @Test
+    void stoneToolsetPlanInfersFromGoalTextAndRequiresFullTerminalPredicate() {
+        var spec = new GoalSpec("load into a fresh survival world and build a full stone toolset",
+                GoalMode.REALTIME, null, 256, 480_000, false, null, true);
+        var plan = new BuiltinGoalPlanner().plan(spec).plan();
+        assertEquals("survival.stone-toolset", plan.id());
+        var workflow = plan.segments().stream().flatMap(segment -> segment.steps().stream())
+                .filter(step -> "minecraft.goal.survival.stone-toolset".equals(step.capability()))
+                .findFirst().orElseThrow();
+        assertEquals(true, workflow.input().get("suppressInGameMessages"));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.stone-toolset-workflow.fullStoneToolsetCrafted")
+                        && assertion.expected().equals(true)));
+        assertTrue(workflow.assertions().stream().anyMatch(assertion ->
+                assertion.path().equals("steps.stone-toolset-workflow.endedOnSurface")
+                        && assertion.expected().equals(true)));
     }
 
     @Test

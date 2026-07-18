@@ -82,6 +82,7 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
                 || id.equals("survival.collect-wood")
                 || id.equals("survival.reach-nether")
                 || id.equals("survival.spawn-gauntlet")
+                || id.equals("survival.stone-toolset")
                 || (normalizedGoal.contains("wooden axe") && normalizedGoal.contains("tree"))
                 || (normalizedGoal.contains("tree") && (normalizedGoal.contains("mine")
                 || normalizedGoal.contains("collect") || normalizedGoal.contains("gather")
@@ -89,7 +90,11 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
                 || normalizedGoal.contains("nether")
                 || (normalizedGoal.contains("wool") && normalizedGoal.contains("zombie"))
                 || normalizedGoal.contains("spawn gauntlet")
-                || (normalizedGoal.contains("survive") && normalizedGoal.contains("waypoint"))) {
+                || (normalizedGoal.contains("survive") && normalizedGoal.contains("waypoint"))
+                || normalizedGoal.contains("stone age") || normalizedGoal.contains("stone toolset")
+                || normalizedGoal.contains("stone tool set")
+                || (normalizedGoal.contains("stone") && (normalizedGoal.contains("pickaxe")
+                || normalizedGoal.contains("toolset") || normalizedGoal.contains("furnace")))) {
             return 480_000L;
         }
         return 120_000L;

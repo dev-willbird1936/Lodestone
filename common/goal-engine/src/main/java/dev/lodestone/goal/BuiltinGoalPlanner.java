@@ -26,6 +26,11 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         if (normalized.contains("spawn gauntlet")
                 || (normalized.contains("survive") && normalized.contains("waypoint")))
             return GoalTaskCatalog.find("survival.spawn-gauntlet").orElseThrow();
+        if (normalized.contains("stone age") || normalized.contains("stone toolset")
+                || normalized.contains("stone tool set")
+                || (normalized.contains("stone") && (normalized.contains("pickaxe")
+                        || normalized.contains("toolset") || normalized.contains("furnace"))))
+            return GoalTaskCatalog.find("survival.stone-toolset").orElseThrow();
         if (normalized.contains("wooden axe") || normalized.contains("mine an entire tree"))
             return GoalTaskCatalog.find("survival.wooden-axe-mine-tree").orElseThrow();
         if ((normalized.contains("collect") || normalized.contains("gather") || normalized.contains("chop")
@@ -53,6 +58,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             case "creative.wool-tree-zombie-defense" -> woolTreeZombieDefensePlan(spec);
             case "survival.wooden-axe-mine-tree" -> woodenAxePlan(spec);
             case "survival.reach-nether" -> netherPlan(spec);
+            case "survival.stone-toolset" -> stoneToolsetPlan(spec);
             case "survival.spawn-gauntlet" -> spawnGauntletPlan(spec);
             case "creative.place-pillar" -> blockPlan("creative.place-pillar", goal, "minecraft:stone", "pillar must be stone");
             case "creative.clear-pillar" -> blockPlan("creative.clear-pillar", goal, "minecraft:air", "pillar must be air");
@@ -269,6 +275,120 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         "realtimePreferred", true,
                         "randomFreshWorldRequired", spec.worldSeed() == null, "naturalPortalChestOptional", true,
                         "manualPortalInputRequired", true,
+                        "completionPredicateReady", true));
+    }
+
+    /**
+     * B3 "Stone Age" benchmark: same fresh-world creation shape as {@link #woodenAxePlan(GoalSpec)}
+     * and {@link #netherPlan(GoalSpec)}, then a three-checkpoint native workflow (wooden-tools,
+     * stone-tools, complete) that goes one step further than the wooden-axe goal by also crafting a
+     * wooden pickaxe, mining cobblestone with it, crafting a full stone toolset, placing a furnace,
+     * and proving the run ends back on the surface rather than left in the actor's own mined
+     * staircase.
+     */
+    private static GoalPlan stoneToolsetPlan(GoalSpec spec) {
+        var goal = spec.goal();
+        var open = GoalStep.invoke("open-singleplayer", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "singleplayer"), false);
+        var createScreen = GoalStep.invoke("open-create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_new_world"), false);
+        var createWorldSetup = new ArrayList<GoalSegment>();
+        if (spec.worldSeed() != null) {
+            createWorldSetup.add(new GoalSegment("open-world-options",
+                    "Open the normal world-generation options tab.",
+                    List.of(GoalStep.invoke("open-world-options", "lodestone.ui.navigate", "1.0",
+                            Map.of("target", "world_tab"), false)), List.of()));
+            createWorldSetup.add(new GoalSegment("focus-world-seed",
+                    "Focus the normal world seed text field.",
+                    List.of(GoalStep.invoke("focus-world-seed", "lodestone.ui.navigate", "1.0",
+                            Map.of("target", "world_seed"), false)), List.of()));
+            createWorldSetup.add(new GoalSegment("insert-world-seed",
+                    "Enter the requested Java seed through normal UI text input.",
+                    List.of(GoalStep.invoke("insert-world-seed", "minecraft.ui.text.insert", "1.0",
+                            Map.of("text", spec.worldSeed()), false)), List.of()));
+        }
+        var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_world"), false);
+        var finalAssertions = List.of(
+                new GoalAssertion("freshWorld", "equals", true),
+                new GoalAssertion("survival", "equals", true),
+                new GoalAssertion("handMinedLogs", "gte", 4),
+                new GoalAssertion("craftingTableCrafted", "equals", true),
+                new GoalAssertion("woodenPickaxeCrafted", "equals", true),
+                new GoalAssertion("woodenPickaxeEquipped", "equals", true),
+                new GoalAssertion("woodenAxeCrafted", "equals", true),
+                new GoalAssertion("cobblestoneMinedCount", "gte", 17),
+                new GoalAssertion("stonePickaxeCrafted", "equals", true),
+                new GoalAssertion("stoneAxeCrafted", "equals", true),
+                new GoalAssertion("stoneSwordCrafted", "equals", true),
+                new GoalAssertion("stoneShovelCrafted", "equals", true),
+                new GoalAssertion("fullStoneToolsetCrafted", "equals", true),
+                new GoalAssertion("furnaceCrafted", "equals", true),
+                new GoalAssertion("furnacePlaced", "equals", true),
+                new GoalAssertion("endedOnSurface", "equals", true),
+                new GoalAssertion("playerAlive", "equals", true),
+                new GoalAssertion("commandsUsed", "equals", false),
+                new GoalAssertion("directMutationUsed", "equals", false));
+        var workflowSteps = new ArrayList<GoalStep>();
+        if (spec.intelligence().checkpointedWorkflowEnabled()) {
+            var woodenToolsInput = new LinkedHashMap<>(workflowInput(spec));
+            woodenToolsInput.put("checkpoint", "wooden-tools");
+            workflowSteps.add(GoalStep.invoke("gather-wooden-tools", "minecraft.goal.survival.stone-toolset", "1.0",
+                    woodenToolsInput, true,
+                    new GoalAssertion("steps.gather-wooden-tools.checkpoint", "equals", "wooden-tools"),
+                    new GoalAssertion("steps.gather-wooden-tools.checkpointComplete", "equals", true),
+                    new GoalAssertion("steps.gather-wooden-tools.woodenPickaxeCrafted", "equals", true),
+                    new GoalAssertion("steps.gather-wooden-tools.woodenPickaxeEquipped", "equals", true),
+                    new GoalAssertion("steps.gather-wooden-tools.playerAlive", "equals", true)));
+            var stoneToolsInput = new LinkedHashMap<>(workflowInput(spec));
+            stoneToolsInput.put("checkpoint", "stone-tools");
+            stoneToolsInput.put("continuationToken", "${steps.gather-wooden-tools.continuationToken}");
+            workflowSteps.add(GoalStep.invokeWithPreconditions("craft-stone-tools", "minecraft.goal.survival.stone-toolset", "1.0",
+                    stoneToolsInput, true, List.of(
+                            new GoalAssertion("steps.gather-wooden-tools.checkpointComplete", "equals", true)),
+                    new GoalAssertion("steps.craft-stone-tools.checkpoint", "equals", "stone-tools"),
+                    new GoalAssertion("steps.craft-stone-tools.checkpointComplete", "equals", true),
+                    new GoalAssertion("steps.craft-stone-tools.fullStoneToolsetCrafted", "equals", true),
+                    new GoalAssertion("steps.craft-stone-tools.playerAlive", "equals", true)));
+            var finalInput = new LinkedHashMap<>(workflowInput(spec));
+            finalInput.put("checkpoint", "complete");
+            finalInput.put("continuationToken", "${steps.craft-stone-tools.continuationToken}");
+            var finalStepAssertions = new ArrayList<GoalAssertion>();
+            finalStepAssertions.add(new GoalAssertion("steps.place-furnace-and-surface.checkpoint", "equals", "complete"));
+            finalStepAssertions.add(new GoalAssertion("steps.place-furnace-and-surface.checkpointComplete", "equals", true));
+            for (var assertion : finalAssertions) {
+                finalStepAssertions.add(new GoalAssertion("steps.place-furnace-and-surface." + assertion.path(),
+                        assertion.operator(), assertion.expected()));
+            }
+            workflowSteps.add(new GoalStep("place-furnace-and-surface", GoalStepKind.INVOKE,
+                    "minecraft.goal.survival.stone-toolset", "1.0", finalInput, finalStepAssertions,
+                    List.of(new GoalAssertion("steps.craft-stone-tools.checkpointComplete", "equals", true)), true));
+        } else {
+            var workflow = GoalStep.invoke("stone-toolset-workflow", "minecraft.goal.survival.stone-toolset", "1.0",
+                    workflowInput(spec), true,
+                    finalAssertions.stream()
+                            .map(assertion -> new GoalAssertion("steps.stone-toolset-workflow." + assertion.path(),
+                                    assertion.operator(), assertion.expected()))
+                            .toArray(GoalAssertion[]::new));
+            workflowSteps.add(workflow);
+        }
+        var segments = new ArrayList<GoalSegment>();
+        segments.add(new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
+                List.of(open), List.of()));
+        segments.add(new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
+                List.of(createScreen), List.of()));
+        segments.addAll(createWorldSetup);
+        segments.add(new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
+                List.of(createWorld), List.of()));
+        segments.add(new GoalSegment("stone-age-gameplay",
+                "Use normal look, movement, attack, inventory, and crafting-table input to progress from hand-mined logs through a full stone toolset and a placed furnace, ending back on the surface.",
+                workflowSteps, List.of()));
+        return new GoalPlan("survival.stone-toolset", goal, List.copyOf(segments),
+                Map.of("taskId", "survival.stone-toolset", "gameMode", "survival",
+                        "craftingRequired", true, "authenticPlayerInputRequired", true,
+                        "randomFreshWorldRequired", spec.worldSeed() == null,
+                        "requiresWoodenPickaxeBeforeStoneMining", true,
+                        "endsAboveGroundRequired", true,
                         "completionPredicateReady", true));
     }
 
