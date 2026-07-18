@@ -177,21 +177,25 @@ public final class GoalEngine {
                     if (result.status() != ResultEnvelope.Status.OK) {
                         var failureKind = GoalRecoveryCoordinator.classify(result);
                         var recovery = recoveryCoordinator.decide(selected.id(), failureKind,
-                                !pending.isEmpty(), spec.mode() == GoalMode.REALTIME
+                                hasEligibleAlternative(pending, state), spec.mode() == GoalMode.REALTIME
                                         && spec.intelligence().actionSegmentReplanningEnabled());
                         state.put("lastRecovery", recoveryMap(selected, recovery));
                         trace.add(Map.of("step", "recovery." + selected.id(),
                                 "kind", "bounded-recovery", "decision", recovery.decision().toString(),
                                 "failure", recovery.failure().toString(), "attempt", recovery.attempt(),
                                 "rationale", recovery.rationale()));
-                        if (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.RETRY_ONCE) {
+                        if (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.RETRY_ONCE
+                                || (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.REPLAN_LOCAL
+                                        && spec.mode() == GoalMode.REALTIME)) {
                             // ArrayList#addFirst is a Java 21 SequencedCollection method; this module
                             // compiles with --release 17, so use the equivalent indexed insert instead.
+                            // REPLAN_LOCAL only fires when no other pending step is currently eligible
+                            // (see hasEligibleAlternative below), so the failed step must go back onto
+                            // pending itself - otherwise nothing would ever be eligible again next loop.
                             pending.add(0, selected);
                             continue;
                         }
-                        if ((recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.REPLAN_LOCAL
-                                || recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.TRY_DECLARED_ALTERNATIVE)
+                        if (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.TRY_DECLARED_ALTERNATIVE
                                 && spec.mode() == GoalMode.REALTIME && !pending.isEmpty()) {
                             continue;
                         }
@@ -212,15 +216,22 @@ public final class GoalEngine {
                     if (!assertionsPass(selected.assertions(), state)) {
                         var failureKind = GoalFailureKind.POSTCONDITION_FAILED;
                         var recovery = recoveryCoordinator.decide(selected.id(), failureKind,
-                                !pending.isEmpty(), spec.mode() == GoalMode.REALTIME
+                                hasEligibleAlternative(pending, state), spec.mode() == GoalMode.REALTIME
                                         && spec.intelligence().actionSegmentReplanningEnabled());
                         state.put("lastRecovery", recoveryMap(selected, recovery));
                         trace.add(Map.of("step", "recovery." + selected.id(),
                                 "kind", "bounded-recovery", "decision", recovery.decision().toString(),
                                 "failure", failureKind.toString(), "attempt", recovery.attempt(),
                                 "rationale", recovery.rationale()));
-                        if ((recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.REPLAN_LOCAL
-                                || recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.TRY_DECLARED_ALTERNATIVE)
+                        if (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.REPLAN_LOCAL
+                                && spec.mode() == GoalMode.REALTIME) {
+                            // Same reasoning as the action-failure branch above: REPLAN_LOCAL only
+                            // fires when nothing else pending is currently eligible, so the step that
+                            // just failed its own postcondition must be retried, not abandoned.
+                            pending.add(0, selected);
+                            continue;
+                        }
+                        if (recovery.decision() == GoalRecoveryCoordinator.RecoveryDecision.TRY_DECLARED_ALTERNATIVE
                                 && spec.mode() == GoalMode.REALTIME && !pending.isEmpty()) {
                             continue;
                         }
@@ -305,8 +316,7 @@ public final class GoalEngine {
     }
 
     private StepSelection selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
-        var eligible = pending.stream().filter(step -> inputsResolved(step.input(), state)
-                && preconditionsPass(step, state)).toList();
+        var eligible = eligibleSteps(pending, state);
         if (eligible.isEmpty()) {
             throw new IllegalStateException("realtime goal has no eligible step; pending inputs or preconditions are unresolved");
         }
@@ -478,6 +488,27 @@ public final class GoalEngine {
 
     private static boolean preconditionsPass(GoalStep step, Map<String, Object> state) {
         return failedPreconditions(step, state).isEmpty();
+    }
+
+    /** Steps whose declared input handoffs and preconditions are satisfied by the current state. */
+    private static List<GoalStep> eligibleSteps(List<GoalStep> pending, Map<String, Object> state) {
+        return pending.stream().filter(step -> inputsResolved(step.input(), state)
+                && preconditionsPass(step, state)).toList();
+    }
+
+    /**
+     * Whether some other already-pending step (the one that just failed has already been removed
+     * from {@code pending} by the caller) is currently selectable. A sequential checkpointed
+     * workflow's later steps typically hard-depend on the failed step's own recorded output, so a
+     * non-empty {@code pending} list does not by itself mean a genuine alternative exists - only
+     * this eligibility check does. Recovery decisions that trust a bare non-empty check instead
+     * (i.e. "there is more work queued") can wrongly abandon the only step that could ever unblock
+     * the rest of the plan, permanently starving every remaining step of its dependency and
+     * surfacing as a confusing "no eligible step" failure one selection later instead of a clear
+     * failure at the step that actually failed.
+     */
+    private static boolean hasEligibleAlternative(List<GoalStep> pending, Map<String, Object> state) {
+        return !eligibleSteps(pending, state).isEmpty();
     }
 
     private static String validateGeneratedPlan(GoalPlan plan, GoalSpec spec) {

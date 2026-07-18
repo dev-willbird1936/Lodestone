@@ -517,4 +517,84 @@ class GoalEngineTest {
         assertEquals(GoalStatus.SUCCEEDED, report.status());
         assertEquals(List.of("test.observe", "test.observe"), calls);
     }
+
+    @Test
+    void realtimeReplanRetriesTheOnlyEligibleStepInsteadOfStrandingItsDependents() {
+        // Regression test for the "no eligible step" deadlock observed live on the B2
+        // survival.wooden-axe-mine-tree checkpointed workflow at adaptive-v1/realtime: a
+        // sequential chain where "second" hard-depends on "first"'s own recorded output has no
+        // genuine declared alternative when "first" fails, so the engine must retry "first"
+        // (REPLAN_LOCAL) rather than abandon it - abandoning it permanently strands "second",
+        // whose precondition and input handoff can never resolve, throwing "no eligible step" one
+        // selection later instead of ever giving "first" a real second attempt.
+        var firstAttempts = new AtomicInteger();
+        var plan = new GoalPlan("sequential-checkpoint", "test", List.of(
+                new GoalSegment("run", "run", List.of(
+                        GoalStep.invoke("first", "test.first", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.first.done", "equals", true)),
+                        GoalStep.invokeWithPreconditions("second", "test.second", "1.0",
+                                Map.of("token", "${steps.first.token}"), false,
+                                List.of(new GoalAssertion("steps.first.done", "equals", true)),
+                                new GoalAssertion("steps.second.done", "equals", true))),
+                        List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) -> {
+            if ("test.first".equals(capability)) {
+                if (firstAttempts.incrementAndGet() == 1) {
+                    return ResultEnvelope.error(capability, ResultEnvelope.Status.ERROR,
+                            dev.lodestone.protocol.StructuredError.of("NO_PROGRESS_DETECTED",
+                                    "actor made no progress", false));
+                }
+                return ResultEnvelope.ok(capability, Map.of("done", true, "token", "abc"));
+            }
+            return ResultEnvelope.ok(capability, Map.of("done", true));
+        };
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
+                request -> java.util.Optional.of(new GoalDecision(0, "test")))
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 20, 10_000, false, plan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals(2, firstAttempts.get());
+        @SuppressWarnings("unchecked")
+        var lastRecovery = (Map<String, Object>) report.state().get("lastRecovery");
+        assertEquals("REPLAN_LOCAL", lastRecovery.get("decision"));
+    }
+
+    @Test
+    void realtimeStillAbandonsAFailedStepForAGenuinelyIndependentDeclaredAlternative() {
+        // Contrast case: when the remaining pending step truly does not depend on the one that
+        // just failed, TRY_DECLARED_ALTERNATIVE must still drop the failed step and move on
+        // rather than retrying it - proving the fix above did not turn every recovery into a
+        // blind retry loop.
+        var optionAAttempts = new AtomicInteger();
+        var plan = new GoalPlan("independent-candidates", "test", List.of(
+                new GoalSegment("run", "run", List.of(
+                        GoalStep.invoke("optionA", "test.optionA", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.optionA.done", "equals", true)),
+                        GoalStep.invoke("optionB", "test.optionB", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.optionB.done", "equals", true))),
+                        List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) -> {
+            if ("test.optionA".equals(capability)) {
+                optionAAttempts.incrementAndGet();
+                return ResultEnvelope.error(capability, ResultEnvelope.Status.ERROR,
+                        dev.lodestone.protocol.StructuredError.of("TARGET_OBSTRUCTED", "no clear path", false));
+            }
+            return ResultEnvelope.ok(capability, Map.of("done", true));
+        };
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
+                request -> java.util.Optional.of(new GoalDecision(0, "test")))
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 20, 10_000, false, plan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertEquals(1, optionAAttempts.get());
+        @SuppressWarnings("unchecked")
+        var lastRecovery = (Map<String, Object>) report.state().get("lastRecovery");
+        assertEquals("TRY_DECLARED_ALTERNATIVE", lastRecovery.get("decision"));
+    }
 }
