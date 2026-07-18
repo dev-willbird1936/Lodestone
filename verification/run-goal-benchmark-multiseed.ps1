@@ -20,7 +20,14 @@ param(
     [int] $Port = 37901,
     [string] $RunDirectory = 'runs/benchmark-multiseed',
     [string] $EvidenceDirectory = '',
-    [string] $JavaHome = ''
+    [string] $JavaHome = '',
+    # Realtime-only: launches verification\gpt54-mini-goal-model-proxy.py (the same proxy already
+    # proven by run-recorded-reach-nether-goal.ps1) and wires the LODESTONE_GOAL_MODEL_* env vars
+    # around the whole seed loop so -Mode realtime genuinely consults a low-latency model instead
+    # of silently falling back to DeterministicGoalModelProvider. Ignored entirely in script mode.
+    [int] $ModelPort = 37842,
+    [ValidateSet('gpt-5.4-mini')]
+    [string] $ModelId = 'gpt-5.4-mini'
 )
 
 # Telemetry-only multi-seed harness: no ffmpeg/video. Per the benchmark contract, every result
@@ -262,6 +269,49 @@ function Stop-BenchmarkClient {
     }
 }
 
+# Mirrors the proven proxy-launch pattern in run-recorded-reach-nether-goal.ps1 (lines ~225-244):
+# start the local codex-backed OpenAI-compatible bridge, wait for its port, then point
+# HttpJsonGoalModelProvider.fromEnvironment() at it. Only ever called when -Mode realtime; script
+# mode never calls this function, so script mode's process/env footprint is unchanged.
+$script:modelProxy = $null
+$script:modelProxyLog = Join-Path $runDir 'model-proxy.log'
+$script:modelProxyStdoutLog = Join-Path $runDir 'model-proxy.stdout.log'
+
+function Start-RealtimeModelProxy {
+    if (Get-NetTCPConnection -LocalPort $ModelPort -State Listen -ErrorAction SilentlyContinue) {
+        throw "INFRA:model-proxy-port-occupied: model proxy port $ModelPort already has a listener"
+    }
+    $proxyPath = Join-Path $repoRoot 'verification\gpt54-mini-goal-model-proxy.py'
+    if (-not (Test-Path -LiteralPath $proxyPath)) { throw "INFRA:model-proxy-missing: $proxyPath not found" }
+    $env:LODESTONE_PROXY_MODEL = $ModelId
+    $env:LODESTONE_PROXY_LOG = $script:modelProxyLog
+    $proxyPython = (Get-Command python -ErrorAction Stop).Source
+    $script:modelProxy = Start-Process -FilePath $proxyPython -ArgumentList @((('"{0}"' -f $proxyPath)), [string] $ModelPort) `
+        -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput $script:modelProxyStdoutLog `
+        -RedirectStandardError $script:modelProxyLog -PassThru
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        if (Get-NetTCPConnection -LocalPort $ModelPort -State Listen -ErrorAction SilentlyContinue) { break }
+        if ($script:modelProxy.HasExited) { throw "INFRA:model-proxy-exited: realtime model proxy exited: $($script:modelProxy.ExitCode)" }
+        Start-Sleep -Milliseconds 250
+    }
+    if (-not (Get-NetTCPConnection -LocalPort $ModelPort -State Listen -ErrorAction SilentlyContinue)) {
+        throw "INFRA:model-proxy-timeout: realtime model proxy did not open port $ModelPort"
+    }
+    $env:LODESTONE_GOAL_MODEL_URL = "http://127.0.0.1:$ModelPort/v1/chat/completions"
+    $env:LODESTONE_GOAL_MODEL_ID = $ModelId
+    $env:LODESTONE_GOAL_MODEL_P95_MS = '150'
+    $env:LODESTONE_GOAL_MODEL_TIMEOUT_MS = '95000'
+}
+
+function Stop-RealtimeModelProxy {
+    if ($script:modelProxy) {
+        Stop-Process -Id $script:modelProxy.Id -Force -ErrorAction SilentlyContinue
+        $script:modelProxy = $null
+    }
+    Remove-Item Env:LODESTONE_GOAL_MODEL_URL, Env:LODESTONE_GOAL_MODEL_ID, Env:LODESTONE_GOAL_MODEL_P95_MS, `
+        Env:LODESTONE_GOAL_MODEL_TIMEOUT_MS, Env:LODESTONE_PROXY_MODEL, Env:LODESTONE_PROXY_LOG -ErrorAction SilentlyContinue
+}
+
 # One seed's worth of work: launch a fresh isolated client, wait for the title screen, run the
 # goal once, tear the client down. Returns a result record; never throws for a goal-level
 # failure (that IS the recorded result) but does throw for infra faults so the caller can retry.
@@ -393,81 +443,94 @@ function Test-HasExistingSave {
     return (Test-Path -LiteralPath $savesDir) -and @(Get-ChildItem -LiteralPath $savesDir -Directory -ErrorAction SilentlyContinue).Count -gt 0
 }
 
-if (-not (Test-HasExistingSave -TargetRunDirectory $RunDirectory)) {
-    Write-Host "Priming $RunDirectory with one throwaway unseeded world (save list is empty) ..."
-    $priming = Invoke-SeedRun -Seed $null -StdoutLog (Join-Path $runDir 'priming.stdout.log') -StderrLog (Join-Path $runDir 'priming.stderr.log') -MaxDurationMsOverride 45000
-    Write-Host "  priming run -> $($priming.status) cause=$($priming.failureCause) (discarded, not scored)"
-    (@{ purpose = 'prime-save-list'; result = $priming } | ConvertTo-Json -Depth 32) |
-        Set-Content -LiteralPath (Join-Path $runDir 'priming.json') -Encoding UTF8
+if ($Mode -eq 'realtime') {
+    Write-Host "Starting realtime model proxy ($ModelId) on port $ModelPort ..."
+    Start-RealtimeModelProxy
 }
-
-$results = @()
-$seedIndex = 0
-foreach ($seed in $Seeds) {
-    $seedIndex++
-    Write-Host "[$seedIndex/$($Seeds.Count)] seed=$seed ..."
-
-    $attempt = Invoke-SeedRun -Seed $seed -StdoutLog (Join-Path $runDir "seed-$seed.attempt1.stdout.log") -StderrLog (Join-Path $runDir "seed-$seed.attempt1.stderr.log")
-    if ($attempt.status -eq 'INFRA_FAILURE') {
-        Write-Host "  infra failure ($($attempt.infra)) - retrying once"
-        $attempt = Invoke-SeedRun -Seed $seed -StdoutLog (Join-Path $runDir "seed-$seed.attempt2.stdout.log") -StderrLog (Join-Path $runDir "seed-$seed.attempt2.stderr.log")
+try {
+    if (-not (Test-HasExistingSave -TargetRunDirectory $RunDirectory)) {
+        Write-Host "Priming $RunDirectory with one throwaway unseeded world (save list is empty) ..."
+        $priming = Invoke-SeedRun -Seed $null -StdoutLog (Join-Path $runDir 'priming.stdout.log') -StderrLog (Join-Path $runDir 'priming.stderr.log') -MaxDurationMsOverride 45000
+        Write-Host "  priming run -> $($priming.status) cause=$($priming.failureCause) (discarded, not scored)"
+        (@{ purpose = 'prime-save-list'; result = $priming } | ConvertTo-Json -Depth 32) |
+            Set-Content -LiteralPath (Join-Path $runDir 'priming.json') -Encoding UTF8
     }
 
-    Write-Host "  -> $($attempt.status) cause=$($attempt.failureCause) elapsedMs=$($attempt.elapsedMs)"
-    $results += $attempt
-    $seedReportPath = Join-Path $runDir "seed-$seed.json"
-    $attempt | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $seedReportPath -Encoding UTF8
+    $results = @()
+    $seedIndex = 0
+    foreach ($seed in $Seeds) {
+        $seedIndex++
+        Write-Host "[$seedIndex/$($Seeds.Count)] seed=$seed ..."
+
+        $attempt = Invoke-SeedRun -Seed $seed -StdoutLog (Join-Path $runDir "seed-$seed.attempt1.stdout.log") -StderrLog (Join-Path $runDir "seed-$seed.attempt1.stderr.log")
+        if ($attempt.status -eq 'INFRA_FAILURE') {
+            Write-Host "  infra failure ($($attempt.infra)) - retrying once"
+            $attempt = Invoke-SeedRun -Seed $seed -StdoutLog (Join-Path $runDir "seed-$seed.attempt2.stdout.log") -StderrLog (Join-Path $runDir "seed-$seed.attempt2.stderr.log")
+        }
+
+        Write-Host "  -> $($attempt.status) cause=$($attempt.failureCause) elapsedMs=$($attempt.elapsedMs)"
+        $results += $attempt
+        $seedReportPath = Join-Path $runDir "seed-$seed.json"
+        $attempt | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $seedReportPath -Encoding UTF8
+    }
+
+    $scored = @($results | Where-Object { $_.status -ne 'INFRA_FAILURE' -and $_.status -ne 'HARNESS_ERROR' })
+    $succeeded = @($scored | Where-Object { $_.status -eq 'SUCCEEDED' })
+    $elapsedValues = @($succeeded | ForEach-Object { $_.elapsedMs } | Sort-Object)
+    $median = if ($elapsedValues.Count -eq 0) { $null }
+        elseif ($elapsedValues.Count % 2 -eq 1) { $elapsedValues[[int](($elapsedValues.Count - 1) / 2)] }
+        else { ($elapsedValues[$elapsedValues.Count / 2 - 1] + $elapsedValues[$elapsedValues.Count / 2]) / 2.0 }
+
+    $causeHistogram = @{}
+    foreach ($r in $results) {
+        $key = if ($r.failureCause) { $r.failureCause } else { 'none' }
+        if (-not $causeHistogram.ContainsKey($key)) { $causeHistogram[$key] = 0 }
+        $causeHistogram[$key] = $causeHistogram[$key] + 1
+    }
+
+    $aggregate = [ordered]@{
+        formatVersion = 1
+        benchmarkName = $BenchmarkName
+        taskId = $TaskId
+        mode = $Mode
+        intelligence = $Intelligence
+        safety = $Safety
+        sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+        startedAtUtc = $timestamp
+        completedAtUtc = [DateTime]::UtcNow.ToString('o')
+        seedCount = $Seeds.Count
+        excludedInfraFailures = @($results | Where-Object { $_.status -eq 'INFRA_FAILURE' -or $_.status -eq 'HARNESS_ERROR' }).Count
+        scoredCount = $scored.Count
+        succeededCount = $succeeded.Count
+        successRate = if ($scored.Count -gt 0) { [Math]::Round($succeeded.Count / $scored.Count, 4) } else { $null }
+        deathCount = @($scored | Where-Object { [string] $_.failureCause -like 'died:*' }).Count
+        stallCount = @($scored | Where-Object { [string] $_.failureCause -like 'stall:*' }).Count
+        overBudgetCount = @($scored | Where-Object { $_.status -eq 'OVER_BUDGET' }).Count
+        elapsedMsMedianSucceeded = $median
+        elapsedMsMinSucceeded = if ($elapsedValues.Count -gt 0) { $elapsedValues[0] } else { $null }
+        elapsedMsMaxSucceeded = if ($elapsedValues.Count -gt 0) { $elapsedValues[-1] } else { $null }
+        failureCauseHistogram = $causeHistogram
+        perSeed = $results
+    }
+    if ($Mode -eq 'realtime') {
+        $aggregate.realtimeModelId = $ModelId
+        $aggregate.realtimeModelPort = $ModelPort
+        $aggregate.realtimeModelProxyLog = $script:modelProxyLog
+    }
+    $aggregatePath = Join-Path $runDir 'aggregate.json'
+    $aggregate | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $aggregatePath -Encoding UTF8
+
+    Write-Host ""
+    Write-Host "Aggregate: $($succeeded.Count)/$($scored.Count) succeeded (excluded $($aggregate.excludedInfraFailures) infra failures), median elapsed $($median)ms"
+    Write-Host "Report: $aggregatePath"
+
+    [pscustomobject]@{
+        aggregatePath = $aggregatePath
+        runDir = $runDir
+        succeededCount = $succeeded.Count
+        scoredCount = $scored.Count
+        successRate = $aggregate.successRate
+    } | ConvertTo-Json -Depth 8
+} finally {
+    if ($Mode -eq 'realtime') { Stop-RealtimeModelProxy }
 }
-
-$scored = @($results | Where-Object { $_.status -ne 'INFRA_FAILURE' -and $_.status -ne 'HARNESS_ERROR' })
-$succeeded = @($scored | Where-Object { $_.status -eq 'SUCCEEDED' })
-$elapsedValues = @($succeeded | ForEach-Object { $_.elapsedMs } | Sort-Object)
-$median = if ($elapsedValues.Count -eq 0) { $null }
-    elseif ($elapsedValues.Count % 2 -eq 1) { $elapsedValues[[int](($elapsedValues.Count - 1) / 2)] }
-    else { ($elapsedValues[$elapsedValues.Count / 2 - 1] + $elapsedValues[$elapsedValues.Count / 2]) / 2.0 }
-
-$causeHistogram = @{}
-foreach ($r in $results) {
-    $key = if ($r.failureCause) { $r.failureCause } else { 'none' }
-    if (-not $causeHistogram.ContainsKey($key)) { $causeHistogram[$key] = 0 }
-    $causeHistogram[$key] = $causeHistogram[$key] + 1
-}
-
-$aggregate = [ordered]@{
-    formatVersion = 1
-    benchmarkName = $BenchmarkName
-    taskId = $TaskId
-    mode = $Mode
-    intelligence = $Intelligence
-    safety = $Safety
-    sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
-    startedAtUtc = $timestamp
-    completedAtUtc = [DateTime]::UtcNow.ToString('o')
-    seedCount = $Seeds.Count
-    excludedInfraFailures = @($results | Where-Object { $_.status -eq 'INFRA_FAILURE' -or $_.status -eq 'HARNESS_ERROR' }).Count
-    scoredCount = $scored.Count
-    succeededCount = $succeeded.Count
-    successRate = if ($scored.Count -gt 0) { [Math]::Round($succeeded.Count / $scored.Count, 4) } else { $null }
-    deathCount = @($scored | Where-Object { [string] $_.failureCause -like 'died:*' }).Count
-    stallCount = @($scored | Where-Object { [string] $_.failureCause -like 'stall:*' }).Count
-    overBudgetCount = @($scored | Where-Object { $_.status -eq 'OVER_BUDGET' }).Count
-    elapsedMsMedianSucceeded = $median
-    elapsedMsMinSucceeded = if ($elapsedValues.Count -gt 0) { $elapsedValues[0] } else { $null }
-    elapsedMsMaxSucceeded = if ($elapsedValues.Count -gt 0) { $elapsedValues[-1] } else { $null }
-    failureCauseHistogram = $causeHistogram
-    perSeed = $results
-}
-$aggregatePath = Join-Path $runDir 'aggregate.json'
-$aggregate | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $aggregatePath -Encoding UTF8
-
-Write-Host ""
-Write-Host "Aggregate: $($succeeded.Count)/$($scored.Count) succeeded (excluded $($aggregate.excludedInfraFailures) infra failures), median elapsed $($median)ms"
-Write-Host "Report: $aggregatePath"
-
-[pscustomobject]@{
-    aggregatePath = $aggregatePath
-    runDir = $runDir
-    succeededCount = $succeeded.Count
-    scoredCount = $scored.Count
-    successRate = $aggregate.successRate
-} | ConvertTo-Json -Depth 8
