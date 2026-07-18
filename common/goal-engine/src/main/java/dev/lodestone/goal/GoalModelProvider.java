@@ -26,4 +26,14 @@ public interface GoalModelProvider {
     }
 
     Optional<GoalDecision> choose(GoalDecisionRequest request);
+
+    /**
+     * Best-effort hook for discarding any per-run conversational state a provider is holding for
+     * {@code runId} (see {@link GoalDecisionRequest#runId()}). Called once {@link GoalEngine#run}
+     * reaches a terminal outcome - success, failure, or cancellation - so a provider that persists
+     * decision history across calls within a run does not leak that history past the run's own
+     * lifetime. Providers with no such state (the default) do nothing.
+     */
+    default void endSession(String runId) {
+    }
 }

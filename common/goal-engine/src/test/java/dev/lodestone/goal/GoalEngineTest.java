@@ -219,6 +219,137 @@ class GoalEngineTest {
     }
 
     @Test
+    void everyDecisionAndPlanRequestInARunSharesTheSameStableRunIdAsTheFinalReport() {
+        var seenDecisionRunIds = new ArrayList<String>();
+        var seenPlanRunIds = new ArrayList<String>();
+        GoalModelProvider fakeProvider = new GoalModelProvider() {
+            @Override
+            public Optional<GoalDecision> choose(GoalDecisionRequest request) {
+                seenDecisionRunIds.add(request.runId());
+                return Optional.of(new GoalDecision(0, "test"));
+            }
+
+            @Override
+            public Optional<GoalPlan> plan(GoalPlanRequest request) {
+                seenPlanRunIds.add(request.runId());
+                return Optional.of(new GoalPlan("lookahead-plan", "lookahead", List.of(
+                        new GoalSegment("scout", "scout ahead", List.of(
+                                GoalStep.observe("scout-probe", "test.observe", Map.of())), List.of())),
+                        Map.of("completionPredicateReady", true)));
+            }
+        };
+        var plan = new GoalPlan("two-segments", "test", List.of(
+                new GoalSegment("first", "first", List.of(
+                        GoalStep.invoke("first-action", "test.action", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.first-action.accepted", "equals", true))), List.of()),
+                new GoalSegment("second", "second", List.of(
+                        GoalStep.invoke("second-action", "test.action", "1.0", Map.of(), false,
+                                new GoalAssertion("steps.second-action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), fakeProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 20, 10_000, false, plan, false,
+                        GoalIntelligence.DELIBERATE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        assertFalse(report.runId().isBlank());
+        assertEquals(2, seenDecisionRunIds.size());
+        assertEquals(2, seenPlanRunIds.size());
+        assertTrue(seenDecisionRunIds.stream().allMatch(id -> id.equals(report.runId())),
+                "every decision request in the run must carry the same runId as the final report");
+        assertTrue(seenPlanRunIds.stream().allMatch(id -> id.equals(report.runId())),
+                "every plan-synthesis request in the run must carry the same runId as the final report");
+        assertEquals(report.runId(), report.state().get("runId"));
+    }
+
+    @Test
+    void aFallbackFlaggedDecisionIsSurfacedInTheTraceAndStateRatherThanLookingLikeARealChoice() {
+        GoalModelProvider fallbackProvider = request -> Optional.of(new GoalDecision(0, "degraded", null, true));
+        var plan = new GoalPlan("fallback-trace", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), fallbackProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, plan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        var decisionTrace = report.trace().stream()
+                .filter(entry -> "decision.action".equals(entry.get("step"))).findFirst().orElseThrow();
+        assertEquals(true, decisionTrace.get("fallback"));
+        @SuppressWarnings("unchecked")
+        var lastRealtimeSelection = (Map<String, Object>) report.state().get("lastRealtimeSelection");
+        assertEquals(true, lastRealtimeSelection.get("fallback"));
+    }
+
+    @Test
+    void genuineNonFallbackDecisionsAreRecordedWithFallbackFalse() {
+        GoalModelProvider realProvider = request -> Optional.of(new GoalDecision(0, "test"));
+        var plan = new GoalPlan("no-fallback-trace", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        GoalInvoker invoker = (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+
+        var report = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()), realProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, plan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), invoker);
+
+        assertEquals(GoalStatus.SUCCEEDED, report.status());
+        var decisionTrace = report.trace().stream()
+                .filter(entry -> "decision.action".equals(entry.get("step"))).findFirst().orElseThrow();
+        assertEquals(false, decisionTrace.get("fallback"));
+    }
+
+    @Test
+    void endSessionIsCalledExactlyOnceWithTheRunsOwnRunIdOnSuccessAndOnFailure() {
+        var endedRunIds = new ArrayList<String>();
+        GoalModelProvider fakeProvider = new GoalModelProvider() {
+            @Override
+            public Optional<GoalDecision> choose(GoalDecisionRequest request) {
+                return Optional.of(new GoalDecision(0, "test"));
+            }
+
+            @Override
+            public void endSession(String runId) {
+                endedRunIds.add(runId);
+            }
+        };
+        var succeedingPlan = new GoalPlan("cleanup-success", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        var succeedingInvoker = (GoalInvoker) (capability, version, input, dryRun) ->
+                ResultEnvelope.ok(capability, Map.of("accepted", true));
+        var succeedingReport = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
+                fakeProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, succeedingPlan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), succeedingInvoker);
+        assertEquals(GoalStatus.SUCCEEDED, succeedingReport.status());
+
+        var failingPlan = new GoalPlan("cleanup-failure", "test", List.of(new GoalSegment("run", "run", List.of(
+                GoalStep.invoke("action", "test.action", "1.0", Map.of(), false,
+                        new GoalAssertion("steps.action.accepted", "equals", true))), List.of())),
+                Map.of("completionPredicateReady", true));
+        var failingInvoker = (GoalInvoker) (capability, version, input, dryRun) ->
+                ResultEnvelope.error(capability, ResultEnvelope.Status.ERROR,
+                        dev.lodestone.protocol.StructuredError.of("BOOM", "forced failure", false));
+        var failingReport = new GoalEngine((spec) -> GoalPlanner.PlanResult.supported(spec.customPlan()),
+                fakeProvider)
+                .run(new GoalSpec("test", GoalMode.REALTIME, null, 10, 10_000, false, failingPlan, false,
+                        GoalIntelligence.ADAPTIVE_V1, GoalSafety.BALANCED), failingInvoker);
+        assertEquals(GoalStatus.FAILED, failingReport.status());
+
+        assertEquals(List.of(succeedingReport.runId(), failingReport.runId()), endedRunIds);
+    }
+
+    @Test
     void intelligenceAndSafetyAreIndependentAndReachNativeWorkflow() {
         var spec = new GoalSpec("get a wooden axe and mine an entire tree", GoalMode.REALTIME,
                 "survival.wooden-axe-mine-tree", 20, 10_000, false, null, true,

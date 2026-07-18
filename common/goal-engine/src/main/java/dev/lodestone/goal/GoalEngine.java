@@ -27,6 +27,11 @@ public final class GoalEngine {
 
     public GoalRunReport run(GoalSpec spec, GoalInvoker invoker) {
         var started = System.nanoTime();
+        // Generated once, up front, rather than at report-building time: every model consultation
+        // for this run (decision or plan-synthesis) needs the same stable id so a provider that
+        // persists per-run conversation history (see GoalDecisionRequest#runId) can key it, and the
+        // eventual GoalRunReport#runId is this same value, not a fresh one minted after the fact.
+        var runId = UUID.randomUUID().toString();
         var planned = planner.plan(spec);
         var modelGeneratedPlan = false;
         // Gated by planning depth (modelPlanSynthesisEnabled), not enum identity, so deliberate-v1
@@ -34,7 +39,7 @@ public final class GoalEngine {
         if (!planned.supported() && spec.intelligence().modelPlanSynthesisEnabled()
                 && !modelProvider.fallback()) {
             try {
-                var generated = modelProvider.plan(new GoalPlanRequest(spec, builtInTaskMaps()));
+                var generated = modelProvider.plan(new GoalPlanRequest(runId, spec, builtInTaskMaps()));
                 if (generated.isPresent()) {
                     var validationFailure = validateGeneratedPlan(generated.get(), spec);
                     if (validationFailure == null) {
@@ -53,12 +58,12 @@ public final class GoalEngine {
             }
         }
         if (!planned.supported()) {
-            return report("none", spec, GoalStatus.UNSUPPORTED, planned.unsupportedReason(), started,
+            return report(runId, "none", spec, GoalStatus.UNSUPPORTED, planned.unsupportedReason(), started,
                     0, 0, List.of(), Map.of());
         }
         var plan = planned.plan();
         if (spec.intelligence().requiresModel(spec.mode()) && modelProvider.fallback()) {
-            return report(plan.id(), spec, GoalStatus.UNSUPPORTED,
+            return report(runId, plan.id(), spec, GoalStatus.UNSUPPORTED,
                     "adaptive-v1 requires a realtime low-latency model provider; none is available",
                     started, 0, 0, List.of(), Map.of(
                             "intelligence", spec.intelligence().id(),
@@ -66,6 +71,7 @@ public final class GoalEngine {
                             "executorModel", modelProvider.id()));
         }
         var state = new LinkedHashMap<String, Object>();
+        state.put("runId", runId);
         state.put("goal", spec.goal());
         state.put("mode", spec.mode().toString());
         state.put("intelligence", spec.intelligence().id());
@@ -109,7 +115,7 @@ public final class GoalEngine {
         try {
             for (var segment : plan.segments()) {
                 state.put("activeSegment", segment.id());
-                consultRealtimeLookaheadPlan(spec, state);
+                consultRealtimeLookaheadPlan(runId, spec, state);
                 var pending = new ArrayList<>(segment.steps());
                 while (!pending.isEmpty()) {
                     if (completedSteps >= spec.maxSteps() || elapsedMs(started) >= spec.maxDurationMs()) {
@@ -117,8 +123,8 @@ public final class GoalEngine {
                         break;
                     }
                     var selection = spec.mode() == GoalMode.REALTIME
-                            ? selectRealtimeStep(spec, state, pending)
-                            : new StepSelection(pending.get(0), "declared script order", 0);
+                            ? selectRealtimeStep(runId, spec, state, pending)
+                            : new StepSelection(pending.get(0), "declared script order", 0, false);
                     var selected = selection.step();
                     if (!inputsResolved(selected.input(), state)) {
                         throw new IllegalStateException("goal step dependency is unresolved: " + selected.id());
@@ -136,10 +142,15 @@ public final class GoalEngine {
                         state.put("lastRealtimeSelection", Map.of(
                                 "segment", segment.id(), "step", selected.id(),
                                 "candidateIndex", selection.candidateIndex(),
-                                "rationale", selection.rationale()));
+                                "rationale", selection.rationale(),
+                                "fallback", selection.fallback()));
+                        // "fallback" surfaces a decision the provider could not really make (model
+                        // error, timeout, malformed response) and defaulted instead of chose - see
+                        // GoalDecision#fallback. Without it here, a degraded decision would look
+                        // identical to a genuine model choice in this trace.
                         trace.add(Map.of("step", "decision." + selected.id(), "kind", decisionKind,
                                 "segment", segment.id(), "candidateIndex", selection.candidateIndex(),
-                                "rationale", selection.rationale()));
+                                "rationale", selection.rationale(), "fallback", selection.fallback()));
                     }
                     if (elapsedMs(started) >= spec.maxDurationMs()) {
                         pendingFailure = new ExecutionFailure(GoalStatus.TIMED_OUT, "goal budget exhausted after planning");
@@ -277,20 +288,20 @@ public final class GoalEngine {
             }
             if (pendingFailure == null) {
                 if (!plan.completionPredicateReady()) {
-                    finalReport = report(plan.id(), spec, GoalStatus.UNSUPPORTED,
+                    finalReport = report(runId, plan.id(), spec, GoalStatus.UNSUPPORTED,
                             "plan completed actions but has no deterministic terminal predicate for this task",
                             started, completedSteps, completedSegments, trace, state);
                 } else {
-                    finalReport = report(plan.id(), spec, GoalStatus.SUCCEEDED, "all goal predicates passed", started,
-                            completedSteps, completedSegments, trace, state);
+                    finalReport = report(runId, plan.id(), spec, GoalStatus.SUCCEEDED, "all goal predicates passed",
+                            started, completedSteps, completedSegments, trace, state);
                 }
             } else {
-                finalReport = report(plan.id(), spec, pendingFailure.status, pendingFailure.message, started,
+                finalReport = report(runId, plan.id(), spec, pendingFailure.status, pendingFailure.message, started,
                         completedSteps, completedSegments, trace, state);
             }
         } catch (RuntimeException failure) {
             state.putIfAbsent("failureCause", extractDeclaredCause(safeMessage(failure), "error:unhandled"));
-            finalReport = report(plan.id(), spec, GoalStatus.FAILED, safeMessage(failure), started,
+            finalReport = report(runId, plan.id(), spec, GoalStatus.FAILED, safeMessage(failure), started,
                     completedSteps, completedSegments, trace, state);
         } finally {
             if (spec.mode() == GoalMode.REALTIME && actionCount > 0) {
@@ -306,6 +317,10 @@ public final class GoalEngine {
                             "realtime input cleanup failed: " + safeMessage(failure));
                 }
             }
+            // The run is over - success, failure, or cancellation all land here - so any per-run
+            // conversation a provider is holding for this runId (see GoalModelProvider#endSession)
+            // must be discarded now rather than leaked for the lifetime of the proxy process.
+            modelProvider.endSession(runId);
         }
         if (cleanupFailure != null && finalReport.status() == GoalStatus.SUCCEEDED) {
             return new GoalRunReport(finalReport.runId(), finalReport.planId(), finalReport.goal(), finalReport.mode(),
@@ -315,15 +330,16 @@ public final class GoalEngine {
         return finalReport;
     }
 
-    private StepSelection selectRealtimeStep(GoalSpec spec, Map<String, Object> state, List<GoalStep> pending) {
+    private StepSelection selectRealtimeStep(String runId, GoalSpec spec, Map<String, Object> state,
+                                             List<GoalStep> pending) {
         var eligible = eligibleSteps(pending, state);
         if (eligible.isEmpty()) {
             throw new IllegalStateException("realtime goal has no eligible step; pending inputs or preconditions are unresolved");
         }
         if (!spec.intelligence().modelReplanningEnabled()) {
-            return new StepSelection(eligible.get(0), "guarded declared order", 0);
+            return new StepSelection(eligible.get(0), "guarded declared order", 0, false);
         }
-        var decision = modelProvider.choose(new GoalDecisionRequest(spec, state, eligible)).orElseGet(() -> {
+        var decision = modelProvider.choose(new GoalDecisionRequest(runId, spec, state, eligible)).orElseGet(() -> {
             if (spec.intelligence().requiresModel(spec.mode())) {
                 throw new IllegalStateException("adaptive-v1 executor returned no decision");
             }
@@ -338,7 +354,7 @@ public final class GoalEngine {
         state.put("lastDecisionReasoningEffort",
                 decision.reasoningEffort() != null ? decision.reasoningEffort() : modelProvider.reasoningEffort());
         return new StepSelection(eligible.get(decision.candidateIndex()), decision.rationale(),
-                decision.candidateIndex());
+                decision.candidateIndex(), decision.fallback());
     }
 
     /**
@@ -348,13 +364,13 @@ public final class GoalEngine {
      * is deliberately cheap: it runs once per segment boundary (never per step), and a provider that
      * cannot or does not synthesize a plan simply leaves no lookahead behind - the goal still runs.
      */
-    private void consultRealtimeLookaheadPlan(GoalSpec spec, Map<String, Object> state) {
+    private void consultRealtimeLookaheadPlan(String runId, GoalSpec spec, Map<String, Object> state) {
         state.remove("lookaheadPlan");
         if (spec.mode() != GoalMode.REALTIME || !spec.intelligence().realtimePlanConsultationEnabled()) {
             return;
         }
         try {
-            modelProvider.plan(new GoalPlanRequest(spec, builtInTaskMaps()))
+            modelProvider.plan(new GoalPlanRequest(runId, spec, builtInTaskMaps()))
                     .ifPresent(generated -> state.put("lookaheadPlan", summarizeLookaheadPlan(generated)));
         } catch (RuntimeException ignored) {
             // Best-effort strategy hint only; deliberate-v1 must still work with a plan()-less or
@@ -642,14 +658,14 @@ public final class GoalEngine {
         return Map.copyOf(entry);
     }
 
-    private GoalRunReport report(String planId, GoalSpec spec, GoalStatus status, String message, long started,
-                                 int completedSteps, int completedSegments, List<Map<String, Object>> trace,
-                                 Map<String, Object> state) {
+    private GoalRunReport report(String runId, String planId, GoalSpec spec, GoalStatus status, String message,
+                                 long started, int completedSteps, int completedSegments,
+                                 List<Map<String, Object>> trace, Map<String, Object> state) {
         var selectedModel = "model-generated".equals(state.get("planSource")) ? modelProvider.id()
                 : spec.mode() == GoalMode.REALTIME
                 ? spec.intelligence().modelReplanningEnabled() ? modelProvider.id() : "deterministic-realtime"
                 : "script-interpreter";
-        return new GoalRunReport(UUID.randomUUID().toString(), planId, spec.goal(), spec.mode(), status, message,
+        return new GoalRunReport(runId, planId, spec.goal(), spec.mode(), status, message,
                 elapsedMs(started), completedSteps, completedSegments, selectedModel, trace, state);
     }
 
@@ -699,6 +715,6 @@ public final class GoalEngine {
     private record ExecutionFailure(GoalStatus status, String message) {
     }
 
-    private record StepSelection(GoalStep step, String rationale, int candidateIndex) {
+    private record StepSelection(GoalStep step, String rationale, int candidateIndex, boolean fallback) {
     }
 }

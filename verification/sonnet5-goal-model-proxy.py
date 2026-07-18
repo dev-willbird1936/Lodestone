@@ -1,7 +1,9 @@
 """Small OpenAI-compatible bridge for Lodestone realtime goal decisions, backed by Claude Sonnet 5.
 
 Mirrors gpt54-mini-goal-model-proxy.py's HTTP bridge shape exactly (same request/response
-contract expected by HttpJsonGoalModelProvider), but shells out to the `claude` CLI's
+contract expected by HttpJsonGoalModelProvider, including the runId-keyed per-run decision-history
+persistence, the "fallback": true degraded-decision flag, and the endSession cleanup request - see
+that file's module docstring for the full persistence model), but shells out to the `claude` CLI's
 non-interactive print mode instead of `codex exec`, since Codex CLI cannot address Claude models
 (confirmed live: `codex exec --model claude-sonnet-5` is accepted by the CLI's own flag parser but
 rejected server-side with "The 'claude-sonnet-5' model is not supported when using Codex with a
@@ -29,6 +31,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 
 
 MODEL = os.environ.get("LODESTONE_PROXY_MODEL", "sonnet")
@@ -42,6 +45,20 @@ MODEL = os.environ.get("LODESTONE_PROXY_MODEL", "sonnet")
 CLAUDE = os.environ.get("CLAUDE_EXE") or shutil.which("claude") or "claude"
 LOG_PATH = os.environ.get("LODESTONE_PROXY_LOG", "")
 LOG_LOCK = threading.Lock()
+
+# Unlike gpt54-mini-goal-model-proxy.py's CALL_TIMEOUT_S, this backend's default is left at the
+# original 90s rather than measured down: this session's real timing measurements were all taken
+# against the codex-backed bridge, and this file's own module docstring already documents that a
+# bare `claude -p` call here loads this machine's full interactive context and was observed to be
+# both slower and less consistent than the codex path - lowering this blind, without a fresh
+# measurement of that call shape, risks spurious fallbacks. Still overridable per-deployment.
+CALL_TIMEOUT_S = int(os.environ.get("LODESTONE_PROXY_CALL_TIMEOUT_S", "90"))
+
+# See gpt54-mini-goal-model-proxy.py's MAX_SESSION_TURNS comment for the reasoning behind 24.
+MAX_SESSION_TURNS = int(os.environ.get("LODESTONE_PROXY_MAX_SESSION_TURNS", "24"))
+
+SESSIONS_LOCK = threading.Lock()
+SESSIONS: dict[str, list[dict]] = {}
 
 # Mirrors gpt54-mini-goal-model-proxy.py's whitelist, which mirrors the Java-side
 # HttpJsonGoalModelProvider.isValidReasoningEffort. The Claude CLI's own --effort flag accepts an
@@ -60,10 +77,67 @@ def log(message: str) -> None:
         return
     with LOG_LOCK:
         with open(LOG_PATH, "a", encoding="utf-8") as stream:
-            stream.write(message + "\n")
+            stream.write("%s %s\n" % (time.strftime("%Y-%m-%dT%H:%M:%S"), message))
 
 
-def choose(prompt: str, reasoning_effort: str) -> dict:
+def session_history_block(run_id: str) -> str:
+    """See gpt54-mini-goal-model-proxy.py's copy of this function for the full rationale."""
+    if not run_id:
+        return ""
+    with SESSIONS_LOCK:
+        history = list(SESSIONS.get(run_id, []))
+    if not history:
+        return ""
+    lines = [
+        "Your own prior decisions earlier in THIS SAME goal run, for continuity of your own "
+        "reasoning only. This is NOT current world state - always trust the fresh state given "
+        "below over anything implied here; a candidate you picked before may no longer exist or "
+        "may no longer be the right choice now:",
+    ]
+    for index, turn in enumerate(history, start=1):
+        lines.append("%d. candidateIndex=%s rationale=%s" % (
+            index, turn.get("candidateIndex"), turn.get("rationale", "")))
+    return "\n".join(lines) + "\n\n"
+
+
+def record_session_turn(run_id: str, decision: dict) -> None:
+    if not run_id:
+        return
+    with SESSIONS_LOCK:
+        history = SESSIONS.setdefault(run_id, [])
+        history.append({
+            "candidateIndex": decision.get("candidateIndex"),
+            "rationale": decision.get("rationale", ""),
+        })
+        if len(history) > MAX_SESSION_TURNS:
+            del history[: len(history) - MAX_SESSION_TURNS]
+
+
+def reset_session(run_id: str) -> None:
+    if not run_id:
+        return
+    with SESSIONS_LOCK:
+        SESSIONS.pop(run_id, None)
+
+
+def render_messages(messages) -> str:
+    """Bug fix: this bridge previously took messages[-1] only, silently discarding every other
+    message in the array. Every message the caller sends is now used."""
+    if not messages:
+        return ""
+    if len(messages) == 1:
+        return str(messages[0].get("content", ""))
+    parts = []
+    for message in messages:
+        role = message.get("role", "user")
+        parts.append("[%s]\n%s" % (role, message.get("content", "")))
+    return "\n\n".join(parts)
+
+
+def choose(messages, reasoning_effort: str, run_id: str) -> dict:
+    with SESSIONS_LOCK:
+        prior_turns = len(SESSIONS.get(run_id, []))
+    prompt = session_history_block(run_id) + render_messages(messages)
     try:
         command = [
             CLAUDE, "-p", "--model", MODEL, "--output-format", "json",
@@ -71,7 +145,7 @@ def choose(prompt: str, reasoning_effort: str) -> dict:
         ]
         completed = subprocess.run(
             command, cwd=os.path.expanduser("~"), input=prompt,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=CALL_TIMEOUT_S,
             check=False,
         )
         envelope = json.loads(completed.stdout)
@@ -84,23 +158,37 @@ def choose(prompt: str, reasoning_effort: str) -> dict:
         decision = json.loads(match.group(0))
         if not isinstance(decision.get("candidateIndex"), int):
             raise RuntimeError("model response omitted integer candidateIndex")
-        log("model=%s effort=%s candidate=%s" % (MODEL, reasoning_effort, json.dumps(decision, separators=(",", ":"))))
+        log("model=%s effort=%s runId=%s historyTurns=%d candidate=%s" % (
+            MODEL, reasoning_effort, run_id, prior_turns, json.dumps(decision, separators=(",", ":"))))
+        record_session_turn(run_id, decision)
         return decision
     except Exception as error:
-        log("model=%s effort=%s error=%s" % (MODEL, reasoning_effort, error))
-        return {"candidateIndex": 0, "rationale": "bridge fallback after model error"}
+        log("model=%s effort=%s runId=%s historyTurns=%d error=%s" % (
+            MODEL, reasoning_effort, run_id, prior_turns, error))
+        reset_session(run_id)
+        return {"candidateIndex": 0, "rationale": "bridge fallback after model error", "fallback": True}
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
         length = int(self.headers.get("Content-Length", "0"))
         body = json.loads(self.rfile.read(length).decode("utf-8"))
+        run_id = str(body.get("runId") or "")
+
+        if body.get("endSession"):
+            reset_session(run_id)
+            log("endSession runId=%s" % run_id)
+            self._write_json({"ok": True})
+            return
+
         messages = body.get("messages", [])
-        prompt = messages[-1].get("content", "") if messages else ""
         reasoning_effort = normalize_reasoning_effort(body.get("reasoning_effort"))
-        decision = choose(prompt, reasoning_effort)
+        decision = choose(messages, reasoning_effort, run_id)
         response = {"choices": [{"message": {"content": json.dumps(decision)}}]}
-        encoded = json.dumps(response).encode("utf-8")
+        self._write_json(response)
+
+    def _write_json(self, payload: dict) -> None:
+        encoded = json.dumps(payload).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(encoded)))

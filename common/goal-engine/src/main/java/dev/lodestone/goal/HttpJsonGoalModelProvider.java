@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -114,15 +115,21 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                         "preconditions", step.preconditions().stream().map(GoalAssertion::toMap).toList(),
                         "assertionCount", step.assertions().size())).toList(),
                 "response", "Return JSON only: {candidateIndex: integer, rationale: string}. Choose only an eligible candidate; do not invent capabilities or bypass a precondition. When safety is high, select recovery or observation before progress if the player is threatened, falling, on fire, in lava, in water, or facing an unsafe drop."));
-        var decision = requestJson(prompt, effort, callTimeout).orElse(null);
+        var decision = requestJson(prompt, effort, callTimeout, request.runId()).orElse(null);
         if (decision == null || !decision.isJsonObject()) return Optional.empty();
         try {
             var object = decision.getAsJsonObject();
             var index = object.has("candidateIndex") ? object.get("candidateIndex").getAsInt()
                     : object.get("candidate_index").getAsInt();
             if (index < 0 || index >= request.candidates().size()) return Optional.empty();
+            // The bridge sets "fallback": true when it could not really consult the model (call
+            // error, timeout, malformed response) and silently defaulted to candidate 0 instead.
+            // Surfacing that here, rather than swallowing it, is what lets GoalEngine's trace show
+            // a degraded decision as degraded instead of looking identical to a real model choice.
+            var fallback = object.has("fallback") && object.get("fallback").getAsBoolean();
             return Optional.of(new GoalDecision(index,
-                    object.has("rationale") ? object.get("rationale").getAsString() : "model selection", effort));
+                    object.has("rationale") ? object.get("rationale").getAsString() : "model selection",
+                    effort, fallback));
         } catch (Exception ignored) {
             return Optional.empty();
         }
@@ -212,7 +219,7 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
                         "navigation", "prefer safe walkable routes through loaded chunks; never use a fall, water, lava, teleport, command, or direct world mutation as a shortcut"),
                 "instructions", "Return JSON only. Create a bounded declarative plan, starting with observations when the world state is unknown. Never emit shell, JavaScript, Python, seed manipulation, teleportation, direct inventory mutation, direct world mutation, chat commands, text injection, or raw minecraft.input key/mouse actions for a survival goal. Use typed minecraft.player.move and minecraft.player.interact calls or an existing native minecraft.goal.* actor for normal player actions. For adaptive-v1, a plan that attacks a tool-required block before proving the correct tool is equipped is invalid; include the natural gathering, crafting, equipping, and verification steps first. Do not turn a failed attack into repeated retries. Declare metadata.gameMode as survival for a survival goal and include explicit terminal assertions.",
                 "response", "Return the plan object directly: {id, goal, metadata, segments}."));
-        var root = requestJson(prompt).orElse(null);
+        var root = requestJson(prompt, reasoningEffort, timeout, request.runId()).orElse(null);
         if (root == null || !root.isJsonObject()) return Optional.empty();
         try {
             var object = root.getAsJsonObject();
@@ -226,17 +233,21 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
         }
     }
 
-    private Optional<JsonElement> requestJson(String prompt) {
-        return requestJson(prompt, reasoningEffort, timeout);
-    }
-
-    private Optional<JsonElement> requestJson(String prompt, String effort, Duration requestTimeout) {
-        var body = JsonSupport.MAPPER.toJson(Map.of(
-                "model", id,
-                "reasoning_effort", effort,
-                "temperature", 0,
-                "messages", List.of(Map.of("role", "user", "content", prompt)),
-                "response_format", Map.of("type", "json_object")));
+    /**
+     * {@code runId} is included in the request body so the bridge can key its own per-run
+     * conversation history (see the class javadoc on {@link GoalDecisionRequest#runId()}); this
+     * provider itself never holds or replays any state across calls beyond the fresh request it is
+     * given, keeping the persistence entirely server-side and world-state-free.
+     */
+    private Optional<JsonElement> requestJson(String prompt, String effort, Duration requestTimeout, String runId) {
+        var bodyFields = new LinkedHashMap<String, Object>();
+        bodyFields.put("model", id);
+        bodyFields.put("reasoning_effort", effort);
+        bodyFields.put("temperature", 0);
+        bodyFields.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+        bodyFields.put("response_format", Map.of("type", "json_object"));
+        if (runId != null && !runId.isBlank()) bodyFields.put("runId", runId);
+        var body = JsonSupport.MAPPER.toJson(bodyFields);
         var builder = HttpRequest.newBuilder(endpoint).timeout(requestTimeout)
                 .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body));
         if (apiKey != null && !apiKey.isBlank()) builder.header("Authorization", "Bearer " + apiKey);
@@ -254,6 +265,26 @@ final class HttpJsonGoalModelProvider implements GoalModelProvider {
             return Optional.of(root);
         } catch (Exception ignored) {
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Best-effort notification that {@code runId}'s conversation, if the bridge is holding one, is
+     * done and can be discarded. This is a fire-and-forget call on a short timeout: a run's own
+     * report is already final regardless of whether the bridge's in-memory session was evicted, so
+     * a slow or failing proxy must never block or fail goal completion here.
+     */
+    @Override
+    public void endSession(String runId) {
+        if (runId == null || runId.isBlank()) return;
+        var body = JsonSupport.MAPPER.toJson(Map.of("runId", runId, "endSession", true));
+        var builder = HttpRequest.newBuilder(endpoint).timeout(Duration.ofMillis(Math.min(2_000, timeout.toMillis())))
+                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body));
+        if (apiKey != null && !apiKey.isBlank()) builder.header("Authorization", "Bearer " + apiKey);
+        try {
+            client.send(builder.build(), HttpResponse.BodyHandlers.discarding());
+        } catch (Exception ignored) {
+            // Best-effort cleanup only; see javadoc above.
         }
     }
 
