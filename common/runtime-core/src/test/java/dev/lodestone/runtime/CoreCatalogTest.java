@@ -46,6 +46,7 @@ final class CoreCatalogTest {
                 Map.entry("woodenAxeEquipped", true), Map.entry("targetTreeInitialLogs", 5),
                 Map.entry("targetTreeMinedLogs", 5), Map.entry("targetTreeRemainingLogs", 0),
                 Map.entry("fullTreeMined", true), Map.entry("allTargetLogsMinedWithWoodenAxe", true),
+                Map.entry("playerAlive", true), Map.entry("healthAtEnd", 20.0),
                 Map.entry("commandsUsed", false), Map.entry("directMutationUsed", false),
                 Map.entry("suppressInGameMessages", false), Map.entry("inGameMessagesEmitted", 8),
                 Map.entry("navigationDiagnostics", java.util.List.of("planned resource tree route")),
