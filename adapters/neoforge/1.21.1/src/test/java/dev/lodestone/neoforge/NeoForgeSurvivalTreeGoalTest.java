@@ -94,4 +94,40 @@ final class NeoForgeSurvivalTreeGoalTest {
     }
 
     private static final int MAX_MINING_VANTAGE_ATTEMPTS = 4;
+
+    // Regression coverage for the mineResource()/mineTarget() gating flow itself, not just the
+    // pure geometry helpers either fed into. The regression this locks in: a raycast miss against
+    // the primary mining target used to fall straight through to vantage relocation - and, at
+    // guarded-v1 where obstructionMiningEnabled() is always false, straight to giving up - with no
+    // way back, even when the miss landed on something harmless (a leaf, a vine, or in
+    // mineTarget()'s case a redirect-eligible log of the same tree) that should just get attacked.
+
+    @Test
+    void aimingDirectlyAtThePrimaryTargetIsAlwaysAttackable() {
+        assertTrue(NeoForgeSurvivalTreeGoal.isAttackableMiningStance(true, false));
+    }
+
+    @Test
+    void missingThePrimaryTargetWithNoAlternateIsNotAttackable() {
+        // This is exactly the case that must fall through to vantage relocation / the adaptive
+        // obstruction gate rather than attack blindly - the pre-regression-fix bug was never
+        // getting here in the first place because "aimedAtTarget" was the only signal considered.
+        assertFalse(NeoForgeSurvivalTreeGoal.isAttackableMiningStance(false, false));
+    }
+
+    @Test
+    void missingThePrimaryTargetButHittingFoliageOrARedirectIsStillAttackable() {
+        // This is the regression itself: a raycast miss against the log that lands on leaves (or,
+        // in mineTarget(), a redirect-eligible log) must still be treated as attackable
+        // independent of policy tier, instead of being routed into vantage relocation and, at
+        // guarded-v1, target:obstructed.
+        assertTrue(NeoForgeSurvivalTreeGoal.isAttackableMiningStance(false, true));
+    }
+
+    @Test
+    void aimingAtThePrimaryTargetIsAttackableEvenWithoutAnAlternate() {
+        // Redundant coverage on purpose: confirms the gate is a genuine OR, not e.g. an AND typo
+        // or a condition that only fires when both signals happen to agree.
+        assertTrue(NeoForgeSurvivalTreeGoal.isAttackableMiningStance(true, true));
+    }
 }

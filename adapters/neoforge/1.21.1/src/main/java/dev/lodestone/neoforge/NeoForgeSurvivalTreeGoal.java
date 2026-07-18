@@ -91,6 +91,8 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private TreePlan targetTree;
     private BlockPos tablePosition;
     private BlockPos tableInteractionVantage;
+    private BlockPos tablePlacementVantage;
+    private int placeTableAimTicks;
     private BlockPos miningTargetVantage;
     private BlockPos miningVantageForTarget;
     private int miningVantageAttempts;
@@ -508,8 +510,10 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         }
         lookAt(player, target);
         var hit = player.pick(5.0, 0.0F, false);
-        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)
-                || !blockHit.getBlockPos().equals(target)) {
+        var aimedAtTarget = hit instanceof net.minecraft.world.phys.BlockHitResult blockHit
+                && blockHit.getBlockPos().equals(target);
+        var leafOcclusion = aimedAtTarget ? null : handBreakableOcclusion(client, hit);
+        if (!isAttackableMiningStance(aimedAtTarget, leafOcclusion != null)) {
             // Unlike mineTarget() against the target tree, this early hand-mining stage never
             // had any aim verification at all - a stance that could never land the raycast on
             // the observed log (the trunk's own geometry occluding it from the parked stance,
@@ -546,10 +550,48 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 return;
             }
         }
+        if (leafOcclusion != null) {
+            inputActions.add("recovery:clear-hand-mining-occlusion:" + leafOcclusion);
+        }
         clickAndHoldAttack(client, "hand");
         inputActions.add("attack:key.attack-held-by-hand");
         if (stageTicks > 360) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:mining; "
                 + "hand mining failed to break observed log " + target + telemetrySuffix());
+    }
+
+    /**
+     * A raycast that misses the intended log but lands on foliage growing around the same tree
+     * (leaves, or a vine hanging off it) is not a stray obstruction the way a wall or terrain
+     * block would be: vanilla lets any bare hand clear these instantly, for free, with no tool
+     * requirement and no hazard, and a real player chopping a tree routinely does exactly this
+     * without a second thought. The pre-fix blind attack-anything behavior happened to clear this
+     * kind of occlusion by accident; gating its deliberate replacement behind the adaptive-only
+     * {@code obstructionMiningEnabled()} machinery (meant for genuinely costly/hazardous terrain
+     * clearing) regressed that for guarded-v1 hand-mining runs that only ever needed a leaf out
+     * of the way. Treat it as a safe-by-construction stance in its own right, independent of
+     * policy tier, rather than routing it through vantage relocation or the adaptive obstruction
+     * gate - returns the occluding position to attack, or null if the miss is something else.
+     */
+    private static BlockPos handBreakableOcclusion(Minecraft client, net.minecraft.world.phys.HitResult hit) {
+        if (!(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit)) return null;
+        var state = client.level.getBlockState(blockHit.getBlockPos());
+        return state.is(BlockTags.LEAVES) || state.is(net.minecraft.world.level.block.Blocks.VINE)
+                ? blockHit.getBlockPos() : null;
+    }
+
+    /**
+     * The control-flow gate both mineResource() and mineTarget() use to decide whether a raycast
+     * that missed the primary mining target should still be attacked this tick, or whether the
+     * stance needs vantage relocation / the adaptive obstruction gate instead. This is exactly the
+     * decision the mineResource() regression got wrong: the pre-fix condition only asked "did the
+     * aim land on the primary target", so a miss that actually landed on safe-to-clear foliage (or,
+     * in mineTarget()'s case, a redirect-eligible log of the same tree) still fell all the way
+     * through to vantage relocation and, at guarded-v1 where {@code obstructionMiningEnabled()} is
+     * always false, gave up with target:obstructed instead of just attacking the harmless thing
+     * actually in front of the player.
+     */
+    static boolean isAttackableMiningStance(boolean aimedAtPrimaryTarget, boolean hasAlternateAttackTarget) {
+        return aimedAtPrimaryTarget || hasAlternateAttackTarget;
     }
 
     private void collectResource(Minecraft client) {
@@ -705,6 +747,13 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         }
 
         var support = tablePosition.below();
+        if (tablePlacementVantage != null) {
+            if (navigate(client, tablePlacementVantage, "crafting-table placement vantage")) {
+                tablePlacementVantage = null;
+                placeTableAimTicks = 0;
+            }
+            return;
+        }
         var supportPoint = new net.minecraft.world.phys.Vec3(support.getX() + 0.5,
                 support.getY() + 1.0, support.getZ() + 0.5);
         var distance = player.getEyePosition().distanceTo(supportPoint);
@@ -716,6 +765,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             announce(client, diagnostic);
         }
         if (distance > 4.25) {
+            placeTableAimTicks = 0;
             if (navigate(client, tablePosition, "crafting table placement")) {
                 lookAt(player, support);
                 setMovement(client, true, false, player.isInWater() || player.onGround());
@@ -729,6 +779,29 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         var hit = player.pick(5.0, 0.0F, false);
         var aimedAtSupport = hit instanceof net.minecraft.world.phys.BlockHitResult blockHit
                 && blockHit.getBlockPos().equals(support);
+        placeTableAimTicks++;
+        if (!aimedAtSupport && placeTableAimTicks > 20) {
+            // navigate() above only steers toward tablePosition itself (the air cell the table
+            // will occupy) using the same 2.7-3.4 block arrival tolerance every other navigate()
+            // caller uses - it was never told to verify a clear line of sight to support, only
+            // proximity to tablePosition. isClearTablePlacement already confirmed support is a
+            // genuine full-cube surface with a clear sightline from the player's stance at
+            // candidate-selection time, but complex terrain (this failure mode's seeds have all
+            // been elevated, uneven ground) can leave the arrived-at approach stance with a
+            // different, blocked sightline even though support itself is perfectly placeable. A
+            // blocked line of sight from a fixed stance never clears on its own; repeating the
+            // identical click would just burn the whole 1200-tick timeout on a click that can
+            // never land. Mirror openTable()'s own findTableInteractionVantage recovery for the
+            // same failure mode one stage later.
+            var relocated = findTablePlacementVantage(client, support);
+            if (relocated == null) throw new IllegalStateException("no unobstructed crafting-table placement vantage; player="
+                    + player.blockPosition() + ", table=" + tablePosition + ", eyeDistance=" + rounded(distance));
+            tablePlacementVantage = relocated;
+            placeTableAimTicks = 0;
+            navigationDiagnostics.add("table placement vantage relocation: " + relocated);
+            announce(client, "Crafting table support out of sight - repositioning for a clear line of sight");
+            return;
+        }
         if (stageTicks % 20 == 1 && aimedAtSupport) {
             KeyMapping.click(client.options.keyUse.getKey());
             inputActions.add("use:key.use-place-crafting-table");
@@ -736,6 +809,39 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         if (stageTicks > 1_200) throw new IllegalStateException("normal use input did not place the crafting table; player="
                 + player.blockPosition() + ", table=" + tablePosition + ", eyeDistance=" + rounded(distance)
                 + ", aimedAtSupport=" + aimedAtSupport + ", held=" + player.getMainHandItem().getItem());
+    }
+
+    /**
+     * Search for a standable cell with a clear, in-range line of sight to the crafting table's
+     * support block - the placement-phase analogue of findTableInteractionVantage, which does the
+     * same search for tablePosition itself one stage later (after the table already exists).
+     * navigate()'s own arrival tolerance only steers toward proximity to tablePosition, never
+     * toward a stance verified to actually see support, so this is what actually recovers a
+     * blocked sightline instead of grinding the placement timeout.
+     */
+    private BlockPos findTablePlacementVantage(Minecraft client, BlockPos support) {
+        var player = requirePlayer(client);
+        var aim = new net.minecraft.world.phys.Vec3(support.getX() + 0.5, support.getY() + 1.0, support.getZ() + 0.5);
+        for (var radius = 1; radius <= 4; radius++) {
+            for (var dx = -radius; dx <= radius; dx++) {
+                for (var dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                    for (var dy = -1; dy <= 2; dy++) {
+                        var candidate = tablePosition.offset(dx, dy, dz);
+                        if (candidate.equals(tablePosition) || !isStandable(client.level, candidate)) continue;
+                        var eye = new net.minecraft.world.phys.Vec3(candidate.getX() + 0.5,
+                                candidate.getY() + 1.62, candidate.getZ() + 0.5);
+                        if (eye.distanceTo(aim) > 4.25) continue;
+                        var clip = client.level.clip(new net.minecraft.world.level.ClipContext(eye, aim,
+                                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+                        if (clip instanceof net.minecraft.world.phys.BlockHitResult blockHit
+                                && blockHit.getBlockPos().equals(support)) return candidate.immutable();
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private BlockPos findTablePlacement(Minecraft client) {
@@ -1004,8 +1110,18 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                     && targetTree.logs().contains(redirectedHit.getBlockPos())
                     && client.level.getBlockState(redirectedHit.getBlockPos()).is(BlockTags.LOGS)
                     ? redirectedHit.getBlockPos() : null;
-            if (redirect != null) {
-                attackTarget = redirect;
+            var occlusion = redirect == null ? handBreakableOcclusion(client, hit) : null;
+            if (isAttackableMiningStance(false, redirect != null || occlusion != null)) {
+                // Foliage growing on the same tree (leaves, a vine) is not a stray obstruction the
+                // way a wall or terrain block would be - vanilla lets any bare hand (or an axe, a
+                // fortiori) clear it instantly, for free, with no tool requirement and no hazard.
+                // Attacking it directly, independent of policy tier, restores the self-clearing
+                // effect the old blind-attack behavior had by accident without reintroducing its
+                // lack of verification: everything that is NOT a redirect-eligible log or
+                // confirmed foliage still falls through to the guarded vantage-relocation/
+                // obstruction handling below.
+                attackTarget = redirect != null ? redirect : occlusion;
+                if (occlusion != null) inputActions.add("recovery:clear-mining-occlusion:" + occlusion);
             } else {
                 stopAttack(client);
                 if (policy.obstructionMiningEnabled() && breakVisibleMiningObstruction(client, target)) return;
