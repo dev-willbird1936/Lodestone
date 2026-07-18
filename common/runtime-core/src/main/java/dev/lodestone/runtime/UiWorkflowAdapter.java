@@ -48,6 +48,22 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
     private static final Map<String, String> AMBIGUOUS_LABEL_SCREEN_HINTS = Map.of(
             "create_new_world", "SelectWorldScreen",
             "create_world", "CreateWorldScreen");
+    /**
+     * With a completely empty save list, vanilla's Singleplayer screen auto-advances straight past
+     * the (empty) {@code SelectWorldScreen} to {@code CreateWorldScreen}, since there is nothing to
+     * select. When {@code create_new_world} then finds {@code CreateWorldScreen} active instead of
+     * the {@code SelectWorldScreen} pinned above, that specific mismatch has exactly one legitimate
+     * explanation - this auto-advance - so it is not genuine ambiguity like every other screen
+     * mismatch {@link #requireUnambiguousScreen} guards against. It is a recognized, deterministic
+     * already-arrived state: the workflow has effectively skipped past the (nonexistent)
+     * world-select step, so {@code create_new_world} should succeed immediately without clicking
+     * anything, rather than fail loud or - worse - fall through to label matching and misclick the
+     * create-world screen's own confirm button (the exact bug {@code 3407396} closed). This is
+     * intentionally scoped to just this one target/screen pair; it does not loosen
+     * {@link #requireUnambiguousScreen} for any other case.
+     */
+    private static final String EMPTY_SAVE_LIST_AUTO_ADVANCE_TARGET = "create_new_world";
+    private static final String EMPTY_SAVE_LIST_AUTO_ADVANCE_SCREEN = "CreateWorldScreen";
 
     private final CapabilityRegistry registry;
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -135,6 +151,10 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
                 .thenCompose(beforeResult -> {
                     var before = requireOk(beforeResult, "UI state read before navigation");
                     context.cancellation().throwIfCancelled();
+                    if (isEmptySaveListAutoAdvance(target, before)) {
+                        return CompletableFuture.completedFuture(
+                                alreadyArrivedNavigationOutput(target, requestedLabel, before));
+                    }
                     var selection = selectNavigationTarget(before, target, requestedLabel);
                     var clickInput = Map.<String, Object>of(
                             "screenToken", requiredOutputString(before, "screenToken"),
@@ -233,6 +253,35 @@ final class UiWorkflowAdapter implements LodestoneAdapter {
                     + " label '" + label + "': " + matches.size() + " clickable widgets");
         }
         return matches.get(0);
+    }
+
+    /**
+     * True only for the one recognized empty-save-list auto-advance state described at
+     * {@link #EMPTY_SAVE_LIST_AUTO_ADVANCE_TARGET}: target is {@code create_new_world} and the
+     * active screen is already {@code CreateWorldScreen} rather than the expected
+     * {@code SelectWorldScreen}. Every other screen mismatch - including {@code create_world}
+     * finding {@code SelectWorldScreen}, which has no such deterministic explanation - still goes
+     * through {@link #requireUnambiguousScreen} and fails loud.
+     */
+    private static boolean isEmptySaveListAutoAdvance(String target, Map<String, Object> state) {
+        if (!EMPTY_SAVE_LIST_AUTO_ADVANCE_TARGET.equals(target)) return false;
+        var screen = state.get("screen") instanceof String value ? value : "";
+        var screenClass = state.get("screenClass") instanceof String value ? value : "";
+        return screen.contains(EMPTY_SAVE_LIST_AUTO_ADVANCE_SCREEN)
+                || screenClass.contains(EMPTY_SAVE_LIST_AUTO_ADVANCE_SCREEN);
+    }
+
+    private static Map<String, Object> alreadyArrivedNavigationOutput(String target, String requestedLabel,
+                                                                       Map<String, Object> before) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("target", target);
+        output.put("label", requestedLabel);
+        output.put("match", "already_arrived");
+        output.put("handled", false);
+        output.put("skipped", true);
+        output.put("skippedReason", "empty_save_list_auto_advance");
+        output.put("before", before);
+        return Map.copyOf(output);
     }
 
     private static void requireUnambiguousScreen(String target, Map<String, Object> state) {

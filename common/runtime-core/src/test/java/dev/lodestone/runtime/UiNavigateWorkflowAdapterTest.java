@@ -90,7 +90,7 @@ final class UiNavigateWorkflowAdapterTest {
     }
 
     @Test
-    void createNewWorldRejectsAnAlreadyAdvancedCreateWorldScreenInsteadOfMisclicking() throws Exception {
+    void createNewWorldTreatsAnEmptySaveListAutoAdvanceToCreateWorldScreenAsAlreadyArrived() throws Exception {
         var adapter = new FakeUiAdapter("2.0", "2.0",
                 call -> state("screen-1", "a", "CreateWorldScreen",
                         "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
@@ -100,10 +100,13 @@ final class UiNavigateWorkflowAdapterTest {
             runtime.registerAdapter(adapter);
             var result = runtime.invoke(request(runtime, "create_new_world")).get(1, TimeUnit.SECONDS);
 
-            assertEquals(ResultEnvelope.Status.ERROR, result.status());
-            assertTrue(result.error().message().contains("create_new_world"));
-            assertTrue(result.error().message().contains("SelectWorldScreen"));
+            assertEquals(ResultEnvelope.Status.OK, result.status(), result::toString);
+            assertEquals(Boolean.TRUE, result.output().get("skipped"));
+            assertEquals("empty_save_list_auto_advance", result.output().get("skippedReason"));
+            assertEquals("already_arrived", result.output().get("match"));
+            assertEquals(false, result.output().get("handled"));
             assertEquals(0, adapter.clickCalls.get());
+            assertEquals(1, adapter.stateCalls.get());
         }
     }
 
