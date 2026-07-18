@@ -23,6 +23,9 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             return GoalTaskCatalog.find("creative.wool-tree-zombie-defense").orElseThrow();
         if (normalized.contains("nether") || normalized.contains("nether portal"))
             return GoalTaskCatalog.find("survival.reach-nether").orElseThrow();
+        if (normalized.contains("spawn gauntlet")
+                || (normalized.contains("survive") && normalized.contains("waypoint")))
+            return GoalTaskCatalog.find("survival.spawn-gauntlet").orElseThrow();
         if (normalized.contains("wooden axe") || normalized.contains("mine an entire tree"))
             return GoalTaskCatalog.find("survival.wooden-axe-mine-tree").orElseThrow();
         if ((normalized.contains("collect") || normalized.contains("gather") || normalized.contains("chop")
@@ -50,6 +53,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
             case "creative.wool-tree-zombie-defense" -> woolTreeZombieDefensePlan(spec);
             case "survival.wooden-axe-mine-tree" -> woodenAxePlan(spec);
             case "survival.reach-nether" -> netherPlan(spec);
+            case "survival.spawn-gauntlet" -> spawnGauntletPlan(spec);
             case "creative.place-pillar" -> blockPlan("creative.place-pillar", goal, "minecraft:stone", "pillar must be stone");
             case "creative.clear-pillar" -> blockPlan("creative.clear-pillar", goal, "minecraft:air", "pillar must be air");
             case "navigation.reach-waypoint" -> navigationPlan(goal);
@@ -265,6 +269,64 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
                         "realtimePreferred", true,
                         "randomFreshWorldRequired", spec.worldSeed() == null, "naturalPortalChestOptional", true,
                         "manualPortalInputRequired", true,
+                        "completionPredicateReady", true));
+    }
+
+    /**
+     * B1 "Spawn Gauntlet" benchmark: reuse the exact world-creation-with-seed segment sequence from
+     * {@link #woodenAxePlan(GoalSpec)}, then a single invoke of the self-contained native actor. No
+     * coordinates are embedded in the goal text - unlike {@code navigation.safe-waypoint}, the actor
+     * discovers its own east waypoint at runtime from the spawn position it actually observes.
+     */
+    private static GoalPlan spawnGauntletPlan(GoalSpec spec) {
+        var goal = spec.goal();
+        var open = GoalStep.invoke("open-singleplayer", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "singleplayer"), false);
+        var createScreen = GoalStep.invoke("open-create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_new_world"), false);
+        var createWorldSetup = new ArrayList<GoalSegment>();
+        if (spec.worldSeed() != null) {
+            createWorldSetup.add(new GoalSegment("open-world-options",
+                    "Open the normal world-generation options tab.",
+                    List.of(GoalStep.invoke("open-world-options", "lodestone.ui.navigate", "1.0",
+                            Map.of("target", "world_tab"), false)), List.of()));
+            createWorldSetup.add(new GoalSegment("focus-world-seed",
+                    "Focus the normal world seed text field.",
+                    List.of(GoalStep.invoke("focus-world-seed", "lodestone.ui.navigate", "1.0",
+                            Map.of("target", "world_seed"), false)), List.of()));
+            createWorldSetup.add(new GoalSegment("insert-world-seed",
+                    "Enter the requested Java seed through normal UI text input.",
+                    List.of(GoalStep.invoke("insert-world-seed", "minecraft.ui.text.insert", "1.0",
+                            Map.of("text", spec.worldSeed()), false)), List.of()));
+        }
+        var createWorld = GoalStep.invoke("create-world", "lodestone.ui.navigate", "1.0",
+                Map.of("target", "create_world"), false);
+        var input = new LinkedHashMap<String, Object>(workflowInput(spec));
+        // The actor never announces in-game messages (same as navigation.safe-waypoint's benchmark
+        // actor), so this field is not part of its declared, additionalProperties:false input schema.
+        input.remove("suppressInGameMessages");
+        var gauntlet = GoalStep.invoke("spawn-gauntlet", "minecraft.goal.survival.spawn-gauntlet", "1.0",
+                input, true,
+                new GoalAssertion("steps.spawn-gauntlet.playerAlive", "equals", true),
+                new GoalAssertion("steps.spawn-gauntlet.reachedWaypoint", "equals", true),
+                new GoalAssertion("steps.spawn-gauntlet.survivedFullDuration", "equals", true),
+                new GoalAssertion("steps.spawn-gauntlet.commandsUsed", "equals", false),
+                new GoalAssertion("steps.spawn-gauntlet.directMutationUsed", "equals", false));
+        var segments = new ArrayList<GoalSegment>();
+        segments.add(new GoalSegment("open-singleplayer", "Open Minecraft singleplayer through guarded UI input.",
+                List.of(open), List.of()));
+        segments.add(new GoalSegment("open-create-world", "Open the create-world screen through guarded UI input.",
+                List.of(createScreen), List.of()));
+        segments.addAll(createWorldSetup);
+        segments.add(new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
+                List.of(createWorld), List.of()));
+        segments.add(new GoalSegment("survive-and-reach-waypoint",
+                "Survive the opening window and reach the actor's own spawn-relative east waypoint using ordinary movement input.",
+                List.of(gauntlet), List.of()));
+        return new GoalPlan("survival.spawn-gauntlet", goal, List.copyOf(segments),
+                Map.of("taskId", "survival.spawn-gauntlet", "gameMode", "survival",
+                        "randomFreshWorldRequired", spec.worldSeed() == null,
+                        "selfDiscoveredWaypoint", true,
                         "completionPredicateReady", true));
     }
 

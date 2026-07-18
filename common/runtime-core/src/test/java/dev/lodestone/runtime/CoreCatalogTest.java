@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(54, CoreCatalog.load().size());
+        assertEquals(55, CoreCatalog.load().size());
     }
 
     @Test
@@ -143,6 +143,52 @@ final class CoreCatalogTest {
         output.put("inGameMessagesEmitted", 0);
         output.put("directMutationUsed", false);
         output.put("inputActions", java.util.List.of("place:key.use:obsidian", "portal:key.use:flint-and-steel", "move:key.forward-into-portal"));
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), output).isEmpty());
+    }
+
+    @Test
+    void spawnGauntletGoalRequiresOrdinaryInputAndSelfDiscoveredWaypointReadback() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.spawn-gauntlet"))
+                .findFirst().orElseThrow();
+
+        assertTrue(capability.featureFlags().contains("benchmark"));
+        assertTrue(capability.featureFlags().contains("loaded-chunk-path-planner"));
+        assertTrue(capability.featureFlags().contains("ordinary-player-input"));
+        assertTrue(capability.featureFlags().contains("self-discovered-waypoint"));
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("intelligence", "guarded-v1", "safety", "balanced")).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("targetX", 0, "targetY", 64, "targetZ", 0)).isEmpty());
+        var output = new java.util.LinkedHashMap<String, Object>();
+        output.put("playerAlive", true);
+        output.put("reachedWaypoint", true);
+        output.put("survivedFullDuration", true);
+        output.put("elapsedTicks", 1800);
+        output.put("spawnPosition", Map.of("x", 0, "y", 64, "z", 0));
+        output.put("waypoint", Map.of("x", 32, "y", 64, "z", 0));
+        output.put("finalPosition", Map.of("x", 32, "y", 64, "z", 0));
+        output.put("healthAtEnd", 20.0);
+        output.put("survival", true);
+        output.put("freshWorld", true);
+        output.put("worldGameTimeAtStart", 20);
+        output.put("intelligence", "guarded-v1");
+        output.put("safety", "balanced");
+        output.put("policyMode", "guarded-v1+balanced");
+        output.put("observation", "loaded-chunks");
+        output.put("combatPolicy", "defensive");
+        output.put("replans", 0);
+        output.put("plannedPathLength", 4);
+        output.put("pathNodesVisited", 4);
+        output.put("directFallback", false);
+        output.put("safetyInterventions", java.util.List.of());
+        output.put("safetyInterventionCount", 0);
+        output.put("inputActions", java.util.List.of("move:key.forward-held"));
+        output.put("commandsUsed", false);
+        output.put("directMutationUsed", false);
+        output.put("allowCommands", false);
+        output.put("toolPrerequisiteGuard", true);
         assertTrue(SchemaValidator.validate(capability.outputSchema(), output).isEmpty());
     }
 

@@ -81,12 +81,15 @@ public record GoalSpec(String goal, GoalMode mode, String taskId, int maxSteps,
                 || id.equals("survival.wooden-axe-mine-tree")
                 || id.equals("survival.collect-wood")
                 || id.equals("survival.reach-nether")
+                || id.equals("survival.spawn-gauntlet")
                 || (normalizedGoal.contains("wooden axe") && normalizedGoal.contains("tree"))
                 || (normalizedGoal.contains("tree") && (normalizedGoal.contains("mine")
                 || normalizedGoal.contains("collect") || normalizedGoal.contains("gather")
                 || normalizedGoal.contains("chop")))
                 || normalizedGoal.contains("nether")
-                || (normalizedGoal.contains("wool") && normalizedGoal.contains("zombie"))) {
+                || (normalizedGoal.contains("wool") && normalizedGoal.contains("zombie"))
+                || normalizedGoal.contains("spawn gauntlet")
+                || (normalizedGoal.contains("survive") && normalizedGoal.contains("waypoint"))) {
             return 480_000L;
         }
         return 120_000L;

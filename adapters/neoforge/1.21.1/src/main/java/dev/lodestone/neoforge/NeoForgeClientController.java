@@ -89,6 +89,7 @@ public final class NeoForgeClientController {
         BRIDGE.tickNetherGoal();
         BRIDGE.tickNavigationGoal();
         BRIDGE.tickCombatGoal();
+        BRIDGE.tickSpawnGauntletGoal();
         var adapter = NeoForgeAdapter.active();
         if (adapter == null) {
             return;
@@ -221,6 +222,7 @@ public final class NeoForgeClientController {
         private NeoForgeNetherGoal netherGoal;
         private NeoForgeNavigationGoal navigationGoal;
         private NeoForgeCombatGoal combatGoal;
+        private NeoForgeSpawnGauntletGoal spawnGauntletGoal;
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -251,7 +253,8 @@ public final class NeoForgeClientController {
                         "minecraft.goal.creative.wool-tree-zombie-defense",
                         "minecraft.goal.survival.reach-nether",
                         "minecraft.goal.navigation.safe-waypoint",
-                        "minecraft.goal.combat.attack-nearest" -> true;
+                        "minecraft.goal.combat.attack-nearest",
+                        "minecraft.goal.survival.spawn-gauntlet" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
@@ -277,6 +280,9 @@ public final class NeoForgeClientController {
             }
             if ("minecraft.goal.combat.attack-nearest".equals(capability)) {
                 return startCombatGoal(invocation);
+            }
+            if ("minecraft.goal.survival.spawn-gauntlet".equals(capability)) {
+                return startSpawnGauntletGoal(invocation);
             }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
@@ -315,6 +321,9 @@ public final class NeoForgeClientController {
             Minecraft.getInstance().execute(() -> {
                 try {
                     if (combatGoal != null && !combatGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -357,6 +366,9 @@ public final class NeoForgeClientController {
                     if (combatGoal != null && !combatGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     woolTreeZombieGoal = new NeoForgeWoolTreeZombieGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -385,6 +397,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (combatGoal != null && !combatGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -425,6 +440,9 @@ public final class NeoForgeClientController {
                     if (combatGoal != null && !combatGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     navigationGoal = new NeoForgeNavigationGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -453,6 +471,9 @@ public final class NeoForgeClientController {
                             || (combatGoal != null && !combatGoal.done())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     combatGoal = new NeoForgeCombatGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -467,6 +488,35 @@ public final class NeoForgeClientController {
             if (current == null) return;
             current.tick(Minecraft.getInstance());
             if (current.done()) combatGoal = null;
+        }
+
+        private CompletionStage<Map<String, Object>> startSpawnGauntletGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if ((survivalTreeGoal != null && !survivalTreeGoal.done())
+                            || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
+                            || (netherGoal != null && !netherGoal.done())
+                            || (navigationGoal != null && !navigationGoal.done())
+                            || (combatGoal != null && !combatGoal.done())
+                            || (spawnGauntletGoal != null && !spawnGauntletGoal.done())) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    spawnGauntletGoal = new NeoForgeSpawnGauntletGoal(invocation, result);
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickSpawnGauntletGoal() {
+            var current = spawnGauntletGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) spawnGauntletGoal = null;
         }
 
         private static Map<String, Object> screenshot(

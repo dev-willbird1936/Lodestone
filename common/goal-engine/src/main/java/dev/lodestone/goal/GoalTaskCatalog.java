@@ -18,6 +18,10 @@ public final class GoalTaskCatalog {
             task("survival.reach-nether", "survival", "Load a fresh survival world, assemble and light a Nether portal, and enter the Nether.",
                     "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.reach-nether"),
                     "Fresh-world survival is proven, then wood, stone, iron, gravel, water, and lava are gathered or observed naturally. Every frame block, ignition action, forward movement, and final Nether dimension transition is read back from normal client behavior; commands, teleportation, setup grants, and direct world mutation are forbidden."),
+            task("survival.spawn-gauntlet", "survival",
+                    "Load a fresh survival world, survive the opening 90 seconds without dying, and reach a waypoint discovered 32 blocks east of the observed spawn position.",
+                    "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.spawn-gauntlet"),
+                    "The native actor discovers its own east waypoint from the observed spawn position, drives ordinary movement with the shared safety supervisor active, and proves both a minimum 90-second survival window and a reached waypoint from terminal readback; commands and direct world mutation are forbidden."),
             task("survival.collect-wood", "survival", "Find a nearby tree, acquire the required wooden tools, and collect logs with player input.", "survival",
                     List.of("minecraft.goal.survival.wooden-axe-tree", "minecraft.player.state.read", "minecraft.world.region.scan",
                             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact"),
@@ -79,6 +83,8 @@ public final class GoalTaskCatalog {
                         "guarded/adaptive: gather starter logs before visible crafting and equip the wooden axe before target-tree mining; raw-v1 retains low-level input behavior";
                 case "survival.reach-nether" ->
                         "gather starter tools before portal tools; complete portal tools before portal construction";
+                case "survival.spawn-gauntlet" ->
+                        "discover the spawn-relative east waypoint before movement; no crafting or gathering is required";
                 case "combat.attack-nearest" ->
                         "observe a loaded hostile and select an available weapon before attack input";
                 case "navigation.safe-waypoint" ->
