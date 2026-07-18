@@ -35,6 +35,18 @@ final class NeoForgeSpawnGauntletGoal {
     private static final int WORLD_WAIT_TICKS = 200;
     private static final int WAYPOINT_EAST_OFFSET = 32;
     private static final int WAYPOINT_SEARCH_RADIUS = 16;
+    // findToAny (see computeWaypoint's doc) accepts the first candidate its shared-graph search
+    // actually walks onto, which - unlike the old nearest-to-the-exact-point probing order - has no
+    // preference at all for candidates close to the real 32-block target over candidates close to
+    // the player's own observed spawn tile. Live-verified without this floor: seed 1 (spawn
+    // BlockPos{x=102,y=64,z=180}) accepted BlockPos{x=118,y=64,z=187}, only ~17.5 blocks away -
+    // almost half the intended offset, because that was simply the nearest reachable member of the
+    // search box to the search's own origin, not to the east candidate point. This floor rejects any
+    // candidate the search box would otherwise offer that sits closer to the observed spawn tile
+    // than this, so whichever reachable candidate findToAny actually accepts is provably far enough
+    // away regardless of which one it happens to be - it does not merely bias the search back toward
+    // preferring the exact point.
+    private static final double MIN_WAYPOINT_HORIZONTAL_DISTANCE = 28.0;
     static final int MIN_ACTIVE_TICKS = 1_800;
     static final int MAX_ACTIVE_TICKS = 2_400;
 
@@ -166,13 +178,22 @@ final class NeoForgeSpawnGauntletGoal {
      * longer stops the search from reaching a reachable surface elsewhere in the same box - and
      * unlike the old per-candidate loop, the search graph is only ever built and explored once
      * instead of being restarted from scratch for up to 100 candidates in a row.
+     *
+     * <p>That shared search has no notion of "close to the exact east point" at all, though - it
+     * simply accepts whichever candidate its own expansion from the observed spawn tile reaches
+     * first, which {@link #MIN_WAYPOINT_HORIZONTAL_DISTANCE} exists to keep from quietly becoming a
+     * short walk instead of a genuine ~32-block traversal (live-verified regression: see that
+     * constant's own doc). {@link #nearbySafeSurfacesByDistance} enforces the floor on the candidate
+     * set itself, before {@code findToAny} ever runs, so every candidate reachable from this method
+     * is provably far enough from the observed spawn tile regardless of which one gets accepted -
+     * this is not a preference that a smarter search order could still accidentally defeat.
      */
     private BlockPos computeWaypoint(Minecraft client, BlockPos origin) {
         var player = client.player;
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var candidate = eastWaypointCandidate(origin, WAYPOINT_EAST_OFFSET);
         var pathfindingOrigin = walkableOriginNear(snapshot, origin);
-        var surfaces = nearbySafeSurfacesByDistance(snapshot, candidate);
+        var surfaces = nearbySafeSurfacesByDistance(snapshot, origin, candidate);
         var route = NeoForgeSafePathPlanner.findToAny(client.level, player, pathfindingOrigin, surfaces, policy,
                 new NeoForgeSafePathPlanner.ArrivalSpec(3.0, 5.0));
         if (!route.isEmpty()) {
@@ -187,14 +208,23 @@ final class NeoForgeSpawnGauntletGoal {
                 + telemetrySuffix());
     }
 
-    /** Every walkable surface within the search cube, nearest-to-the-candidate first. */
-    private static List<BlockPos> nearbySafeSurfacesByDistance(NeoForgeWorldSnapshot snapshot, BlockPos candidate) {
+    /**
+     * Every walkable surface within the search cube, nearest-to-the-candidate first, excluding
+     * anything closer to the observed spawn tile than {@link #MIN_WAYPOINT_HORIZONTAL_DISTANCE} -
+     * see that constant's doc for why the distance floor is necessary now that {@link
+     * #computeWaypoint} hands the whole list to {@link NeoForgeSafePathPlanner#findToAny} instead of
+     * probing it in this sorted order itself.
+     */
+    private static List<BlockPos> nearbySafeSurfacesByDistance(NeoForgeWorldSnapshot snapshot, BlockPos origin,
+                                                                BlockPos candidate) {
         var surfaces = new ArrayList<BlockPos>();
         for (var x = candidate.getX() - WAYPOINT_SEARCH_RADIUS; x <= candidate.getX() + WAYPOINT_SEARCH_RADIUS; x++) {
             for (var z = candidate.getZ() - WAYPOINT_SEARCH_RADIUS; z <= candidate.getZ() + WAYPOINT_SEARCH_RADIUS; z++) {
                 for (var y = candidate.getY() - WAYPOINT_SEARCH_RADIUS; y <= candidate.getY() + WAYPOINT_SEARCH_RADIUS; y++) {
                     var position = new BlockPos(x, y, z);
-                    if (snapshot.walkable(position)) surfaces.add(position.immutable());
+                    if (!snapshot.walkable(position)) continue;
+                    if (horizontalDistance(origin, position) < MIN_WAYPOINT_HORIZONTAL_DISTANCE) continue;
+                    surfaces.add(position.immutable());
                 }
             }
         }
@@ -333,6 +363,16 @@ final class NeoForgeSpawnGauntletGoal {
     private static double horizontalDistance(LocalPlayer player, BlockPos position) {
         var dx = player.getX() - position.getX() - 0.5;
         var dz = player.getZ() - position.getZ() - 0.5;
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    /**
+     * Block-to-block variant of {@link #horizontalDistance(LocalPlayer, BlockPos)}, for candidate
+     * filtering against the observed spawn tile rather than the live player position.
+     */
+    private static double horizontalDistance(BlockPos from, BlockPos to) {
+        var dx = to.getX() - from.getX();
+        var dz = to.getZ() - from.getZ();
         return Math.sqrt(dx * dx + dz * dz);
     }
 
