@@ -57,10 +57,28 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private static final int MAX_TOTAL_TICKS = 12_000;
     private static final double MINING_VANTAGE_TOLERANCE = 0.45;
     private static final int MAX_SEARCH_ATTEMPTS = 18;
+    // navigateWithSafePath's per-episode stuck detector (navigationStuckTicks > 90) only ever
+    // replans against the same destination; it never gives up on the destination itself. When
+    // the world truly cannot be traversed to it (e.g. a "safe descent" vertical-recovery route
+    // whose planned waypoint is not actually walkable with ordinary input), A* keeps finding
+    // *a* nonempty path every replan, so the existing "path is empty" throw never fires and the
+    // actor stands frozen, replanning to the same dead end, for the rest of the tick budget with
+    // no thrown error. Bound the number of stuck-and-replanned episodes against one destination
+    // before treating it as the same "remained blocked" failure the empty-path case already
+    // throws, so every caller's existing recovery (vantage/waypoint rejection, source re-election)
+    // actually gets a chance to run instead of never firing.
+    private static final int MAX_NAVIGATION_STUCK_REPLANS = 4;
     private static final int LOGS_REQUIRED = 5;
     // Three logs provide twelve planks, enough for the table, sticks, and wooden pick.
     // Do not keep searching an exhausted local source once this ordinary prerequisite is met.
     private static final int MIN_LOGS_FOR_STARTER_CRAFTING = 3;
+    // A dense, tightly-packed forest can flood-fill many separate trunks into one oversized
+    // "structural logs" source (NeoForgeStarterResourceCatalog.group has no component size cap).
+    // Each individual target inside mineStarterResource is already bounded (~120-240 ticks), but
+    // without this cap the stage would silently mine-index through every block in a huge, wholly
+    // occluded component - burning the entire tick budget with no thrown error - instead of
+    // recognizing "this source is not minable from any vantage we can find" and re-electing.
+    private static final int MAX_RESOURCE_MINING_TARGET_SKIPS = 10;
     private static final int COBBLESTONE_REQUIRED = 11;
     private static final int RAW_IRON_REQUIRED = 4;
     private static final int STARTER_RESOURCE_SCAN_HORIZONTAL_RADIUS = 32;
@@ -131,6 +149,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private BlockPos navigationDestination;
     private double navigationLastDistance = Double.POSITIVE_INFINITY;
     private int navigationStuckTicks;
+    private int navigationStuckReplans;
     private NeoForgeSafePathPlanner.ArrivalSpec navigationArrival;
     private long observedNavigationReplanEpoch;
     private long observedNavigationAbandonEpoch;
@@ -153,6 +172,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private int ironMineIndex;
     private int gravelMineIndex;
     private int handMinedLogs;
+    private int resourceMiningTargetSkips;
     private int resourceBlocksToMine = LOGS_REQUIRED;
     private int cobblestoneMined;
     private int rawIronMined;
@@ -603,6 +623,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 collectibleSupportBlock = null;
                 attemptedStarterResourceTargets.clear();
                 handMinedLogs = 0;
+                resourceMiningTargetSkips = 0;
                 resetNavigation();
                 announce(client, "Observed a starter wood source at " + resourceSource.anchor()
                         + " (" + resourceSource.provenance() + "); walking there to gather wood by hand");
@@ -664,20 +685,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     navigateTo(client, resourceSource.anchor(), 0.8, "vertical route recovery");
                     return;
                 }
-                rememberExhaustedStarterResourceScope(client, resourceSource);
-                rejectedResourceSources.add(resourceSource.anchor().immutable());
-                var player = requirePlayer(client);
-                if (resourceRejectionAnchor == null
-                        || player.blockPosition().distManhattan(resourceRejectionAnchor) >= 4) {
-                    resourceRejectionAnchor = player.blockPosition().immutable();
-                    localResourceVantageRejections = 0;
-                }
-                localResourceVantageRejections++;
-                safetyDiagnostics.add("resource-replan:reject-unreachable-source:" + resourceSource.anchor());
-                resourceSource = null;
-                resetNavigation();
-                stopMovement(client);
-                transition(Stage.FIND_STARTER_RESOURCE, 15);
+                rejectResourceSource(client, "reject-unreachable-source");
                 return;
             }
             resetNavigation();
@@ -728,6 +736,11 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             transition(Stage.COLLECT_STARTER_RESOURCE, 0);
             return;
         }
+        if (resourceMiningTargetSkips > MAX_RESOURCE_MINING_TARGET_SKIPS) {
+            stopAttack(client);
+            rejectResourceSource(client, "reject-unminable-source-target-skip-budget-exhausted");
+            return;
+        }
         var player = requirePlayer(client);
         if (!player.getMainHandItem().isEmpty()) {
             var emptySlot = emptyHotbarSlot(player);
@@ -750,6 +763,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
             var progress = NeoForgeMiningAccounting.blockBecameAir(mineIndex, handMinedLogs);
             handMinedLogs = progress.handMinedLogs();
             mineIndex = progress.nextMineIndex();
+            // Genuine progress against this source; forgive whatever occlusion the earlier
+            // targets hit instead of counting them toward the whole-source rejection budget.
+            resourceMiningTargetSkips = 0;
             stageTicks = 0;
             inputActions.add("read:block-broken-by-hand:" + target);
             waitTicks = 10;
@@ -844,8 +860,40 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
     private void skipStarterResourceTarget(BlockPos target, String reason) {
         var progress = NeoForgeMiningAccounting.skippedTarget(mineIndex, handMinedLogs, reason);
         mineIndex = progress.nextMineIndex();
+        resourceMiningTargetSkips++;
         safetyDiagnostics.add("mining-replan:skipped-target:" + target + ":reason=" + reason
-                + ":handMinedLogs=" + progress.handMinedLogs());
+                + ":handMinedLogs=" + progress.handMinedLogs()
+                + ":consecutiveSkips=" + resourceMiningTargetSkips);
+    }
+
+    /**
+     * Give up on the whole starter-resource source, not just the current target. A source that
+     * cannot be reached (no vantage found at all) and a source that cannot be mined (every
+     * target inside it skipped, one bounded escalation at a time, without a single successful
+     * hand-mined block) are the same underlying failure: this pose/source pairing is
+     * deterministically doomed. Re-electing a different source is the correction; silently
+     * grinding mineIndex through the rest of a possibly oversized connected component (a dense
+     * forest can flood-fill many trunks into one source) would just consume the whole tick
+     * budget with no thrown error.
+     */
+    private void rejectResourceSource(Minecraft client, String reason) {
+        rememberExhaustedStarterResourceScope(client, resourceSource);
+        rejectedResourceSources.add(resourceSource.anchor().immutable());
+        var player = requirePlayer(client);
+        if (resourceRejectionAnchor == null
+                || player.blockPosition().distManhattan(resourceRejectionAnchor) >= 4) {
+            resourceRejectionAnchor = player.blockPosition().immutable();
+            localResourceVantageRejections = 0;
+        }
+        localResourceVantageRejections++;
+        safetyDiagnostics.add("resource-replan:" + reason + ":" + resourceSource.anchor());
+        resourceSource = null;
+        resourceMiningVantage = null;
+        resourceApproachOnly = false;
+        resourceMiningTargetSkips = 0;
+        resetNavigation();
+        stopMovement(client);
+        transition(Stage.FIND_STARTER_RESOURCE, 15);
     }
 
     private BlockPos findResourceMiningVantage(Minecraft client, BlockPos target) {
@@ -3591,6 +3639,9 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                     policy, arrival);
             navigationIndex = navigationStartIndex(player, navigationPath);
             navigationStuckTicks = 0;
+            // A genuinely new destination deserves a fresh stuck-replan budget; only repeated
+            // failure against the *same* destination should count toward giving up on it.
+            navigationStuckReplans = 0;
             navigationLastDistance = Double.POSITIVE_INFINITY;
             inputActions.add("observe:safety-weighted-route:" + label);
         }
@@ -3652,13 +3703,22 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         else navigationStuckTicks++;
         navigationLastDistance = waypointDistance;
         if (navigationStuckTicks > 90) {
+            // A* can keep finding *a* nonempty route to the same destination every single
+            // replan even when that route is not actually walkable with ordinary input (e.g. a
+            // vertical-recovery waypoint that requires a drop the crude forward+jump movement
+            // never clears). Without this counter, the "path is empty" throw below never fires
+            // and the actor stands frozen, replanning to the same dead end forever. Once replans
+            // against this destination are themselves exhausted, treat it as the identical
+            // "remained blocked" failure so every caller's existing recovery runs.
+            navigationStuckReplans++;
             navigationPath = NeoForgeSafePathPlanner.find(client.level, player, player.blockPosition(), routeTarget,
                     policy, arrival);
             navigationIndex = navigationStartIndex(player, navigationPath);
             navigationStuckTicks = 0;
             navigationLastDistance = Double.POSITIVE_INFINITY;
-            safetyDiagnostics.add("navigation-replan:" + label);
-            if (navigationPath.isEmpty() && policy.smartNavigation()) {
+            safetyDiagnostics.add("navigation-replan:" + label + ":replan=" + navigationStuckReplans);
+            if (policy.smartNavigation()
+                    && (navigationPath.isEmpty() || navigationStuckReplans > MAX_NAVIGATION_STUCK_REPLANS)) {
                 throw new IllegalStateException("safe intelligent navigation remained blocked during " + label);
             }
             return false;
@@ -3770,6 +3830,7 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
         navigationArrival = null;
         navigationLastDistance = Double.POSITIVE_INFINITY;
         navigationStuckTicks = 0;
+        navigationStuckReplans = 0;
         navigationPath = List.of();
         navigationIndex = 0;
     }
