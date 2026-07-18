@@ -5,18 +5,21 @@ import dev.lodestone.adapter.InvocationContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.GameType;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * B1 "Spawn Gauntlet" benchmark actor: survive a fixed opening window with the shared safety
- * supervisor active, then reach a waypoint the actor discovers 32 blocks east of its own observed
- * spawn position.
+ * supervisor active, then reach a waypoint the actor discovers 32 blocks away, horizontally, from
+ * its own observed spawn position - see {@link #computeWaypoint}'s doc for why that is no longer
+ * "32 blocks east specifically" despite this class's name and its git history.
  *
  * <p>Self-contained, like {@link NeoForgeNavigationGoal}: it owns its own duration tracking and
  * waypoint discovery rather than the goal engine orchestrating it step-by-step, and it is not a
@@ -33,7 +36,7 @@ final class NeoForgeSpawnGauntletGoal {
     // headroom without meaningfully eating into the benchmark's own 90-120 second active window,
     // since none of this counts toward MIN_ACTIVE_TICKS/MAX_ACTIVE_TICKS.
     private static final int WORLD_WAIT_TICKS = 200;
-    private static final int WAYPOINT_EAST_OFFSET = 32;
+    private static final int WAYPOINT_OFFSET = 32;
     private static final int WAYPOINT_SEARCH_RADIUS = 16;
     // findToAny (see computeWaypoint's doc) accepts the first candidate its shared-graph search
     // actually walks onto, which - unlike the old nearest-to-the-exact-point probing order - has no
@@ -105,7 +108,7 @@ final class NeoForgeSpawnGauntletGoal {
             } else if (outcome == Outcome.TARGET_UNREACHABLE) {
                 throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
                         + "spawn gauntlet reached its " + MAX_ACTIVE_TICKS
-                        + "-tick hard cap without reaching the east waypoint " + waypoint
+                        + "-tick hard cap without reaching the waypoint " + waypoint
                         + telemetrySuffix());
             }
         } catch (Throwable failure) {
@@ -187,33 +190,72 @@ final class NeoForgeSpawnGauntletGoal {
      * set itself, before {@code findToAny} ever runs, so every candidate reachable from this method
      * is provably far enough from the observed spawn tile regardless of which one gets accepted -
      * this is not a preference that a smarter search order could still accidentally defeat.
+     *
+     * <p>Restricting the box to due east was always this implementation's own arbitrary choice, not
+     * a spec requirement - the task's own authoritative wording (the header of {@code
+     * verification/seeds/b1-spawn-gauntlet.txt}, which explicitly quotes "the task spec") says only
+     * "reach a waypoint 32 blocks away horizontally," and {@code GoalTaskCatalog}'s declarative
+     * assertions for this task never reference a direction at all. Restricting the search to one
+     * direction meant that whenever the terrain due east of a given spawn was entirely unreachable
+     * (a cliff, ravine, or body of water spanning the whole east-side box, not merely a locally
+     * blocked cluster within it) the goal failed even when perfectly reachable ground sat 32 blocks
+     * away in another direction. Official 20-seed rescoring after the {@link
+     * #MIN_WAYPOINT_HORIZONTAL_DISTANCE} fix landed only 4/20 successes, with all 16 failures still
+     * reporting zero reachable candidates across the entire (correctly, completely searched)
+     * east-side box - confirming this as a distinct, geometric failure mode the shared-graph search
+     * itself cannot solve no matter how completely it searches one direction's box.
+     *
+     * <p>This now unions the candidate surfaces from all 4 cardinal directions (east, west, north,
+     * south - see {@link #waypointCandidate}) into one combined, deduplicated set and hands that
+     * whole set to a single {@code findToAny} call, exactly as before: one shared A* expansion still
+     * only ever explores the graph once, and naturally gravitates toward whichever direction
+     * actually has a reachable surface without this method needing to encode any priority order or
+     * try directions sequentially (which would reintroduce the same restart-per-attempt inefficiency
+     * the original {@code findToAny} redesign eliminated). Diagonal (northeast/northwest/southeast/
+     * southwest) directions are deliberately not included: {@code Direction.Plane.HORIZONTAL}'s 4
+     * cardinals already cover the full compass at the same 32-block radius, and doubling to 8
+     * directions would roughly double the merged candidate set's size for coverage that mostly
+     * duplicates what a 16-block search radius around each cardinal point already reaches into the
+     * diagonal quadrants.
      */
     private BlockPos computeWaypoint(Minecraft client, BlockPos origin) {
         var player = client.player;
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
-        var candidate = eastWaypointCandidate(origin, WAYPOINT_EAST_OFFSET);
         var pathfindingOrigin = walkableOriginNear(snapshot, origin);
-        var surfaces = nearbySafeSurfacesByDistance(snapshot, origin, candidate);
+        var merged = new LinkedHashMap<Long, BlockPos>();
+        var perDirectionCounts = new StringBuilder();
+        for (var direction : Direction.Plane.HORIZONTAL) {
+            var candidate = waypointCandidate(origin, WAYPOINT_OFFSET, direction);
+            var directionSurfaces = nearbySafeSurfacesByDistance(snapshot, origin, candidate);
+            for (var surface : directionSurfaces) merged.putIfAbsent(surface.asLong(), surface);
+            if (!perDirectionCounts.isEmpty()) perDirectionCounts.append(',');
+            perDirectionCounts.append(direction.getName()).append('=').append(directionSurfaces.size());
+        }
+        var surfaces = List.copyOf(merged.values());
         var route = NeoForgeSafePathPlanner.findToAny(client.level, player, pathfindingOrigin, surfaces, policy,
                 new NeoForgeSafePathPlanner.ArrivalSpec(3.0, 5.0));
         if (!route.isEmpty()) {
             var accepted = route.getLast();
-            diagnostics.add("waypoint-selection:accepted:" + accepted + ":candidates=" + surfaces.size());
+            diagnostics.add("waypoint-selection:accepted:" + accepted + ":candidates=" + surfaces.size()
+                    + ":byDirection=" + perDirectionCounts);
             return accepted;
         }
         throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
                 + "no reachable safe surface observed within " + WAYPOINT_SEARCH_RADIUS
-                + " blocks of the east waypoint candidate " + candidate + " across all " + surfaces.size()
-                + " candidates searched together from origin " + pathfindingOrigin
+                + " blocks of any of the 4 cardinal waypoint candidates around observed spawn " + origin
+                + " across all " + surfaces.size() + " candidates (" + perDirectionCounts
+                + ") searched together from origin " + pathfindingOrigin
                 + telemetrySuffix());
     }
 
     /**
-     * Every walkable surface within the search cube, nearest-to-the-candidate first, excluding
-     * anything closer to the observed spawn tile than {@link #MIN_WAYPOINT_HORIZONTAL_DISTANCE} -
-     * see that constant's doc for why the distance floor is necessary now that {@link
-     * #computeWaypoint} hands the whole list to {@link NeoForgeSafePathPlanner#findToAny} instead of
-     * probing it in this sorted order itself.
+     * Every walkable surface within the search cube around one direction's candidate, nearest-to-
+     * that-candidate first, excluding anything closer to the observed spawn tile than {@link
+     * #MIN_WAYPOINT_HORIZONTAL_DISTANCE} - see that constant's doc for why the distance floor is
+     * necessary now that {@link #computeWaypoint} hands the merged, multi-direction list to {@link
+     * NeoForgeSafePathPlanner#findToAny} instead of probing it in this sorted order itself. {@code
+     * origin} is always the observed spawn tile regardless of which direction's box is being built,
+     * so the floor means the same thing - "far enough from spawn" - for every direction alike.
      */
     private static List<BlockPos> nearbySafeSurfacesByDistance(NeoForgeWorldSnapshot snapshot, BlockPos origin,
                                                                 BlockPos candidate) {
@@ -247,9 +289,23 @@ final class NeoForgeSpawnGauntletGoal {
         return raw;
     }
 
-    /** Pure, directly testable: the fixed east-offset waypoint candidate before surface search. */
+    /**
+     * Pure, directly testable: the fixed-offset waypoint candidate in a given cardinal direction,
+     * before surface search. {@link #computeWaypoint} calls this once per direction in {@code
+     * Direction.Plane.HORIZONTAL} and unions the resulting candidate boxes; see that method's doc
+     * for why no single direction (east included) is treated as a spec requirement.
+     */
+    static BlockPos waypointCandidate(BlockPos origin, int offset, Direction direction) {
+        return origin.relative(direction, offset);
+    }
+
+    /**
+     * Pure, directly testable: the fixed east-offset waypoint candidate before surface search - kept
+     * as its own named case of {@link #waypointCandidate} because it predates the multi-direction
+     * search and is still exercised directly by this class's own unit tests.
+     */
     static BlockPos eastWaypointCandidate(BlockPos origin, int offset) {
-        return origin.offset(offset, 0, 0);
+        return waypointCandidate(origin, offset, Direction.EAST);
     }
 
     /**

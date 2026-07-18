@@ -441,7 +441,7 @@ public final class BuiltinGoalPlanner implements GoalPlanner {
         segments.add(new GoalSegment("create-fresh-world", "Create a fresh default survival world through guarded UI input.",
                 List.of(createWorld), List.of()));
         segments.add(new GoalSegment("survive-and-reach-waypoint",
-                "Survive the opening window and reach the actor's own spawn-relative east waypoint using ordinary movement input.",
+                "Survive the opening window and reach the actor's own spawn-relative waypoint using ordinary movement input.",
                 List.of(gauntlet), List.of()));
         return new GoalPlan("survival.spawn-gauntlet", goal, List.copyOf(segments),
                 Map.of("taskId", "survival.spawn-gauntlet", "gameMode", "survival",
