@@ -310,7 +310,7 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw keeps the low-level planning profile but every survival action still crosses the typed verified-action boundary; adaptive is the highest profile, uses a low-latency model for realtime replanning, and can synthesize a bounded declarative plan for an otherwise unknown natural-language goal when a model provider is configured. Custom plan steps may declare state preconditions; realtime filters ineligible candidates and script fails closed before invoking them. Failed actions receive a bounded typed recovery decision rather than an unbounded retry loop.", schema(Map.ofEntries(
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw keeps the low-level planning profile but every survival action still crosses the typed verified-action boundary; adaptive is the highest profile, uses a low-latency model for realtime replanning, and can synthesize a bounded declarative plan for an otherwise unknown natural-language goal when a model provider is configured. Custom plan steps may declare state preconditions; realtime filters ineligible candidates and script fails closed before invoking them. Failed actions receive a bounded typed recovery decision rather than an unbounded retry loop. Only one goal runs at a time; a call arriving while another is running or queued waits its turn on this same request instead of racing it. priority=true moves this call ahead of other not-yet-started, already-queued calls without interrupting one already running.", schema(Map.ofEntries(
                     Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
                     Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
                     Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
@@ -327,6 +327,8 @@ public final class McpGateway {
                     Map.entry("allowCommands", Map.of("type", "boolean")),
                     Map.entry("worldSeed", Map.of("type", "string", "minLength", 1, "maxLength", 20,
                             "description", "Optional signed 64-bit Java seed entered through the normal create-world UI")),
+                    Map.entry("priority", Map.of("type", "boolean", "description",
+                            "When true, positions this call ahead of other not-yet-started, already-queued minecraft_goal calls. Never interrupts a goal that is already running. Defaults to false.")),
                     Map.entry("plan", Map.of("type", "object", "description",
                             "Optional declarative plan; invoke steps may declare assertion-shaped preconditions")))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
@@ -995,7 +997,7 @@ public final class McpGateway {
             var report = goalService.run(goal, mode, taskId, maxSteps, maxDurationMs,
                     bool(args, "dryRun", false), customPlan,
                     bool(args, "suppressInGameMessages", false), intelligence, safety,
-                    controls, text(args, "worldSeed", null),
+                    controls, text(args, "worldSeed", null), bool(args, "priority", false),
                     session().id, session().authorization);
             return toolResult(report);
         } catch (IllegalArgumentException invalid) {
