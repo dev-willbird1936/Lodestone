@@ -89,6 +89,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private TreePlan resourceTree;
     private TreePlan targetTree;
     private BlockPos tablePosition;
+    private BlockPos tableInteractionVantage;
     private BlockPos navigationDestination;
     private List<BlockPos> navigationPath = List.of();
     private int navigationIndex;
@@ -703,18 +704,74 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
 
     private void openTable(Minecraft client) {
         if (client.screen instanceof CraftingScreen) {
+            tableInteractionVantage = null;
             announce(client, "3x3 crafting table open - arranging wooden axe recipe");
             transition(Stage.CRAFT_AXE, 20);
             return;
         }
         if (client.screen != null) throw new IllegalStateException("unexpected screen while opening crafting table");
         var player = requirePlayer(client);
+        if (tableInteractionVantage != null) {
+            if (navigate(client, tableInteractionVantage, "crafting-table interaction vantage")) {
+                tableInteractionVantage = null;
+                stageTicks = 0;
+            }
+            return;
+        }
         lookAt(player, tablePosition);
-        if (stageTicks % 20 == 1) {
+        var hit = player.pick(5.0, 0.0F, false);
+        var sightBlocked = !(hit instanceof net.minecraft.world.phys.BlockHitResult blockHit
+                && blockHit.getBlockPos().equals(tablePosition));
+        // A blocked sightline (e.g. foliage clipping through the placed table) never clears on
+        // its own - repeating the identical click from the identical stance would just burn the
+        // whole timeout on a click that can never land. The sibling placeTable() above already
+        // verifies its click via a raycast before firing; escalate to a freshly re-verified
+        // vantage the moment the sightline is confirmed blocked, instead of grinding to the
+        // hard timeout below.
+        if (sightBlocked && stageTicks > 20) {
+            var relocated = findTableInteractionVantage(client);
+            if (relocated == null) throw new IllegalStateException("no unobstructed crafting-table interaction vantage");
+            tableInteractionVantage = relocated;
+            stageTicks = 0;
+            return;
+        }
+        if (!sightBlocked && stageTicks % 20 == 1) {
             KeyMapping.click(client.options.keyUse.getKey());
             inputActions.add("use:key.use-open-crafting-table");
         }
         if (stageTicks > 120) throw new IllegalStateException("normal use input did not open crafting table screen");
+    }
+
+    /**
+     * Search for a standable cell with a clear, in-range line of sight to the placed table. A
+     * blocked sightline (e.g. an overhanging leaf clipping through the table after placement)
+     * never clears on its own; this mirrors findTablePlacement's read-only collision search used
+     * before placement, but verifies visibility of the table itself rather than placement
+     * legality of its support block.
+     */
+    private BlockPos findTableInteractionVantage(Minecraft client) {
+        var player = requirePlayer(client);
+        var aim = net.minecraft.world.phys.Vec3.atCenterOf(tablePosition);
+        for (var radius = 1; radius <= 4; radius++) {
+            for (var dx = -radius; dx <= radius; dx++) {
+                for (var dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                    for (var dy = -1; dy <= 2; dy++) {
+                        var candidate = tablePosition.offset(dx, dy, dz);
+                        if (candidate.equals(tablePosition) || !isStandable(client.level, candidate)) continue;
+                        var eye = new net.minecraft.world.phys.Vec3(candidate.getX() + 0.5,
+                                candidate.getY() + 1.62, candidate.getZ() + 0.5);
+                        if (eye.distanceTo(aim) > 4.5) continue;
+                        var clip = client.level.clip(new net.minecraft.world.level.ClipContext(eye, aim,
+                                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+                        if (clip instanceof net.minecraft.world.phys.BlockHitResult blockHit
+                                && blockHit.getBlockPos().equals(tablePosition)) return candidate.immutable();
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private void craftAxe(Minecraft client) {
