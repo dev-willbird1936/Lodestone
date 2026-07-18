@@ -48,6 +48,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private static final int MAX_SEARCH_ATTEMPTS = 16;
     private static final int ELECTION_PROBE_BUDGET = 9_000;
     private static final int MAX_TREE_RE_ELECTIONS = 6;
+    private static final int MAX_MINING_VANTAGE_ATTEMPTS = 4;
 
     private InvocationContext invocation;
     private CompletableFuture<Map<String, Object>> result;
@@ -90,6 +91,10 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private TreePlan targetTree;
     private BlockPos tablePosition;
     private BlockPos tableInteractionVantage;
+    private BlockPos miningTargetVantage;
+    private BlockPos miningVantageForTarget;
+    private int miningVantageAttempts;
+    private final Set<Long> rejectedMiningVantages = new HashSet<>();
     private BlockPos navigationDestination;
     private List<BlockPos> navigationPath = List.of();
     private int navigationIndex;
@@ -858,8 +863,40 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             targetMinedLogs++;
             mineIndex++;
             stageTicks = 0;
+            miningTargetVantage = null;
+            miningVantageForTarget = null;
+            miningVantageAttempts = 0;
+            rejectedMiningVantages.clear();
             announce(client, "Axe-mined target log " + targetMinedLogs + "/" + targetTree.logs().size());
             waitTicks = 10;
+            return;
+        }
+        if (!target.equals(miningVantageForTarget)) {
+            miningVantageForTarget = target;
+            miningTargetVantage = null;
+            miningVantageAttempts = 0;
+            rejectedMiningVantages.clear();
+        }
+        if (miningTargetVantage != null) {
+            try {
+                if (navigate(client, miningTargetVantage, "mining vantage for target log")) {
+                    stopMovement(client);
+                    miningTargetVantage = null;
+                    stageTicks = 0;
+                }
+            } catch (IllegalStateException failure) {
+                if (!isRecoverableNavigationFailure(failure.getMessage())) throw failure;
+                // The candidate vantage itself proved unreachable (not that the log is unseeable) -
+                // exclude it and let the next relocation attempt, still bounded by
+                // MAX_MINING_VANTAGE_ATTEMPTS, pick a different one instead of aborting the whole
+                // goal on the first unreachable candidate.
+                navigationDiagnostics.add("mining vantage route rejected " + miningTargetVantage
+                        + " - trying another: " + failure.getMessage());
+                rejectedMiningVantages.add(miningTargetVantage.asLong());
+                stopMovement(client);
+                resetNavigation();
+                miningTargetVantage = null;
+            }
             return;
         }
         lookAt(player, target);
@@ -883,9 +920,31 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 stopAttack(client);
                 if (policy.obstructionMiningEnabled() && breakVisibleMiningObstruction(client, target)) return;
                 if (policy.toolPrerequisiteGuardEnabled()) {
-                    if (stageTicks > 120) {
+                    // A raycast miss with no obstruction and no redirect-eligible log is a stance
+                    // problem, not a world problem: mineTarget() never moves once navigateTarget()
+                    // parks the player at the tree's base, so a log that is high up the trunk (or
+                    // wedged on the trunk's far side) can end up outside the 5-block pick even
+                    // though nothing changed underneath it. Grinding the identical raycast from the
+                    // identical stance can never land it; reposition to a freshly re-verified vantage
+                    // with a confirmed line of sight, mirroring findTableInteractionVantage, and only
+                    // escalate to a genuine failure once that repositioning itself is exhausted.
+                    if (stageTicks > 20) {
+                        if (miningVantageAttempts < MAX_MINING_VANTAGE_ATTEMPTS) {
+                            miningVantageAttempts++;
+                            var vantage = findMiningTargetVantage(client, target);
+                            if (vantage != null) {
+                                miningTargetVantage = vantage;
+                                stageTicks = 0;
+                                navigationDiagnostics.add("mining vantage relocation "
+                                        + miningVantageAttempts + "/" + MAX_MINING_VANTAGE_ATTEMPTS
+                                        + " for target log " + target + ": " + vantage);
+                                announce(client, "Target log out of reach - repositioning for a clear line of sight");
+                                return;
+                            }
+                        }
                         throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:obstructed; "
                                 + "intelligent mining route cannot see target log " + target
+                                + " after " + miningVantageAttempts + " vantage relocation attempts"
                                 + "; refusing to attack an unplanned obstruction" + telemetrySuffix());
                     }
                     navigationDiagnostics.add("mining-target-not-visible:" + target);
@@ -897,6 +956,48 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         inputActions.add("attack:key.attack-held-with-wooden-axe");
         if (stageTicks > 260) throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:mining; "
                 + "axe mining failed to break observed target log " + attackTarget + telemetrySuffix());
+    }
+
+    /**
+     * Search for a standable cell with a clear, in-range line of sight to a specific target-tree
+     * log. navigateTarget() only walks the player to the tree's base once, before mining begins;
+     * as mineIndex climbs the trunk, a log positioned higher up (or wedged into the trunk's far
+     * side) can end up more than 5 blocks from that fixed ground-level stance even though nothing
+     * underneath it changed. The vertical band deliberately spans from just below the tree's own
+     * base up to just above the target log itself, but is tried ground level first: a stance near
+     * the tree's own base only needs a modest horizontal shuffle plus a steeper look angle to
+     * regain reach on most logs, and is immediately walkable with no climbing, whereas a
+     * canopy-height platform (tried only once the ground-level ring is exhausted) may need real
+     * pathing to reach and can turn out not to be reachable at all. This otherwise mirrors
+     * findTableInteractionVantage's read-only standable/line-of-sight search, retargeted at
+     * whichever log mineIndex currently names instead of the fixed table position.
+     */
+    private BlockPos findMiningTargetVantage(Minecraft client, BlockPos target) {
+        var player = requirePlayer(client);
+        var aim = net.minecraft.world.phys.Vec3.atCenterOf(target);
+        var minY = Math.min(targetTree.base().getY(), target.getY()) - 1;
+        var maxY = Math.max(target.getY() + 1, minY);
+        for (var radius = 1; radius <= 4; radius++) {
+            for (var dx = -radius; dx <= radius; dx++) {
+                for (var dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
+                    for (var y = minY; y <= maxY; y++) {
+                        var candidate = new BlockPos(target.getX() + dx, y, target.getZ() + dz);
+                        if (rejectedMiningVantages.contains(candidate.asLong())
+                                || !isStandable(client.level, candidate)) continue;
+                        var eye = new net.minecraft.world.phys.Vec3(candidate.getX() + 0.5,
+                                candidate.getY() + 1.62, candidate.getZ() + 0.5);
+                        if (eye.distanceTo(aim) > 4.5) continue;
+                        var clip = client.level.clip(new net.minecraft.world.level.ClipContext(eye, aim,
+                                net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                                net.minecraft.world.level.ClipContext.Fluid.NONE, player));
+                        if (clip instanceof net.minecraft.world.phys.BlockHitResult blockHit
+                                && blockHit.getBlockPos().equals(target)) return candidate.immutable();
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private boolean breakVisibleMiningObstruction(Minecraft client, BlockPos target) {
