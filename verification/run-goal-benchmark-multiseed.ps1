@@ -27,7 +27,17 @@ param(
     # of silently falling back to DeterministicGoalModelProvider. Ignored entirely in script mode.
     [int] $ModelPort = 37842,
     [ValidateSet('gpt-5.4-mini')]
-    [string] $ModelId = 'gpt-5.4-mini'
+    [string] $ModelId = 'gpt-5.4-mini',
+    # Off by default, zero effect on a normal scoring pass. Sets
+    # -Dlodestone.spawnGauntlet.reachabilityDiagnostic=true on the client JVM, which folds a
+    # NeoForgeSafePathPlanner.floodFillReachable summary (max reachable horizontal distance and
+    # whether the waypoint annulus is reachable at all, under both the default 1-block descent cap
+    # and survival.spawn-gauntlet's own widened cap) into that seed's TARGET_UNREACHABLE failure
+    # message - lets offline investigation read a failing seed's real reachability ceiling straight
+    # out of its own captured failure message, without needing a full live 90+ second active window
+    # per seed (the annulus search already fails fast, before Stage.ACTIVE, for every seed this is
+    # meant to explain) or a separate diagnostic capability/schema.
+    [switch] $ReachabilityDiagnostic
 )
 
 # Telemetry-only multi-seed harness: no ffmpeg/video. Per the benchmark contract, every result
@@ -331,7 +341,8 @@ function Invoke-SeedRun {
     $env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
     $token = [guid]::NewGuid().ToString('N')
     $permissions = 'observe,communicate,control-player,modify-world,administer-server,capture-screen'
-    $command = ".\gradlew.bat --no-daemon --console=plain -PincludeFabric262=false -Dlodestone.port=$Port -Dlodestone.token=$token -Dlodestone.permissions=$permissions -Dlodestone.runDirectory=$RunDirectory :hosts:neoforge:mc1_21_1:runKeepFocusClient"
+    $reachabilityDiagnosticArg = if ($ReachabilityDiagnostic) { ' -Dlodestone.spawnGauntlet.reachabilityDiagnostic=true' } else { '' }
+    $command = ".\gradlew.bat --no-daemon --console=plain -PincludeFabric262=false -Dlodestone.port=$Port -Dlodestone.token=$token -Dlodestone.permissions=$permissions -Dlodestone.runDirectory=$RunDirectory$reachabilityDiagnosticArg :hosts:neoforge:mc1_21_1:runKeepFocusClient"
     $launcher = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/c', $command -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput $StdoutLog -RedirectStandardError $StderrLog -PassThru
 
     $result = [ordered]@{

@@ -47,6 +47,11 @@ runs {
         systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37821')
         systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
         systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+        // Off by default (see NeoForgeSpawnGauntletGoal.REACHABILITY_DIAGNOSTIC_ENABLED): folds a
+        // reachability flood-fill summary into a failing spawn-gauntlet seed's failure message for
+        // offline investigation, without adding a new MCP capability or schema.
+        systemProperty 'lodestone.spawnGauntlet.reachabilityDiagnostic',
+                System.getProperty('lodestone.spawnGauntlet.reachabilityDiagnostic', 'false')
     }
     keepFocusClient {
         run 'client'
@@ -55,12 +60,22 @@ runs {
         systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37828')
         systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
         systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+        // Off by default (see NeoForgeSpawnGauntletGoal.REACHABILITY_DIAGNOSTIC_ENABLED): folds a
+        // reachability flood-fill summary into a failing spawn-gauntlet seed's failure message for
+        // offline investigation, without adding a new MCP capability or schema.
+        systemProperty 'lodestone.spawnGauntlet.reachabilityDiagnostic',
+                System.getProperty('lodestone.spawnGauntlet.reachabilityDiagnostic', 'false')
     }
     server {
         argument '--nogui'
         systemProperty 'lodestone.port', System.getProperty('lodestone.port', '37821')
         systemProperty 'lodestone.token', System.getProperty('lodestone.token', System.getenv('LODESTONE_TOKEN') ?: '')
         systemProperty 'lodestone.permissions', System.getProperty('lodestone.permissions', System.getenv('LODESTONE_PERMISSIONS') ?: '')
+        // Off by default (see NeoForgeSpawnGauntletGoal.REACHABILITY_DIAGNOSTIC_ENABLED): folds a
+        // reachability flood-fill summary into a failing spawn-gauntlet seed's failure message for
+        // offline investigation, without adding a new MCP capability or schema.
+        systemProperty 'lodestone.spawnGauntlet.reachabilityDiagnostic',
+                System.getProperty('lodestone.spawnGauntlet.reachabilityDiagnostic', 'false')
     }
 }
 

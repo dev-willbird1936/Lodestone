@@ -346,6 +346,75 @@ final class NeoForgeSafePathPlanner {
     }
 
     /**
+     * Diagnostic-only exhaustive reachability flood-fill from an origin: every position the real
+     * pathfinder's own movement-legality rules (buffered-walkable transitions, {@link
+     * #descentAllowed}'s policy-driven cap, diagonal corner-clear when enabled) would ever consider
+     * passable, with no goal at all to terminate early on. Cost-weighting (fall damage, safety,
+     * mutation pricing) is irrelevant to a pure reachability question, so this deliberately ignores
+     * it rather than duplicating {@code edgeCost}; it exists purely so offline investigation (e.g.
+     * predicting whether a prospective search-shape or descent-cap change would rescue a specific
+     * spawn) can ask "what's actually reachable from here" directly, instead of repeatedly re-running
+     * a full live benchmark pass to find out empirically. Never called by any scored actor's normal
+     * path - see {@code NeoForgeSpawnGauntletGoal}'s own reachability-diagnostic gate, off by default.
+     */
+    static List<BlockPos> floodFillReachable(ClientLevel level, LocalPlayer player, BlockPos start,
+                                              NeoForgeGoalPolicy policy, int maxVisited) {
+        var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
+        var origin = start.immutable();
+        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
+                snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
+
+        var visited = new HashSet<Long>();
+        var queue = new ArrayDeque<BlockPos>();
+        var reached = new ArrayList<BlockPos>();
+        visited.add(origin.asLong());
+        queue.add(origin);
+        reached.add(origin);
+
+        while (!queue.isEmpty() && visited.size() < maxVisited) {
+            var current = queue.removeFirst();
+            for (var direction : Direction.Plane.HORIZONTAL) {
+                var horizontal = current.relative(direction);
+                for (var dy : DY_OFFSETS) {
+                    offerFloodFillNeighbor(current, horizontal, dy, origin, policy, snapshot, visited, queue, reached);
+                }
+            }
+            if (policy.safeNavigationPlanningEnabled()) {
+                for (var pair : DIAGONALS) {
+                    var flankA = current.relative(pair[0]);
+                    var flankB = current.relative(pair[1]);
+                    if (!cornerClear(flankA, flankB, policy, snapshot)) continue;
+                    var diagonal = flankA.relative(pair[1]);
+                    for (var dy : DY_OFFSETS) {
+                        offerFloodFillNeighbor(current, diagonal, dy, origin, policy, snapshot, visited, queue, reached);
+                    }
+                }
+            }
+        }
+        return List.copyOf(reached);
+    }
+
+    /** Shared neighbor-legality check for {@link #floodFillReachable}, mirroring {@link
+     * #relaxNeighbor}'s buffered-walkable/descent-cap rules but without cost tracking or mutation
+     * candidates - a plain reachability question has no route to weigh mining/placing against. */
+    private static void offerFloodFillNeighbor(BlockPos current, BlockPos horizontal, int dy, BlockPos origin,
+                                                NeoForgeGoalPolicy policy, NeoForgeWorldSnapshot snapshot,
+                                                HashSet<Long> visited, ArrayDeque<BlockPos> queue,
+                                                ArrayList<BlockPos> reached) {
+        var candidate = new BlockPos(horizontal.getX(), current.getY() + dy, horizontal.getZ());
+        if (!withinBounds(origin, candidate) || visited.contains(candidate.asLong())) return;
+        if (dy != 0 && (policy.highSafety()
+                ? !snapshot.bufferedWalkable(horizontal)
+                : !snapshot.walkable(horizontal))) return;
+        if (!descentAllowed(current.getY() - candidate.getY(), policy.maxDescentBlocks())) return;
+        if (!(policy.highSafety() ? snapshot.bufferedWalkable(candidate) : snapshot.walkable(candidate))) return;
+        visited.add(candidate.asLong());
+        var immutable = candidate.immutable();
+        queue.addLast(immutable);
+        reached.add(immutable);
+    }
+
+    /**
      * Find normal-input vertical progress when the requested target is materially below an
      * otherwise unreachable origin. Every edge uses the same walkability and one-block descent
      * rules as ordinary A*, so this cannot turn route recovery into an unsafe fall shortcut.

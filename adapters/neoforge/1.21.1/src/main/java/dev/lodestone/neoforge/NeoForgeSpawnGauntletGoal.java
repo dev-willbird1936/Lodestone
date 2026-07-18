@@ -63,6 +63,16 @@ final class NeoForgeSpawnGauntletGoal {
     // only for this actor's own policy instance (see the constructor), not the shared default, so no
     // other actor's edge set changes at all.
     private static final int MAX_DESCENT_BLOCKS = 3;
+    // Off by default: zero behavior or latency change for real scoring runs. Flip on with
+    // -Dlodestone.spawnGauntlet.reachabilityDiagnostic=true to fold a
+    // NeoForgeSafePathPlanner.floodFillReachable summary (under both the default 1-block descent cap
+    // and this actor's own widened cap) into the TARGET_UNREACHABLE failure message, so offline
+    // investigation of a specific failing seed can read the real reachable-distance ceiling straight
+    // out of that seed's own captured failure message - no new MCP capability, input field, or
+    // schema change needed, and no live 90+ second active window required (the annulus search
+    // already fails fast, before ever reaching Stage.ACTIVE, for every seed this is meant to explain).
+    private static final boolean REACHABILITY_DIAGNOSTIC_ENABLED =
+            Boolean.getBoolean("lodestone.spawnGauntlet.reachabilityDiagnostic");
     static final int MIN_ACTIVE_TICKS = 1_800;
     static final int MAX_ACTIVE_TICKS = 2_400;
 
@@ -242,11 +252,53 @@ final class NeoForgeSpawnGauntletGoal {
             diagnostics.add("waypoint-selection:accepted:" + accepted + ":candidates=" + surfaces.size());
             return accepted;
         }
+        var diagnosticSummary = REACHABILITY_DIAGNOSTIC_ENABLED
+                ? " | " + reachabilityDiagnosticSummary(client, player, pathfindingOrigin, origin) : "";
         throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
                 + "no reachable safe surface observed in the " + MIN_WAYPOINT_HORIZONTAL_DISTANCE + "-"
                 + MAX_WAYPOINT_HORIZONTAL_DISTANCE + "-block annulus around observed spawn " + origin
                 + " across all " + surfaces.size() + " candidates searched together from origin "
-                + pathfindingOrigin + telemetrySuffix());
+                + pathfindingOrigin + diagnosticSummary + telemetrySuffix());
+    }
+
+    /**
+     * Offline-investigation only (see {@link #REACHABILITY_DIAGNOSTIC_ENABLED}): flood-fills the
+     * real reachable area from the pathfinding origin under both the shared default 1-block descent
+     * cap and this actor's own widened cap, and reports each one's actual maximum reachable
+     * horizontal distance and whether the {@link #withinWaypointAnnulus} band is reachable at all
+     * under it - directly answering "how far could this spawn actually reach" for a specific failing
+     * seed without needing to guess from a full live 20-seed re-run first.
+     */
+    private String reachabilityDiagnosticSummary(Minecraft client, LocalPlayer player, BlockPos pathfindingOrigin,
+                                                  BlockPos origin) {
+        var defaultCapPolicy = policy.withMaxDescentBlocks(NeoForgeGoalPolicy.DEFAULT_MAX_DESCENT_BLOCKS);
+        var reachableDefaultCap = NeoForgeSafePathPlanner.floodFillReachable(client.level, player,
+                pathfindingOrigin, defaultCapPolicy, 45_000);
+        var reachableWidenedCap = NeoForgeSafePathPlanner.floodFillReachable(client.level, player,
+                pathfindingOrigin, policy, 45_000);
+        return "reachabilityDiagnostic{descentCap=" + NeoForgeGoalPolicy.DEFAULT_MAX_DESCENT_BLOCKS
+                + ":visited=" + reachableDefaultCap.size()
+                + ",maxHorizontalDistance=" + maxHorizontalDistanceFrom(origin, reachableDefaultCap)
+                + ",annulusReachable=" + anyWithinWaypointAnnulus(origin, reachableDefaultCap)
+                + ";descentCap=" + policy.maxDescentBlocks()
+                + ":visited=" + reachableWidenedCap.size()
+                + ",maxHorizontalDistance=" + maxHorizontalDistanceFrom(origin, reachableWidenedCap)
+                + ",annulusReachable=" + anyWithinWaypointAnnulus(origin, reachableWidenedCap) + "}";
+    }
+
+    /** Pure, directly testable: the farthest horizontal distance from origin among a set of
+     * positions, 0.0 for an empty set (an unreachable origin's own flood-fill). */
+    static double maxHorizontalDistanceFrom(BlockPos origin, List<BlockPos> positions) {
+        var max = 0.0;
+        for (var position : positions) max = Math.max(max, horizontalDistance(origin, position));
+        return max;
+    }
+
+    /** Pure, directly testable: whether any position in the set falls within {@link
+     * #withinWaypointAnnulus}'s band relative to origin. */
+    static boolean anyWithinWaypointAnnulus(BlockPos origin, List<BlockPos> positions) {
+        for (var position : positions) if (withinWaypointAnnulus(horizontalDistance(origin, position))) return true;
+        return false;
     }
 
     /**
