@@ -1727,8 +1727,23 @@ final class NeoForgeNetherGoal implements NeoForgeResumableGoal {
                 stageTicks = 0;
             }
         }
-        lookAt(requirePlayer(client), Vec3.atCenterOf(tablePosition));
-        if (stageTicks % 15 == 1) {
+        var player = requirePlayer(client);
+        lookAt(player, Vec3.atCenterOf(tablePosition));
+        var hit = player.pick(5.0F, 0.0F, false);
+        var sightBlocked = !(hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(tablePosition));
+        // A blocked sightline (e.g. an overhanging leaf clipping through the placed table) never
+        // clears on its own - repeating the same click from the same spot would just burn the
+        // whole timeout for a click that can never land. Escalate to a re-verified vantage the
+        // same way an unwalkable cached vantage already does, instead of grinding to the timeout.
+        if (sightBlocked && stageTicks > 20) {
+            var relocated = findMiningVantage(client, tablePosition);
+            if (relocated == null) throw new IllegalStateException("no unobstructed crafting-table interaction vantage");
+            tableInteractionVantage = relocated;
+            tableInteractionPositionReady = false;
+            stageTicks = 0;
+            return;
+        }
+        if (!sightBlocked && stageTicks % 15 == 1) {
             KeyMapping.click(client.options.keyUse.getKey());
             inputActions.add("use:key.use-open-crafting-table");
         }
