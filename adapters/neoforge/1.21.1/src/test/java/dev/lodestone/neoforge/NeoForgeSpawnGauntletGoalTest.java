@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 package dev.lodestone.neoforge;
 
-import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class NeoForgeSpawnGauntletGoalTest {
     @Test
@@ -41,20 +42,25 @@ final class NeoForgeSpawnGauntletGoalTest {
     }
 
     @Test
-    void eastWaypointCandidateOffsetsOnlyTheXAxis() {
-        var origin = new BlockPos(10, 64, -5);
-        var candidate = NeoForgeSpawnGauntletGoal.eastWaypointCandidate(origin, 32);
-        assertEquals(42, candidate.getX());
-        assertEquals(64, candidate.getY());
-        assertEquals(-5, candidate.getZ());
+    void withinWaypointAnnulusRejectsAnythingBelowTheMinimumHorizontalDistance() {
+        assertFalse(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(0.0));
+        assertFalse(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(17.46));
+        assertFalse(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(27.99));
+        assertTrue(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(28.0));
     }
 
     @Test
-    void eastWaypointCandidateWorksFromNegativeCoordinateOrigins() {
-        var origin = new BlockPos(-20, 70, 100);
-        var candidate = NeoForgeSpawnGauntletGoal.eastWaypointCandidate(origin, 32);
-        assertEquals(12, candidate.getX());
-        assertEquals(70, candidate.getY());
-        assertEquals(100, candidate.getZ());
+    void withinWaypointAnnulusRejectsAnythingBeyondTheMaximumHorizontalDistance() {
+        assertTrue(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(48.0));
+        assertFalse(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(48.01));
+        assertFalse(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(96.0));
+    }
+
+    @Test
+    void withinWaypointAnnulusAcceptsTheWholeMiddleOfTheRangeIncludingTheIdealThirtyTwoBlockOffset() {
+        assertTrue(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(28.0));
+        assertTrue(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(32.0));
+        assertTrue(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(40.0));
+        assertTrue(NeoForgeSpawnGauntletGoal.withinWaypointAnnulus(48.0));
     }
 }

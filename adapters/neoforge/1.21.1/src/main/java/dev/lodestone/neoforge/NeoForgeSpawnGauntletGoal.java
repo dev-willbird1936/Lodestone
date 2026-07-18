@@ -5,12 +5,10 @@ import dev.lodestone.adapter.InvocationContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.world.level.GameType;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -50,6 +48,11 @@ final class NeoForgeSpawnGauntletGoal {
     // away regardless of which one it happens to be - it does not merely bias the search back toward
     // preferring the exact point.
     private static final double MIN_WAYPOINT_HORIZONTAL_DISTANCE = 28.0;
+    // Paired with the floor above to bound the accepted waypoint to a genuine "~32 blocks away"
+    // annulus rather than letting it drift arbitrarily far outward; 48 mirrors the old per-direction
+    // box's own outer reach (candidate distance 32 + WAYPOINT_SEARCH_RADIUS 16). See
+    // computeWaypoint's doc for why the annulus itself (not a per-direction box) is searched now.
+    private static final double MAX_WAYPOINT_HORIZONTAL_DISTANCE = 48.0;
     static final int MIN_ACTIVE_TICKS = 1_800;
     static final int MAX_ACTIVE_TICKS = 2_400;
 
@@ -157,9 +160,9 @@ final class NeoForgeSpawnGauntletGoal {
     /**
      * Geometric proximity alone is not enough to pick a usable waypoint: the same reachability gap
      * {@code NeoForgeSurvivalTreeGoal.electTrees()} solves for candidate trees ("probe rejected -
-     * no bounded route") applies here too - the nearest walkable surface to the east candidate can
-     * sit across a ravine, cliff, or body of water that the safe path planner's one-block-descent
-     * movement model can never actually cross.
+     * no bounded route") applies here too - the nearest walkable-looking surface can still sit
+     * across a ravine, cliff, or body of water the safe path planner's one-block-descent movement
+     * model can never actually cross.
      *
      * <p>An earlier version of this method probed candidates one at a time, nearest-to-the-exact-
      * point first, each via its own independent {@link NeoForgeSafePathPlanner#find} search, and
@@ -186,92 +189,92 @@ final class NeoForgeSpawnGauntletGoal {
      * simply accepts whichever candidate its own expansion from the observed spawn tile reaches
      * first, which {@link #MIN_WAYPOINT_HORIZONTAL_DISTANCE} exists to keep from quietly becoming a
      * short walk instead of a genuine ~32-block traversal (live-verified regression: see that
-     * constant's own doc). {@link #nearbySafeSurfacesByDistance} enforces the floor on the candidate
-     * set itself, before {@code findToAny} ever runs, so every candidate reachable from this method
-     * is provably far enough from the observed spawn tile regardless of which one gets accepted -
-     * this is not a preference that a smarter search order could still accidentally defeat.
+     * constant's own doc). The candidate-generation helper (now {@link #nearbySafeSurfacesInAnnulus})
+     * enforces the floor on the candidate set itself, before {@code findToAny} ever runs, so every
+     * candidate reachable from this method is provably far enough from the observed spawn tile
+     * regardless of which one gets accepted - this is not a preference that a smarter search order
+     * could still accidentally defeat.
      *
-     * <p>Restricting the box to due east was always this implementation's own arbitrary choice, not
-     * a spec requirement - the task's own authoritative wording (the header of {@code
+     * <p>Restricting the search to due east was always this implementation's own arbitrary choice,
+     * not a spec requirement - the task's own authoritative wording (the header of {@code
      * verification/seeds/b1-spawn-gauntlet.txt}, which explicitly quotes "the task spec") says only
      * "reach a waypoint 32 blocks away horizontally," and {@code GoalTaskCatalog}'s declarative
-     * assertions for this task never reference a direction at all. Restricting the search to one
-     * direction meant that whenever the terrain due east of a given spawn was entirely unreachable
-     * (a cliff, ravine, or body of water spanning the whole east-side box, not merely a locally
-     * blocked cluster within it) the goal failed even when perfectly reachable ground sat 32 blocks
-     * away in another direction. Official 20-seed rescoring after the {@link
-     * #MIN_WAYPOINT_HORIZONTAL_DISTANCE} fix landed only 4/20 successes, with all 16 failures still
-     * reporting zero reachable candidates across the entire (correctly, completely searched)
-     * east-side box - confirming this as a distinct, geometric failure mode the shared-graph search
-     * itself cannot solve no matter how completely it searches one direction's box.
+     * assertions for this task never reference a direction at all. An earlier iteration replaced due
+     * east with a union of the 4 cardinal directions on that same basis, but a second-opinion review
+     * caught a real geometric bug in how that union was built: each direction's box was only {@link
+     * #WAYPOINT_SEARCH_RADIUS} wide off-axis at a {@link #WAYPOINT_OFFSET}-block reach, covering
+     * roughly 60 degrees of compass around that direction's own axis - four of those cover roughly
+     * 240 of the 360 degrees around the observed spawn tile at the target distance, leaving the
+     * remaining ~120 degrees (split across the four gaps between adjacent cardinal boxes) never a
+     * candidate at all. A diagonal escape route (a ravine floor, a hillside bench running northeast,
+     * or similar) sitting in one of those gaps would produce exactly the same "hundreds of candidates
+     * searched in every direction, zero reachable" signature this method's diagnostics report for a
+     * genuinely fully-encircled spawn - the two cases were indistinguishable from that signature
+     * alone, which is why the gap went unnoticed through the 4/20 -&gt; 5/20 rescoring that followed
+     * the cardinal-direction change.
      *
-     * <p>This now unions the candidate surfaces from all 4 cardinal directions (east, west, north,
-     * south - see {@link #waypointCandidate}) into one combined, deduplicated set and hands that
-     * whole set to a single {@code findToAny} call, exactly as before: one shared A* expansion still
-     * only ever explores the graph once, and naturally gravitates toward whichever direction
-     * actually has a reachable surface without this method needing to encode any priority order or
-     * try directions sequentially (which would reintroduce the same restart-per-attempt inefficiency
-     * the original {@code findToAny} redesign eliminated). Diagonal (northeast/northwest/southeast/
-     * southwest) directions are deliberately not included: {@code Direction.Plane.HORIZONTAL}'s 4
-     * cardinals already cover the full compass at the same 32-block radius, and doubling to 8
-     * directions would roughly double the merged candidate set's size for coverage that mostly
-     * duplicates what a 16-block search radius around each cardinal point already reaches into the
-     * diagonal quadrants.
+     * <p>This now drops the direction-box framing entirely and enumerates every walkable surface in
+     * the full 360-degree horizontal annulus between {@link #MIN_WAYPOINT_HORIZONTAL_DISTANCE} and
+     * {@link #MAX_WAYPOINT_HORIZONTAL_DISTANCE} of the observed spawn tile (see {@link
+     * #nearbySafeSurfacesInAnnulus}), handing that one combined set to a single {@code findToAny}
+     * call exactly as before - the same "one shared A* expansion beats restarting per attempt or per
+     * direction" principle, just with no angular gaps left for a real escape route to hide in.
      */
     private BlockPos computeWaypoint(Minecraft client, BlockPos origin) {
         var player = client.player;
         var snapshot = NeoForgeWorldSnapshot.capture(client.level, policy, player);
         var pathfindingOrigin = walkableOriginNear(snapshot, origin);
-        var merged = new LinkedHashMap<Long, BlockPos>();
-        var perDirectionCounts = new StringBuilder();
-        for (var direction : Direction.Plane.HORIZONTAL) {
-            var candidate = waypointCandidate(origin, WAYPOINT_OFFSET, direction);
-            var directionSurfaces = nearbySafeSurfacesByDistance(snapshot, origin, candidate);
-            for (var surface : directionSurfaces) merged.putIfAbsent(surface.asLong(), surface);
-            if (!perDirectionCounts.isEmpty()) perDirectionCounts.append(',');
-            perDirectionCounts.append(direction.getName()).append('=').append(directionSurfaces.size());
-        }
-        var surfaces = List.copyOf(merged.values());
+        var surfaces = nearbySafeSurfacesInAnnulus(snapshot, origin);
         var route = NeoForgeSafePathPlanner.findToAny(client.level, player, pathfindingOrigin, surfaces, policy,
                 new NeoForgeSafePathPlanner.ArrivalSpec(3.0, 5.0));
         if (!route.isEmpty()) {
             var accepted = route.getLast();
-            diagnostics.add("waypoint-selection:accepted:" + accepted + ":candidates=" + surfaces.size()
-                    + ":byDirection=" + perDirectionCounts);
+            diagnostics.add("waypoint-selection:accepted:" + accepted + ":candidates=" + surfaces.size());
             return accepted;
         }
         throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
-                + "no reachable safe surface observed within " + WAYPOINT_SEARCH_RADIUS
-                + " blocks of any of the 4 cardinal waypoint candidates around observed spawn " + origin
-                + " across all " + surfaces.size() + " candidates (" + perDirectionCounts
-                + ") searched together from origin " + pathfindingOrigin
-                + telemetrySuffix());
+                + "no reachable safe surface observed in the " + MIN_WAYPOINT_HORIZONTAL_DISTANCE + "-"
+                + MAX_WAYPOINT_HORIZONTAL_DISTANCE + "-block annulus around observed spawn " + origin
+                + " across all " + surfaces.size() + " candidates searched together from origin "
+                + pathfindingOrigin + telemetrySuffix());
     }
 
     /**
-     * Every walkable surface within the search cube around one direction's candidate, nearest-to-
-     * that-candidate first, excluding anything closer to the observed spawn tile than {@link
-     * #MIN_WAYPOINT_HORIZONTAL_DISTANCE} - see that constant's doc for why the distance floor is
-     * necessary now that {@link #computeWaypoint} hands the merged, multi-direction list to {@link
-     * NeoForgeSafePathPlanner#findToAny} instead of probing it in this sorted order itself. {@code
-     * origin} is always the observed spawn tile regardless of which direction's box is being built,
-     * so the floor means the same thing - "far enough from spawn" - for every direction alike.
+     * Every walkable surface anywhere in the full 360-degree horizontal annulus around the observed
+     * spawn tile (see {@link #withinWaypointAnnulus}), nearest-to-{@link #WAYPOINT_OFFSET}-blocks-
+     * away first - see {@link #computeWaypoint}'s doc for why the annulus, not a per-direction box,
+     * is searched now. The sort order is cosmetic only: {@link NeoForgeSafePathPlanner#findToAny}
+     * accepts the first candidate its own graph expansion reaches regardless of input order (this
+     * was already true of the old per-direction lists), so it does not bias which candidate actually
+     * gets accepted.
      */
-    private static List<BlockPos> nearbySafeSurfacesByDistance(NeoForgeWorldSnapshot snapshot, BlockPos origin,
-                                                                BlockPos candidate) {
+    private static List<BlockPos> nearbySafeSurfacesInAnnulus(NeoForgeWorldSnapshot snapshot, BlockPos origin) {
         var surfaces = new ArrayList<BlockPos>();
-        for (var x = candidate.getX() - WAYPOINT_SEARCH_RADIUS; x <= candidate.getX() + WAYPOINT_SEARCH_RADIUS; x++) {
-            for (var z = candidate.getZ() - WAYPOINT_SEARCH_RADIUS; z <= candidate.getZ() + WAYPOINT_SEARCH_RADIUS; z++) {
-                for (var y = candidate.getY() - WAYPOINT_SEARCH_RADIUS; y <= candidate.getY() + WAYPOINT_SEARCH_RADIUS; y++) {
+        var radius = (int) Math.ceil(MAX_WAYPOINT_HORIZONTAL_DISTANCE);
+        for (var x = origin.getX() - radius; x <= origin.getX() + radius; x++) {
+            for (var z = origin.getZ() - radius; z <= origin.getZ() + radius; z++) {
+                var columnDistance = horizontalDistance(origin, new BlockPos(x, origin.getY(), z));
+                if (!withinWaypointAnnulus(columnDistance)) continue;
+                for (var y = origin.getY() - WAYPOINT_SEARCH_RADIUS; y <= origin.getY() + WAYPOINT_SEARCH_RADIUS; y++) {
                     var position = new BlockPos(x, y, z);
-                    if (!snapshot.walkable(position)) continue;
-                    if (horizontalDistance(origin, position) < MIN_WAYPOINT_HORIZONTAL_DISTANCE) continue;
-                    surfaces.add(position.immutable());
+                    if (snapshot.walkable(position)) surfaces.add(position.immutable());
                 }
             }
         }
-        surfaces.sort(Comparator.comparingDouble(position -> position.distSqr(candidate)));
+        surfaces.sort(Comparator.comparingDouble(
+                position -> Math.abs(horizontalDistance(origin, position) - WAYPOINT_OFFSET)));
         return surfaces;
+    }
+
+    /**
+     * Pure, directly testable: whether a horizontal distance from the observed spawn tile falls
+     * within the accepted waypoint annulus. Kept as its own predicate, isolated from world access,
+     * the same way {@code NeoForgeSafePathPlanner}'s {@code cornerClear}/{@code mineCandidateEligible}
+     * are - so the min/max boundary behavior is testable without a live level.
+     */
+    static boolean withinWaypointAnnulus(double horizontalDistanceFromSpawn) {
+        return horizontalDistanceFromSpawn >= MIN_WAYPOINT_HORIZONTAL_DISTANCE
+                && horizontalDistanceFromSpawn <= MAX_WAYPOINT_HORIZONTAL_DISTANCE;
     }
 
     /**
@@ -287,25 +290,6 @@ final class NeoForgeSpawnGauntletGoal {
             if (snapshot.walkable(candidate)) return candidate.immutable();
         }
         return raw;
-    }
-
-    /**
-     * Pure, directly testable: the fixed-offset waypoint candidate in a given cardinal direction,
-     * before surface search. {@link #computeWaypoint} calls this once per direction in {@code
-     * Direction.Plane.HORIZONTAL} and unions the resulting candidate boxes; see that method's doc
-     * for why no single direction (east included) is treated as a spec requirement.
-     */
-    static BlockPos waypointCandidate(BlockPos origin, int offset, Direction direction) {
-        return origin.relative(direction, offset);
-    }
-
-    /**
-     * Pure, directly testable: the fixed east-offset waypoint candidate before surface search - kept
-     * as its own named case of {@link #waypointCandidate} because it predates the multi-direction
-     * search and is still exercised directly by this class's own unit tests.
-     */
-    static BlockPos eastWaypointCandidate(BlockPos origin, int offset) {
-        return waypointCandidate(origin, offset, Direction.EAST);
     }
 
     /**
