@@ -35,14 +35,6 @@ final class NeoForgeSpawnGauntletGoal {
     private static final int WORLD_WAIT_TICKS = 200;
     private static final int WAYPOINT_EAST_OFFSET = 32;
     private static final int WAYPOINT_SEARCH_RADIUS = 16;
-    // Live testing against real committed seeds showed the box at this radius routinely contains
-    // 900-1600 walkable surfaces, but the nearest 20 to the exact east point are all clustered
-    // within a couple of blocks of one another - so when a single local obstacle (a cliff, ravine,
-    // or body of water) blocks that immediate cluster, every one of the first 20 probes fails
-    // identically even though the wider box still holds plenty of reachable ground further from the
-    // exact point. A much larger probe budget lets the search reach into that wider pool instead of
-    // giving up while still sitting on top of the same blocked cluster.
-    private static final int MAX_WAYPOINT_PROBES = 100;
     static final int MIN_ACTIVE_TICKS = 1_800;
     static final int MAX_ACTIVE_TICKS = 2_400;
 
@@ -152,12 +144,28 @@ final class NeoForgeSpawnGauntletGoal {
      * {@code NeoForgeSurvivalTreeGoal.electTrees()} solves for candidate trees ("probe rejected -
      * no bounded route") applies here too - the nearest walkable surface to the east candidate can
      * sit across a ravine, cliff, or body of water that the safe path planner's one-block-descent
-     * movement model can never actually cross. A surface only becomes the waypoint once the exact
-     * same unbounded search {@link #replan} later relies on during real play actually finds a route
-     * to it from the observed spawn position, tried nearest-first. A reduced probe budget was tried
-     * first and rejected: even a legitimately reachable target several dozen blocks away routinely
-     * needs more than a few thousand visited nodes once safe-navigation's diagonal expansion is
-     * active, so anything less than the real search budget produced false unreachable verdicts.
+     * movement model can never actually cross.
+     *
+     * <p>An earlier version of this method probed candidates one at a time, nearest-to-the-exact-
+     * point first, each via its own independent {@link NeoForgeSafePathPlanner#find} search, and
+     * gave up after a fixed number of probes (raised from 20 to 100 once already, per the removed
+     * {@code MAX_WAYPOINT_PROBES} comment). Official scoring against 20 real seeds showed that
+     * escalation still wasn't structural enough: 18/20 seeds failed, and every one of them had
+     * exhausted exactly the 100-probe cap while the wider search box still held 600-2000+ more
+     * candidates it never even tried (see {@code verification/evidence/
+     * b1-official-scoring-20260718-retry-20260718T030312Z}). The nearest 100 surfaces to the exact
+     * east point are still all clustered within a few blocks of one another, so a single local
+     * obstacle fails every one of them identically no matter how high the probe count goes -
+     * proximity-first probing with any fixed budget was the wrong shape of fix.
+     *
+     * <p>This now runs one shared-graph search across every candidate surface in the box at once,
+     * via {@link NeoForgeSafePathPlanner#findToAny} (the same reachability-first primitive
+     * {@code NeoForgeNetherGoal.findResourceApproachWaypoint} already uses for candidate mining
+     * vantages). A single A* expansion naturally explores outward from the observed spawn position
+     * and accepts the first candidate it actually walks onto, so one blocked local cluster no
+     * longer stops the search from reaching a reachable surface elsewhere in the same box - and
+     * unlike the old per-candidate loop, the search graph is only ever built and explored once
+     * instead of being restarted from scratch for up to 100 candidates in a row.
      */
     private BlockPos computeWaypoint(Minecraft client, BlockPos origin) {
         var player = client.player;
@@ -165,21 +173,17 @@ final class NeoForgeSpawnGauntletGoal {
         var candidate = eastWaypointCandidate(origin, WAYPOINT_EAST_OFFSET);
         var pathfindingOrigin = walkableOriginNear(snapshot, origin);
         var surfaces = nearbySafeSurfacesByDistance(snapshot, candidate);
-        var probed = 0;
-        for (var surface : surfaces) {
-            if (probed >= MAX_WAYPOINT_PROBES) break;
-            probed++;
-            var route = NeoForgeSafePathPlanner.find(client.level, player, pathfindingOrigin, surface, policy);
-            if (!route.isEmpty()) {
-                diagnostics.add("waypoint-selection:accepted:" + surface + ":probes=" + probed
-                        + ":candidates=" + surfaces.size());
-                return surface;
-            }
+        var route = NeoForgeSafePathPlanner.findToAny(client.level, player, pathfindingOrigin, surfaces, policy,
+                new NeoForgeSafePathPlanner.ArrivalSpec(3.0, 5.0));
+        if (!route.isEmpty()) {
+            var accepted = route.getLast();
+            diagnostics.add("waypoint-selection:accepted:" + accepted + ":candidates=" + surfaces.size());
+            return accepted;
         }
         throw new IllegalStateException("TARGET_UNREACHABLE: cause=target:unreachable; "
                 + "no reachable safe surface observed within " + WAYPOINT_SEARCH_RADIUS
-                + " blocks of the east waypoint candidate " + candidate + " after probing " + probed
-                + "/" + surfaces.size() + " candidates from origin " + pathfindingOrigin
+                + " blocks of the east waypoint candidate " + candidate + " across all " + surfaces.size()
+                + " candidates searched together from origin " + pathfindingOrigin
                 + telemetrySuffix());
     }
 
