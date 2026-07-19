@@ -67,6 +67,9 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
     private static final int MAX_TOTAL_TICKS = 9_200;
     private static final int MAX_SEARCH_ATTEMPTS = 16;
     private static final int MAX_TREE_RE_ELECTIONS = 6;
+    // Mirrors NeoForgeSurvivalTreeGoal.ELECTION_PROBE_BUDGET: candidate screening runs on the
+    // client tick, so a run of unreachable candidates must not each burn a full search budget.
+    private static final int ELECTION_PROBE_BUDGET = 9_000;
     private static final int MAX_SHAFT_STEPS = 48;
     private static final int MAX_SHAFT_DIRECTION_RETRIES = 4;
     private static final int MAX_MINING_STALL_TICKS = 320;
@@ -119,6 +122,8 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
     private boolean woodenAxeCrafted;
     private TreePlan resourceTree;
     private final Set<Long> blacklistedTrees = new HashSet<>();
+    private List<TreePlan> candidateTrees = List.of();
+    private int candidateProbeIndex;
     private BlockPos tablePosition;
     private BlockPos tableInteractionVantage;
     private int tableHotbarSlot = -1;
@@ -224,6 +229,7 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
             switch (stage) {
                 case WAIT_WORLD -> waitForFreshWorld(client);
                 case SEARCH_TREE -> searchTree(client);
+                case ELECT_TREE -> electTree(client);
                 case NAVIGATE_TREE -> navigateTree(client);
                 case MINE_LOGS -> mineLogs(client);
                 case COLLECT_LOGS -> collectLogs(client);
@@ -333,7 +339,7 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
     private String stageCause() {
         return switch (stage) {
             case WAIT_WORLD -> "world-setup";
-            case SEARCH_TREE, NAVIGATE_TREE -> "search";
+            case SEARCH_TREE, ELECT_TREE, NAVIGATE_TREE -> "search";
             case NAVIGATE_TO_TABLE -> "navigation";
             case MINE_LOGS, COLLECT_LOGS, DESCEND_AND_MINE_STONE, COLLECT_STONE_DROPS, ASCEND_SHAFT -> "mining";
             case VERIFY, COMPLETE_DELAY -> "verify";
@@ -373,10 +379,15 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
         navigationDiagnostics.add(scanDiagnostic);
         announce(client, scanDiagnostic);
         if (!reachableCandidates.isEmpty()) {
-            resourceTree = reachableCandidates.get(0);
-            resetNavigation();
-            announce(client, "Found a reachable natural tree - walking to gather wood by hand");
-            transition(Stage.NAVIGATE_TREE, 20);
+            candidateTrees = reachableCandidates;
+            candidateProbeIndex = 0;
+            // electTree() only ever assigns resourceTree on an accepted probe; a stale reference
+            // to a tree from a previous, now-blacklisted pass (blacklistAndReElect() deliberately
+            // leaves resourceTree set when it transitions back here) must not survive into this
+            // fresh election pass, or electTree()'s own "is a tree already elected" check would
+            // short-circuit on old state before ever probing the new candidate list.
+            resourceTree = null;
+            transition(Stage.ELECT_TREE, 0);
             return;
         }
         if (searchAttempts >= MAX_SEARCH_ATTEMPTS) {
@@ -392,6 +403,60 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
         announce(client, "Searching for nearby trees - exploration pass " + searchAttempts);
         setMovement(client, true, true, player.isInWater() || (player.onGround() && (stageTicks % 30 < 5)));
         if (stageTicks >= 120) transition(Stage.SEARCH_TREE, 20);
+    }
+
+    /**
+     * Probe one candidate per tick with a reduced search budget before committing to it - mirrors
+     * {@code NeoForgeSurvivalTreeGoal.electTrees()}'s reachability-probe pattern, added there in
+     * aef7ab4 ("Validate tree reachability before commit, blacklist-and-re-elect on failure") the
+     * day before this actor was created. This actor's own original searchTree() picked
+     * reachableCandidates.get(0) directly, with no such probe - a live first-look smoke run (seeds
+     * 7 and -7, this actor's first run ever) showed seed -7 exhausting all
+     * {@link #MAX_TREE_RE_ELECTIONS} re-election attempts with distance=0.0 every single time: the
+     * exact "elected a tree geometry could see but pathfinding could never reach" signature aef7ab4
+     * already fixed for the sibling actor. Only one tree is ever needed here (unlike B2's
+     * resource-then-target pair), so this is a single-candidate version of the same pattern.
+     *
+     * <p>Unlike {@code electTrees()}, a probe-rejected candidate here is added to
+     * {@link #blacklistedTrees} rather than left eligible for a later pass: with only one tree
+     * ever needed, a repeated identical probe from an unmoved position (searchTree()'s own filter
+     * would otherwise re-offer the exact same still-unreachable candidate first every time, since
+     * nothing else about the world or player position has changed) would deadlock ELECT_TREE and
+     * SEARCH_TREE against each other with no exploration sweep or {@code searchAttempts} progress
+     * ever running, unlike B2's two-tree case where the shared candidate pool between the resource
+     * and target slots is large enough that a rejection just tries the next entry in the same pass.
+     */
+    private void electTree(Minecraft client) {
+        var player = requirePlayer(client);
+        if (candidateProbeIndex < candidateTrees.size()) {
+            var candidate = candidateTrees.get(candidateProbeIndex);
+            candidateProbeIndex++;
+            if (!policy.smartNavigation()) {
+                resourceTree = candidate;
+            } else {
+                var route = NeoForgeSafePathPlanner.probe(client.level, player, player.blockPosition(),
+                        candidate.base(), policy, ELECTION_PROBE_BUDGET);
+                if (route.isEmpty()) {
+                    navigationDiagnostics.add("tree election: probe rejected " + candidate.base()
+                            + " (no bounded route)");
+                    blacklistedTrees.add(candidate.base().asLong());
+                    // One probe per tick keeps candidate screening off the client tick's critical path.
+                    return;
+                }
+                resourceTree = candidate;
+                navigationDiagnostics.add("tree election: probe accepted " + candidate.base()
+                        + " (waypoints=" + route.size() + ")");
+            }
+        }
+        if (resourceTree != null) {
+            resetNavigation();
+            announce(client, "Found a reachable natural tree - walking to gather wood by hand");
+            transition(Stage.NAVIGATE_TREE, 20);
+            return;
+        }
+        navigationDiagnostics.add("tree election: exhausted " + candidateTrees.size()
+                + " candidates, none reachable this pass");
+        transition(Stage.SEARCH_TREE, 0);
     }
 
     private void navigateTree(Minecraft client) {
@@ -1818,6 +1883,7 @@ final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
     private enum Stage {
         WAIT_WORLD,
         SEARCH_TREE,
+        ELECT_TREE,
         NAVIGATE_TREE,
         MINE_LOGS,
         COLLECT_LOGS,
