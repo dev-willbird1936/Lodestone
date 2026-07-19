@@ -10,7 +10,20 @@ verification/evidence/**
 !verification/evidence/forge-1.20.1-flow-shutdown-20260714T215827Z.json
 # Phase 1 judgment report and benchmark aggregate summaries are durable deliverables, not
 # disposable per-run output (per-seed logs/reports under timestamped subfolders stay ignored).
+#
+# A file-level negation cannot resurrect a file whose parent directory is still excluded by the
+# blanket `verification/evidence/**` above - git will not descend into an ignored directory to
+# check finer per-file rules unless the directory itself is also explicitly un-ignored. Without
+# the directory-level negation below, `!verification/evidence/*/aggregate.json` silently matched
+# nothing: confirmed live (`git check-ignore -v`) that every prior "official"/rescoring
+# aggregate.json, going back to the first ones this convention comment describes, was never
+# actually tracked despite this file's own stated intent.
 !verification/evidence/other-repos-intelligence-layer-judgment-2026-07-17.md
+# Un-ignore each per-run subdirectory just far enough for git to traverse into it, then re-ignore
+# everything inside it again except the one durable file - otherwise the directory-level negation
+# above would also resurrect every disposable per-seed log/report it was supposed to exclude.
+!verification/evidence/*/
+verification/evidence/*/*
 !verification/evidence/*/aggregate.json
 **/build/
 **/.gradle/
