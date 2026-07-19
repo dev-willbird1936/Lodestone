@@ -742,7 +742,30 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
         if (tableHotbarSlot < 0) throw new IllegalStateException("crafting table hotbar slot is unknown");
         selectHotbar(client, tableHotbarSlot);
         if (!player.getMainHandItem().is(Items.CRAFTING_TABLE)) {
-            if (stageTicks > 240) throw new IllegalStateException("normal hotbar selection did not hold the crafting table");
+            if (stageTicks > 240) {
+                // Live-caught (seed 44210, B2 postfix rescoring v2): normal hotbar selection never
+                // held the crafting table within the timeout, even though MOVE_TABLE_TO_HOTBAR had
+                // already re-verified the table's slot right after the quick-move that placed it
+                // there. Self-heal once against the possibility that the recorded slot has since
+                // drifted (the table is still somewhere in the hotbar, just not where this actor
+                // last recorded it) before giving up - re-deriving the slot the same way
+                // moveItemToHotbar() originally established it, rather than trusting a value that
+                // may now be stale. Never confirmed live as the actual root cause (no per-tick
+                // inventory snapshot exists in the captured evidence to tell whether the slot truly
+                // drifted or the key input itself just never registered), so this is a defensive
+                // recovery attempt, not a confirmed fix - if the slot genuinely did not move, this
+                // changes nothing and the typed failure below still fires on the very next tick.
+                var actualSlot = hotbarSlot(player, Items.CRAFTING_TABLE);
+                if (actualSlot >= 0 && actualSlot != tableHotbarSlot) {
+                    navigationDiagnostics.add("crafting-table hotbar slot drifted from " + tableHotbarSlot
+                            + " to " + actualSlot + " - re-selecting");
+                    tableHotbarSlot = actualSlot;
+                    stageTicks = 0;
+                    return;
+                }
+                throw new IllegalStateException("STUCK_NO_PROGRESS: cause=stall:hotbar-selection; "
+                        + "normal hotbar selection did not hold the crafting table" + telemetrySuffix());
+            }
             return;
         }
 
