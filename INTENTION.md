@@ -227,6 +227,47 @@ every Minecraft environment.
   provenance records the pinned release-tool commit/tree and raw assembler/stager blobs. The
   immutable retry workflow never resolves `origin/main`.
 
+## Goal-engine benchmark evidence added 2026-07-19
+
+- The three native NeoForge 1.21.1 goal-engine benchmarks (B1 `survival.spawn-gauntlet`, B2
+  `survival.wooden-axe-mine-tree`, B3 `survival.stone-toolset`) now have live, evidence-grounded
+  multi-seed coverage in both `script` and `realtime` mode, not just isolated single-sample probes.
+  Realtime multi-seed coverage in particular did not exist before this session for any of the three
+  benchmarks; it now exists for all three, though it remains partial rather than a full official
+  rescoring pass.
+- B1's reachability diagnostic now distinguishes a genuinely exhausted flood-fill from one that hit
+  its 45,000-cell visit budget, and its spawn-gauntlet waypoint search now covers the full
+  360-degree horizontal annulus around the observed spawn position instead of four cardinal
+  direction boxes; live evidence across six seeds confirms the visit budget was never the actual
+  limiter and the resulting wider descent-cap search genuinely improves reachable distance.
+- A systemic checkpointed-goal capability rate-limit bug was found and fixed:
+  `minecraft.goal.survival.wooden-axe-tree` and `minecraft.goal.survival.stone-toolset` were each
+  rate-limited to `permits=1,burst=1` in `protocol/catalog/core-capabilities.json` despite both
+  goals executing as a 3-segment checkpointed workflow, starving their own second and third
+  segments. Both now match the already-correct `reach-nether` pattern (`permits=3,burst=3`);
+  live-verified to eliminate the rate-limit failure mode entirely.
+- A systemic realtime deadline race was found and fixed: the benchmark harness's realtime
+  `GoalMaxDurationMs` default previously raced the actor's own internal tick budget, masking real
+  in-goal failures as an opaque `OUTCOME_INDETERMINATE` with no diagnostic content. The harness
+  default is now mode-conditional (600000ms realtime, unchanged 480000ms script, bounded by the
+  confirmed 600000ms MCP-level `maxDurationMs` ceiling); live-verified twice to replace masked
+  failures with clean typed ones, which also unmasked a previously invisible B2 table-placement
+  line-of-sight gap.
+- B2's crafting-table placement vantage search (`findTablePlacementVantage`) previously tried a
+  single fixed-size window and threw immediately if it found no candidate; it now widens on retry
+  up to a bounded attempt budget, mirroring B2's own already-proven `findMiningTargetVantage`
+  widening pattern. Live-verified against script seed `302304127329527063`: the goal now clears
+  table placement, crafting, and axe-equip entirely (previously failed at that exact stage) and
+  advances to tree mining before hitting a separate, already-documented mining-vantage gap.
+- B3's tree-election stage now probes candidate reachability before committing to a target tree,
+  porting B2's proven fix for the same class of bug; live-verified to change seed `-7`'s failure
+  mode from tree-unreachable to a downstream mining-stall.
+- Known, deliberately unfixed gaps recorded for future work: B1's adaptive-v1 safe-path planner can
+  select but not execute mutation-based (mine/place) waypoint routes in
+  `NeoForgeSpawnGauntletGoal`; and a specific aim-flicker-driven mining-stall mechanism has been
+  traced through decompiled `Minecraft`/`MultiPlayerGameMode` source but not yet live-confirmed as
+  the actual root cause of any observed stall.
+
 ## Benchmark evidence added 2026-07-14
 
 - The NeoForge 1.21.1 + KeepFocus client benchmark now runs in user-visible order from main menu
@@ -346,9 +387,12 @@ every Minecraft environment.
 
 ## INTENTION NOT MATCHED
 
-- Live end-to-end goal completion benchmarks across fresh survival/creative fixtures have not yet
-  been executed; the engine, fake-transport tests, task contracts, and MCP benchmark harness are
-  present, while crafting remains an explicit unsupported capability.
+- Live end-to-end goal completion benchmarks now run repeatedly against fresh survival fixtures for
+  all three native NeoForge 1.21.1 goals (see "Goal-engine benchmark evidence added 2026-07-19"),
+  but a full official multi-seed rescoring pass (the harness's own 20-seed B1 / 10-seed B2 / full
+  B3 seed-list convention) in both script and realtime mode has not yet been completed against the
+  current fix set, and B1's adaptive-v1 safe-path planner still cannot execute mutation-based
+  waypoint routes it selects.
 - Full manual acceptance beyond the tested NeoForge/Fabric 1.18.2/1.19.2/1.20.1/1.21.1,
   Fabric 26.2, Forge 1.20.1, and Forge 1.21.1 client flows is still pending; 26.2 heightmap/light/move/slot/chat-read and broader entity interaction remain unsupported.
 - Full cross-loader semantic container automation, block-entity NBT, non-overworld bulk mutation,
