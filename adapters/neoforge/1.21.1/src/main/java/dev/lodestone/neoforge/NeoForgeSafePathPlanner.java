@@ -346,6 +346,24 @@ final class NeoForgeSafePathPlanner {
     }
 
     /**
+     * {@link #floodFillReachable}'s result: the positions actually reached, plus whether the
+     * search stopped because it genuinely exhausted its own frontier (every reachable neighbor of
+     * every visited cell was already visited - a real "nothing more is reachable" answer) or
+     * because it hit {@code maxVisited} first with the frontier (the BFS queue) still non-empty.
+     * The two exit conditions look identical from the returned position list alone, but only the
+     * first one is a genuine unreachability proof; the second means the search gave up with real
+     * unexplored territory still queued, exactly like {@link #probe}'s own doc already warns about
+     * for the ordinary A* search sharing this same {@code maxVisited} budget. Distinguishing them
+     * is a one-line addition (whether the queue is still non-empty when the loop exits) rather than
+     * a new search - see {@link NeoForgeSpawnGauntletGoal#reachabilityDiagnosticSummary} for why
+     * this matters: a failing seed's diagnostic previously reported the same "visited=N" number
+     * whether N cells were truly all of what's reachable or merely all the search had budget to
+     * look at, so a genuinely-encircled spawn and a spawn whose true reachable area simply exceeds
+     * the budget were indistinguishable from the diagnostic output alone.
+     */
+    record Reachability(List<BlockPos> reached, boolean visitBudgetExhausted) { }
+
+    /**
      * Diagnostic-only exhaustive reachability flood-fill from an origin: every position the real
      * pathfinder's own movement-legality rules (buffered-walkable transitions, {@link
      * #descentAllowed}'s policy-driven cap, diagonal corner-clear when enabled) would ever consider
@@ -357,12 +375,12 @@ final class NeoForgeSafePathPlanner {
      * a full live benchmark pass to find out empirically. Never called by any scored actor's normal
      * path - see {@code NeoForgeSpawnGauntletGoal}'s own reachability-diagnostic gate, off by default.
      */
-    static List<BlockPos> floodFillReachable(ClientLevel level, LocalPlayer player, BlockPos start,
-                                              NeoForgeGoalPolicy policy, int maxVisited) {
+    static Reachability floodFillReachable(ClientLevel level, LocalPlayer player, BlockPos start,
+                                            NeoForgeGoalPolicy policy, int maxVisited) {
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
         if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
-                snapshot.bufferedWalkable(origin), policy.highSafety())) return List.of();
+                snapshot.bufferedWalkable(origin), policy.highSafety())) return new Reachability(List.of(), false);
 
         var visited = new HashSet<Long>();
         var queue = new ArrayDeque<BlockPos>();
@@ -391,7 +409,10 @@ final class NeoForgeSafePathPlanner {
                 }
             }
         }
-        return List.copyOf(reached);
+        // The loop exits either because the frontier itself ran dry (queue empty - a genuine
+        // exhaustive answer) or because visited.size() hit maxVisited first while the queue still
+        // held unexplored cells (a budget cap, not a proof of unreachability).
+        return new Reachability(List.copyOf(reached), !queue.isEmpty());
     }
 
     /** Shared neighbor-legality check for {@link #floodFillReachable}, mirroring {@link

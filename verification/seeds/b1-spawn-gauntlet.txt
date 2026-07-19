@@ -7,6 +7,15 @@
 # after the fact. If the realized spread across these 20 turns out not to cover enough terrain
 # diversity (e.g. everything lands in plains), swap in replacements and say so explicitly in the
 # benchmark report - never assume diversity that wasn't actually observed.
+#
+# Verified 2026-07-18: a same-seed re-creation reproduces byte-identical WorldGenSettings (checked
+# directly against level.dat NBT) - the terrain/generation contract a seed is supposed to pin is
+# genuinely reproducible, this is not a Lodestone bug. But the exact spawn tile vanilla Minecraft's
+# own first-join spawn-safety search settles the player on can still drift a few blocks between
+# runs of the same seed - a base-game characteristic, not something this repo's UI automation
+# controls. Since B1's waypoint is computed relative to the observed spawn tile (not baked into
+# the seed), treat these 20 seeds as pinning reproducible terrain/biome, not a bit-for-bit
+# identical start position every run.
 1
 2
 3

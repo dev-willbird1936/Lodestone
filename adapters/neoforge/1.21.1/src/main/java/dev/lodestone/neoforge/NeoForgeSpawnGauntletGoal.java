@@ -268,6 +268,13 @@ final class NeoForgeSpawnGauntletGoal {
      * horizontal distance and whether the {@link #withinWaypointAnnulus} band is reachable at all
      * under it - directly answering "how far could this spawn actually reach" for a specific failing
      * seed without needing to guess from a full live 20-seed re-run first.
+     *
+     * <p>Also reports {@code visitBudgetExhausted} for each cap (see {@link
+     * NeoForgeSafePathPlanner.Reachability}'s own doc): {@code false} means the flood-fill genuinely
+     * ran its frontier dry (a real unreachability proof, not just a search-budget artifact), {@code
+     * true} means it hit the shared 45,000-node visit cap with unexplored territory still queued -
+     * in which case a low {@code maxHorizontalDistance} does NOT prove the spawn is actually
+     * encircled, only that this diagnostic's own budget could not settle the question either way.
      */
     private String reachabilityDiagnosticSummary(Minecraft client, LocalPlayer player, BlockPos pathfindingOrigin,
                                                   BlockPos origin) {
@@ -277,13 +284,15 @@ final class NeoForgeSpawnGauntletGoal {
         var reachableWidenedCap = NeoForgeSafePathPlanner.floodFillReachable(client.level, player,
                 pathfindingOrigin, policy, 45_000);
         return "reachabilityDiagnostic{descentCap=" + NeoForgeGoalPolicy.DEFAULT_MAX_DESCENT_BLOCKS
-                + ":visited=" + reachableDefaultCap.size()
-                + ",maxHorizontalDistance=" + maxHorizontalDistanceFrom(origin, reachableDefaultCap)
-                + ",annulusReachable=" + anyWithinWaypointAnnulus(origin, reachableDefaultCap)
+                + ":visited=" + reachableDefaultCap.reached().size()
+                + ",maxHorizontalDistance=" + maxHorizontalDistanceFrom(origin, reachableDefaultCap.reached())
+                + ",annulusReachable=" + anyWithinWaypointAnnulus(origin, reachableDefaultCap.reached())
+                + ",visitBudgetExhausted=" + reachableDefaultCap.visitBudgetExhausted()
                 + ";descentCap=" + policy.maxDescentBlocks()
-                + ":visited=" + reachableWidenedCap.size()
-                + ",maxHorizontalDistance=" + maxHorizontalDistanceFrom(origin, reachableWidenedCap)
-                + ",annulusReachable=" + anyWithinWaypointAnnulus(origin, reachableWidenedCap) + "}";
+                + ":visited=" + reachableWidenedCap.reached().size()
+                + ",maxHorizontalDistance=" + maxHorizontalDistanceFrom(origin, reachableWidenedCap.reached())
+                + ",annulusReachable=" + anyWithinWaypointAnnulus(origin, reachableWidenedCap.reached())
+                + ",visitBudgetExhausted=" + reachableWidenedCap.visitBudgetExhausted() + "}";
     }
 
     /** Pure, directly testable: the farthest horizontal distance from origin among a set of

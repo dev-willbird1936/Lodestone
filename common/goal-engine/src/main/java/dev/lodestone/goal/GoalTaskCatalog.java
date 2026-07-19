@@ -25,7 +25,7 @@ public final class GoalTaskCatalog {
             task("survival.spawn-gauntlet", "survival",
                     "Load a fresh survival world, survive the opening 90 seconds without dying, and reach a waypoint discovered 32 blocks away, horizontally, from the observed spawn position.",
                     "survival", List.of("lodestone.ui.navigate", "minecraft.goal.survival.spawn-gauntlet"),
-                    "The native actor discovers its own waypoint, in whichever of the 4 cardinal directions from the observed spawn position is actually reachable, drives ordinary movement with the shared safety supervisor active, and proves both a minimum 90-second survival window and a reached waypoint from terminal readback; commands and direct world mutation are forbidden."),
+                    "The native actor discovers its own waypoint, searching the full 360-degree horizontal annulus around the observed spawn position for whichever reachable surface its search actually finds, drives ordinary movement with the shared safety supervisor active, and proves both a minimum 90-second survival window and a reached waypoint from terminal readback; commands and direct world mutation are forbidden."),
             task("survival.collect-wood", "survival", "Find a nearby tree, acquire the required wooden tools, and collect logs with player input.", "survival",
                     List.of("minecraft.goal.survival.wooden-axe-tree", "minecraft.player.state.read", "minecraft.world.region.scan",
                             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact"),
