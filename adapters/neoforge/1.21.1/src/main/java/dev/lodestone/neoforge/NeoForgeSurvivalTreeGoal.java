@@ -840,15 +840,32 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             // Mirror findMiningTargetVantage's proven attempt-widening pattern instead of giving
             // up after the first, narrowest pass - attempt 1 reproduces the original bounds
             // exactly, so a candidate that was findable before is still found on the first try.
+            //
+            // Regression caught by the 2026-07-19 B2 official rescoring (seeds 302304127329527063,
+            // -8172974586314107235, and 123456789012345 flipped from clean SUCCEEDED runs to this
+            // exact failure): placeTableVantageAttempts is a per-goal field, not per-episode, and
+            // the original version of this fix never reset it. The pre-existing code could retry
+            // this >20-tick aim-timeout relocation an unbounded number of times across the whole
+            // PLACE_TABLE stage (bounded only by the unrelated stageTicks > 1_200 timeout below) -
+            // each retry deterministically re-finding the same nearest candidate and simply
+            // re-confirming/re-clicking it until aim timing eventually landed. Without a reset,
+            // every retry episode kept consuming from the same 4-attempt budget, so a seed that
+            // legitimately needed a 5th or later episode now hit MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS
+            // and threw immediately - even though each of those episodes only ever widened the
+            // *search radius*, which was never the actual bottleneck for them (the same closest
+            // candidate is found at every widened bound once it exists at the narrowest one).
+            // Resetting on every successful relocation restores that unbounded-episode-count
+            // behavior exactly, while still keeping the *within-episode* widening this fix was
+            // meant to add: an episode that finds nothing at the narrow attempt-1 bounds still
+            // escalates through attempt 4 before giving up, instead of throwing on the first try.
             while (placeTableVantageAttempts < MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS) {
                 placeTableVantageAttempts++;
                 var relocated = findTablePlacementVantage(client, support, placeTableVantageAttempts);
                 if (relocated != null) {
                     tablePlacementVantage = relocated;
                     placeTableAimTicks = 0;
-                    navigationDiagnostics.add("table placement vantage relocation "
-                            + placeTableVantageAttempts + "/" + MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS
-                            + ": " + relocated);
+                    placeTableVantageAttempts = 0;
+                    navigationDiagnostics.add("table placement vantage relocation: " + relocated);
                     announce(client, "Crafting table support out of sight - repositioning for a clear line of sight");
                     return;
                 }
