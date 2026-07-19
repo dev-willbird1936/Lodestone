@@ -64,7 +64,15 @@ import java.util.concurrent.CompletableFuture;
 final class NeoForgeStoneToolsetGoal implements NeoForgeResumableGoal {
     private static final int HAND_LOGS_REQUIRED = 4;
     private static final int COBBLESTONE_TARGET = 18;
-    private static final int MAX_TOTAL_TICKS = 9_200;
+    // Same reconciliation as NeoForgeSurvivalTreeGoal.MAX_TOTAL_TICKS (see its comment for the
+    // live-caught realtime evidence and the exact reasoning): totalTicks tracks real
+    // ClientTickEvent.Post ticks at ~50ms/tick and is never reset across resume() calls, so this
+    // is a cumulative ceiling across all three of this goal's checkpoint segments
+    // (gather-wooden-tools, craft-stone-tools, place-furnace-and-surface - see
+    // BuiltinGoalPlanner's stone-toolset workflow), not a per-segment one. The old 9_200 (~460s)
+    // budget was smaller than even a single segment's own 600000ms/~12000-tick outer per-invocation
+    // ceiling; sized here to the same three-segment reasoning as the rate-limit fix in 2beefea.
+    private static final int MAX_TOTAL_TICKS = 36_000;
     private static final int MAX_SEARCH_ATTEMPTS = 16;
     private static final int MAX_TREE_RE_ELECTIONS = 6;
     // Mirrors NeoForgeSurvivalTreeGoal.ELECTION_PROBE_BUDGET: candidate screening runs on the

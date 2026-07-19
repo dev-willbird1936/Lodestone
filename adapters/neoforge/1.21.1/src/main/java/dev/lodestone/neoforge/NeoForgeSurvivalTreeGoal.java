@@ -44,7 +44,22 @@ import java.util.UUID;
  */
 final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private static final int HAND_LOGS_REQUIRED = 3;
-    private static final int MAX_TOTAL_TICKS = 9_000;
+    // Live-caught under realtime (seed 7777777777777, adaptive-v1/balanced, two independent runs):
+    // totalTicks only advances while tick(client) actually runs (paused/resumed segments do not
+    // accumulate it - see resume(), which resets stageTicks/waitTicks but deliberately not
+    // totalTicks), so it tracks real ClientTickEvent.Post ticks at the game's fixed ~50ms/tick
+    // rate. One run's failed "gather-resource" invocation measured 450772ms over 9001 ticks -
+    // almost exactly 50ms/tick, confirming the old 9_000 budget (~450s) was the actual limiter,
+    // not terrain difficulty alone: it fired well inside the checkpointed workflow's own
+    // per-invocation outer ceiling (the confirmed 600000ms MCP maxDurationMs cap the harness now
+    // deliberately uses for realtime, see commit 3e20402), on just the *first* of this goal's
+    // three checkpoint segments (gather-resource, craft-axe, mine-target - see
+    // BuiltinGoalPlanner's wooden-axe-tree workflow). totalTicks is never reset across those
+    // three resumed segments, so this budget is a *cumulative* ceiling across all of them, not a
+    // per-segment one. Sized to the same segment-count reasoning as the rate-limit fix in
+    // 2beefea: three segments, each potentially needing up to the full 600000ms/~12000-tick outer
+    // ceiling, at the confirmed ~50ms/tick rate.
+    private static final int MAX_TOTAL_TICKS = 36_000;
     private static final int MAX_SEARCH_ATTEMPTS = 16;
     private static final int ELECTION_PROBE_BUDGET = 9_000;
     private static final int MAX_TREE_RE_ELECTIONS = 6;
