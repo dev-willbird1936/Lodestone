@@ -15,7 +15,24 @@ param(
     [string] $Intelligence = 'guarded-v1',
     [ValidateSet('low', 'balanced', 'high')]
     [string] $Safety = 'balanced',
-    [int] $GoalMaxDurationMs = 480000,
+    # Live-caught (B2, adaptive-v1/realtime, seed 302304127329527063): the default 480000 leaves a
+    # genuinely long native invocation (gather-resource's own checkpointed workflow step) racing an
+    # external per-invocation deadline that is tighter than it looks once realtime's own per-step
+    # model-consultation latency (paid on every one of the 6+ preceding declared steps, none of
+    # which script mode pays at all) has already eaten into "goal maxDurationMs minus elapsed so
+    # far" before gather-resource's own invocation ever starts. When the external deadline wins that
+    # race the actor never gets to reach its own internal stall/timeout budget
+    # (NeoForgeSurvivalTreeGoal.MAX_TOTAL_TICKS, ~450s nominal) and throw its own clean, typed
+    # failure - the run instead terminates with an opaque OUTCOME_INDETERMINATE ("capability deadline
+    # exceeded after irreversible mutation dispatch") that masks whatever the actor was actually
+    # doing. Verified live: the exact same seed given the full 600000 (the hard server-side ceiling
+    # on minecraft_goal's own maxDurationMs input - confirmed live, requesting 900000 was rejected
+    # with "maxDurationMs must be between 100 and 600000") failed in 83s with a clean, typed
+    # cause=stall:mining instead of grinding to OUTCOME_INDETERMINATE past 480s. Script mode has no
+    # equivalent per-step latency tax, so it stays at the original, long-proven 480000 default -
+    # every script-mode run this session completed in well under 120s regardless of outcome, so
+    # this never mattered there and there is no reason to change its behavior.
+    [int] $GoalMaxDurationMs = $(if ($Mode -eq 'realtime') { 600000 } else { 480000 }),
     [int] $BenchmarkBudgetMs = 360000,
     [int] $Port = 37901,
     [string] $RunDirectory = 'runs/benchmark-multiseed',
