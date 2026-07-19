@@ -93,7 +93,50 @@ final class NeoForgeSurvivalTreeGoalTest {
         }
     }
 
+    @Test
+    void firstTablePlacementVantageAttemptReproducesTheOriginalUnwidenedBounds() {
+        var bounds = NeoForgeSurvivalTreeGoal.tablePlacementVantageSearchBounds(1);
+        assertEquals(4, bounds.maxRadius());
+        assertEquals(-1, bounds.minDy());
+        assertEquals(2, bounds.maxDy());
+    }
+
+    @Test
+    void laterTablePlacementVantageAttemptsWidenBothTheRingAndTheVerticalBand() {
+        var first = NeoForgeSurvivalTreeGoal.tablePlacementVantageSearchBounds(1);
+        var second = NeoForgeSurvivalTreeGoal.tablePlacementVantageSearchBounds(2);
+        var third = NeoForgeSurvivalTreeGoal.tablePlacementVantageSearchBounds(3);
+        var fourth = NeoForgeSurvivalTreeGoal.tablePlacementVantageSearchBounds(4);
+
+        assertTrue(second.maxRadius() > first.maxRadius());
+        assertTrue(third.maxRadius() > second.maxRadius());
+        assertTrue(fourth.maxRadius() > third.maxRadius());
+
+        assertTrue(second.minDy() < first.minDy());
+        assertTrue(third.minDy() < second.minDy());
+        assertTrue(fourth.minDy() < third.minDy());
+
+        assertTrue(second.maxDy() > first.maxDy());
+        assertTrue(third.maxDy() > second.maxDy());
+        assertTrue(fourth.maxDy() > third.maxDy());
+    }
+
+    @Test
+    void tablePlacementVantageSearchNeverShrinksAcrossTheBoundedAttemptBudget() {
+        NeoForgeSurvivalTreeGoal.TablePlacementVantageBounds previous = null;
+        for (var attempt = 1; attempt <= NeoForgeSurvivalTreeGoalTest.MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS; attempt++) {
+            var bounds = NeoForgeSurvivalTreeGoal.tablePlacementVantageSearchBounds(attempt);
+            if (previous != null) {
+                assertTrue(bounds.maxRadius() >= previous.maxRadius());
+                assertTrue(bounds.minDy() <= previous.minDy());
+                assertTrue(bounds.maxDy() >= previous.maxDy());
+            }
+            previous = bounds;
+        }
+    }
+
     private static final int MAX_MINING_VANTAGE_ATTEMPTS = 4;
+    private static final int MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS = 4;
 
     // Regression coverage for the mineResource()/mineTarget() gating flow itself, not just the
     // pure geometry helpers either fed into. The regression this locks in: a raycast miss against

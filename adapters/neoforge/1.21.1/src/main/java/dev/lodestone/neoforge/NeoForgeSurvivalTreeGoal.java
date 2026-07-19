@@ -49,6 +49,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private static final int ELECTION_PROBE_BUDGET = 9_000;
     private static final int MAX_TREE_RE_ELECTIONS = 6;
     private static final int MAX_MINING_VANTAGE_ATTEMPTS = 4;
+    private static final int MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS = 4;
 
     private InvocationContext invocation;
     private CompletableFuture<Map<String, Object>> result;
@@ -93,6 +94,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private BlockPos tableInteractionVantage;
     private BlockPos tablePlacementVantage;
     private int placeTableAimTicks;
+    private int placeTableVantageAttempts;
     private BlockPos miningTargetVantage;
     private BlockPos miningVantageForTarget;
     private int miningVantageAttempts;
@@ -816,14 +818,31 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             // identical click would just burn the whole 1200-tick timeout on a click that can
             // never land. Mirror openTable()'s own findTableInteractionVantage recovery for the
             // same failure mode one stage later.
-            var relocated = findTablePlacementVantage(client, support);
-            if (relocated == null) throw new IllegalStateException("no unobstructed crafting-table placement vantage; player="
-                    + player.blockPosition() + ", table=" + tablePosition + ", eyeDistance=" + rounded(distance));
-            tablePlacementVantage = relocated;
-            placeTableAimTicks = 0;
-            navigationDiagnostics.add("table placement vantage relocation: " + relocated);
-            announce(client, "Crafting table support out of sight - repositioning for a clear line of sight");
-            return;
+            //
+            // Live-caught (script seed 302304127329527063 with adaptive-v1, and realtime seed
+            // 7777777777777): the original single fixed-size search (radius 1-4, dy -1..+2, one
+            // attempt) came back empty on genuinely obstructed terrain and threw immediately.
+            // Mirror findMiningTargetVantage's proven attempt-widening pattern instead of giving
+            // up after the first, narrowest pass - attempt 1 reproduces the original bounds
+            // exactly, so a candidate that was findable before is still found on the first try.
+            while (placeTableVantageAttempts < MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS) {
+                placeTableVantageAttempts++;
+                var relocated = findTablePlacementVantage(client, support, placeTableVantageAttempts);
+                if (relocated != null) {
+                    tablePlacementVantage = relocated;
+                    placeTableAimTicks = 0;
+                    navigationDiagnostics.add("table placement vantage relocation "
+                            + placeTableVantageAttempts + "/" + MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS
+                            + ": " + relocated);
+                    announce(client, "Crafting table support out of sight - repositioning for a clear line of sight");
+                    return;
+                }
+                navigationDiagnostics.add("table placement vantage relocation " + placeTableVantageAttempts + "/"
+                        + MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS + " found no candidate in the widened search");
+            }
+            throw new IllegalStateException("no unobstructed crafting-table placement vantage after "
+                    + placeTableVantageAttempts + " widening attempts; player=" + player.blockPosition()
+                    + ", table=" + tablePosition + ", eyeDistance=" + rounded(distance));
         }
         if (stageTicks % 20 == 1 && aimedAtSupport) {
             KeyMapping.click(client.options.keyUse.getKey());
@@ -841,15 +860,22 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
      * navigate()'s own arrival tolerance only steers toward proximity to tablePosition, never
      * toward a stance verified to actually see support, so this is what actually recovers a
      * blocked sightline instead of grinding the placement timeout.
+     *
+     * <p>{@code attempt} (1-based, bounded by MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS) widens both
+     * the horizontal ring and the vertical band on each retry, mirroring findMiningTargetVantage's
+     * proven widening pattern - attempt 1 reproduces the original, unwidened bounds exactly, so a
+     * repeated search against the same unchanged support genuinely searches a larger candidate
+     * pool instead of deterministically repeating the first call's (possibly empty) result.</p>
      */
-    private BlockPos findTablePlacementVantage(Minecraft client, BlockPos support) {
+    private BlockPos findTablePlacementVantage(Minecraft client, BlockPos support, int attempt) {
         var player = requirePlayer(client);
         var aim = new net.minecraft.world.phys.Vec3(support.getX() + 0.5, support.getY() + 1.0, support.getZ() + 0.5);
-        for (var radius = 1; radius <= 4; radius++) {
+        var bounds = tablePlacementVantageSearchBounds(attempt);
+        for (var radius = 1; radius <= bounds.maxRadius(); radius++) {
             for (var dx = -radius; dx <= radius; dx++) {
                 for (var dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
-                    for (var dy = -1; dy <= 2; dy++) {
+                    for (var dy = bounds.minDy(); dy <= bounds.maxDy(); dy++) {
                         var candidate = tablePosition.offset(dx, dy, dz);
                         if (candidate.equals(tablePosition) || !isStandable(client.level, candidate)) continue;
                         var eye = new net.minecraft.world.phys.Vec3(candidate.getX() + 0.5,
@@ -865,6 +891,20 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
             }
         }
         return null;
+    }
+
+    /**
+     * Pure geometry for the horizontal ring radius and vertical search band
+     * findTablePlacementVantage uses at a given (1-based) attempt. Attempt 1 reproduces the
+     * original, unwidened bounds (radius 4, dy -1..+2 relative to tablePosition) exactly; each
+     * later attempt widens both dimensions, mirroring vantageSearchBounds's widening shape.
+     */
+    static TablePlacementVantageBounds tablePlacementVantageSearchBounds(int attempt) {
+        var pad = attempt - 1;
+        return new TablePlacementVantageBounds(4 + pad * 2, -1 - pad, 2 + pad);
+    }
+
+    record TablePlacementVantageBounds(int maxRadius, int minDy, int maxDy) {
     }
 
     private BlockPos findTablePlacement(Minecraft client) {
