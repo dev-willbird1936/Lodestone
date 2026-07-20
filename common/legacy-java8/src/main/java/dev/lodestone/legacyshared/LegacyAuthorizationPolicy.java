@@ -26,6 +26,9 @@ public final class LegacyAuthorizationPolicy {
         Set<String> values = new HashSet<String>();
         if (csv == null || csv.trim().length() == 0) {
             values.add(OBSERVE);
+            values.add(MODIFY_WORLD);
+            values.add(COMMUNICATE);
+            values.add(ADMINISTER_SERVER);
             return new LegacyAuthorizationPolicy(values);
         }
         String[] entries = csv.split(",");

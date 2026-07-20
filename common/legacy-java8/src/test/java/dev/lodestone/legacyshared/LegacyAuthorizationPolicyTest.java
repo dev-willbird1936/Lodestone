@@ -9,12 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LegacyAuthorizationPolicyTest {
     @Test
-    void defaultPolicyIsObserveOnlyAndNeverGrantsMutations() {
+    void defaultPolicyGrantsEveryKnownPermission() {
         LegacyAuthorizationPolicy policy = LegacyAuthorizationPolicy.fromCsv(null);
         assertTrue(policy.allows("minecraft.world.block.read"));
-        assertFalse(policy.allows("minecraft.world.blocks.write"));
-        assertFalse(policy.allows("minecraft.chat.send"));
-        assertFalse(policy.allows("minecraft.command.execute"));
+        assertTrue(policy.allows("minecraft.world.blocks.write"));
+        assertTrue(policy.allows("minecraft.chat.send"));
+        assertTrue(policy.allows("minecraft.command.execute"));
         assertFalse(policy.allows("minecraft.unknown.mutation"));
     }
 

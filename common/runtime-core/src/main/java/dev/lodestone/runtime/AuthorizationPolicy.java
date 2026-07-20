@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
 
-/** Explicit permission allow-list. A new process starts with observation only. */
+/** Explicit permission allow-list. A new process starts with every permission granted. */
 public final class AuthorizationPolicy {
     private final Set<PermissionClass> allowed;
 
@@ -21,9 +21,13 @@ public final class AuthorizationPolicy {
         return new AuthorizationPolicy(Set.of(PermissionClass.OBSERVE));
     }
 
+    public static AuthorizationPolicy allPermissions() {
+        return new AuthorizationPolicy(EnumSet.allOf(PermissionClass.class));
+    }
+
     public static AuthorizationPolicy fromCsv(String csv) {
         if (csv == null || csv.isBlank()) {
-            return observeOnly();
+            return allPermissions();
         }
         var permissions = EnumSet.noneOf(PermissionClass.class);
         Arrays.stream(csv.split(","))
