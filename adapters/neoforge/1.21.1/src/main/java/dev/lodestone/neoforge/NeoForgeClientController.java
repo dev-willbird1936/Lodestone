@@ -39,6 +39,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -91,6 +92,7 @@ public final class NeoForgeClientController {
         BRIDGE.tickCombatGoal();
         BRIDGE.tickSpawnGauntletGoal();
         BRIDGE.tickStoneToolsetGoal();
+        BRIDGE.tickAttackHold();
         var adapter = NeoForgeAdapter.active();
         if (adapter == null) {
             return;
@@ -212,8 +214,9 @@ public final class NeoForgeClientController {
      * {@code additionalProperties:false} - any other key fails output schema validation and,
      * because interact always commits its mutation before returning, surfaces to callers as
      * {@code OUTCOME_INDETERMINATE} rather than a clean error. Kept as its own package-private
-     * method (instead of inlined in {@link ClientBridgeImpl#interactKey}) so it can be exercised
-     * directly by a regression test without requiring a live Minecraft client.
+     * method (instead of inlined in {@link ClientBridgeImpl#interactKeyAsync} or
+     * {@link NeoForgeAttackHold}) so it can be exercised directly by a regression test without
+     * requiring a live Minecraft client.
      */
     static Map<String, Object> interactOutput(String action) {
         return Map.of("action", action, "queued", true);
@@ -238,6 +241,15 @@ public final class NeoForgeClientController {
         private NeoForgeCombatGoal combatGoal;
         private NeoForgeSpawnGauntletGoal spawnGauntletGoal;
         private NeoForgeStoneToolsetGoal stoneToolsetGoal;
+        /** Backs a single in-flight minecraft.player.interact "attack" held against a breakable
+         * block - see {@link NeoForgeAttackHold}. Not a native goal actor, but it still owns
+         * keyAttack across real ticks exactly like one, so a new hold refuses to start while a
+         * native goal actor is already running (see anyNativeGoalActorRunning()) - the reverse
+         * ordering can't race in practice since every mutating minecraft.* capability, including
+         * every native goal's start call, shares one runtime-enforced ordering queue
+         * (LodestoneRuntime.SHARED_MUTATION_ORDER), so a goal-start invocation cannot even begin
+         * running until this hold's own future has resolved. */
+        private NeoForgeAttackHold attackHold;
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -255,6 +267,8 @@ public final class NeoForgeClientController {
                         "distance", distance, "position", position, "player", player);
             }
         }
+
+        private record HeldAttackTarget(BlockPos position, double progressPerTick) { }
 
         @Override
         public boolean available(String capability) {
@@ -303,6 +317,9 @@ public final class NeoForgeClientController {
             if ("minecraft.goal.survival.stone-toolset".equals(capability)) {
                 return startStoneToolsetGoal(invocation);
             }
+            if ("minecraft.player.interact".equals(capability)) {
+                return interactKeyAsync(invocation);
+            }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
                 return switch (capability) {
@@ -318,7 +335,6 @@ public final class NeoForgeClientController {
                         worldAnalysis(capability, invocation);
                 case "minecraft.player.look" -> look(invocation);
                 case "minecraft.player.move" -> move(invocation);
-                case "minecraft.player.interact" -> interactKey(invocation);
                 case "minecraft.inventory.slot.select" -> selectSlot(invocation);
                 case "minecraft.inventory.container.read" -> containerRead();
                 case "minecraft.inventory.container.click" -> containerClick(invocation);
@@ -363,6 +379,11 @@ public final class NeoForgeClientController {
             if (combatGoal != null && !combatGoal.done()) stoppedGoalActors.add("combatGoal");
             if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) stoppedGoalActors.add("spawnGauntletGoal");
             if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) stoppedGoalActors.add("stoneToolsetGoal");
+            if (attackHold != null && !attackHold.done()) {
+                stoppedGoalActors.add("attackHold");
+                attackHold.fail(new IllegalStateException(
+                        "held attack was stopped by a session reconcile"));
+            }
             survivalTreeGoal = null;
             woolTreeZombieGoal = null;
             netherGoal = null;
@@ -370,6 +391,7 @@ public final class NeoForgeClientController {
             combatGoal = null;
             spawnGauntletGoal = null;
             stoneToolsetGoal = null;
+            attackHold = null;
 
             var client = Minecraft.getInstance();
             // Goal actors (e.g. NeoForgeNavigationGoal) drive movement/interaction by setting these
@@ -665,6 +687,23 @@ public final class NeoForgeClientController {
             if (current == null) return;
             current.tick(Minecraft.getInstance());
             if (current.done()) stoneToolsetGoal = null;
+        }
+
+        private void tickAttackHold() {
+            var current = attackHold;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) attackHold = null;
+        }
+
+        private boolean anyNativeGoalActorRunning() {
+            return (survivalTreeGoal != null && !survivalTreeGoal.done())
+                    || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
+                    || (netherGoal != null && !netherGoal.done())
+                    || (navigationGoal != null && !navigationGoal.done())
+                    || (combatGoal != null && !combatGoal.done())
+                    || (spawnGauntletGoal != null && !spawnGauntletGoal.done())
+                    || (stoneToolsetGoal != null && !stoneToolsetGoal.done());
         }
 
         private static Map<String, Object> screenshot(
@@ -1115,36 +1154,100 @@ public final class NeoForgeClientController {
             }
         }
 
-        private Map<String, Object> interactKey(dev.lodestone.adapter.InvocationContext invocation) {
-            var client = Minecraft.getInstance();
-            var player = requirePlayer();
-            var arguments = input(invocation);
-            var action = text(arguments, "action", "use");
-            var intelligence = text(arguments, "intelligence", "").trim().toLowerCase(Locale.ROOT);
-            if ("attack".equals(action) && !intelligence.isBlank() && !"raw".equals(intelligence)
-                    && !"lowest".equals(intelligence) && !"raw-v1".equals(intelligence)
-                    && client.gameMode != null && client.gameMode.getPlayerMode() == net.minecraft.world.level.GameType.SURVIVAL) {
-                var blockedBlock = NeoForgeGoalActionGuard.toolRequiredAttackTarget(client.level, player);
-                if (blockedBlock != null) {
-                    throw new IllegalStateException("intelligent attack refused tool-required block " + blockedBlock
-                            + "; acquire and equip the prerequisite tool first");
+        /**
+         * minecraft.player.interact's "attack" case must hold the attack key down across real
+         * client ticks when it is targeting a block with nonzero hardness - a single momentary
+         * {@code KeyMapping.click(...)} never sets {@code isDown()}, so vanilla's destroy-progress
+         * accumulation is never driven and the attack silently no-ops (see
+         * verification/evidence/goal-orchestrator-milestone1/trace-23da1de26e5c.jsonl turn 35/36,
+         * where an attack on a leaves block reported {@code {"queued":true}} yet the identical
+         * block was still there on the very next observation). Every other block-breaking code
+         * path in this package already holds the key across ticks - see e.g.
+         * NeoForgeNavigationGoal.executeMineStep - so this dispatches to {@link NeoForgeAttackHold},
+         * which mirrors that exact convention instead of the single click below.
+         * <p>
+         * "use", "pick", and "attack" against anything that is not a breakable block (an entity, no
+         * target in range, an instant-break block, or an unbreakable one) are unaffected: those stay
+         * exactly the momentary single-click behavior this replaced, resolved synchronously within
+         * this one client-thread callback.
+         */
+        private CompletionStage<Map<String, Object>> interactKeyAsync(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    invocation.cancellation().throwIfCancelled();
+                    var client = Minecraft.getInstance();
+                    var player = requirePlayer();
+                    var arguments = input(invocation);
+                    var action = text(arguments, "action", "use");
+                    var intelligence = text(arguments, "intelligence", "").trim().toLowerCase(Locale.ROOT);
+                    if ("attack".equals(action) && !intelligence.isBlank() && !"raw".equals(intelligence)
+                            && !"lowest".equals(intelligence) && !"raw-v1".equals(intelligence)
+                            && client.gameMode != null && client.gameMode.getPlayerMode() == GameType.SURVIVAL) {
+                        var blockedBlock = NeoForgeGoalActionGuard.toolRequiredAttackTarget(client.level, player);
+                        if (blockedBlock != null) {
+                            throw new IllegalStateException("intelligent attack refused tool-required block " + blockedBlock
+                                    + "; acquire and equip the prerequisite tool first");
+                        }
+                    }
+                    if ("attack".equals(action)) {
+                        var heldTarget = heldAttackTarget(client, player);
+                        if (heldTarget != null) {
+                            if (attackHold != null && !attackHold.done()) {
+                                throw new IllegalStateException("a held attack is already in progress");
+                            }
+                            if (anyNativeGoalActorRunning()) {
+                                throw new IllegalStateException("a native Minecraft goal actor is already running");
+                            }
+                            invocation.cancellation().commitMutation();
+                            attackHold = new NeoForgeAttackHold(invocation, result,
+                                    heldTarget.position(), heldTarget.progressPerTick());
+                            return;
+                        }
+                    }
+                    var mapping = switch (action) {
+                        case "use" -> client.options.keyUse;
+                        case "attack" -> client.options.keyAttack;
+                        case "pick" -> client.options.keyPickItem;
+                        default -> throw new IllegalArgumentException("action must be use, attack, or pick");
+                    };
+                    invocation.cancellation().commitMutation();
+                    KeyMapping.click(mapping.getKey());
+                    // NOTE: the "intelligence" hint read above is intentionally not echoed into the
+                    // output. minecraft.player.interact's catalog outputSchema is exactly
+                    // {action, queued} with additionalProperties:false; it does not declare (nor does
+                    // this capability's inputSchema accept) an "intelligence" field. Returning it here
+                    // used to fail every single interact call's output validation - see
+                    // NeoForgeClientController.interactOutput.
+                    result.complete(interactOutput(action));
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
                 }
-            }
-            var mapping = switch (action) {
-                case "use" -> client.options.keyUse;
-                case "attack" -> client.options.keyAttack;
-                case "pick" -> client.options.keyPickItem;
-                default -> throw new IllegalArgumentException("action must be use, attack, or pick");
-            };
-            invocation.cancellation().commitMutation();
-            KeyMapping.click(mapping.getKey());
-            // NOTE: the "intelligence" hint read above is intentionally not echoed into the
-            // output. minecraft.player.interact's catalog outputSchema is exactly
-            // {action, queued} with additionalProperties:false; it does not declare (nor does
-            // this capability's inputSchema accept) an "intelligence" field. Returning it here
-            // used to fail every single interact call's output validation - see
-            // NeoForgeClientController.interactOutput.
-            return interactOutput(action);
+            });
+            return result;
+        }
+
+        /**
+         * Returns the block a held attack should target, or {@code null} when "attack" should stay
+         * the old momentary single click instead: no block in range (a miss, or an entity is
+         * targeted - entity attacks are already instantaneous per swing and need no holding),
+         * survival/adventure block-breaking is not active, the block is already air/fluid, it is
+         * unbreakable ({@code progressPerTick <= 0}, e.g. bedrock), or it is an instant-break block
+         * ({@code progressPerTick >= 1.0}, e.g. tall grass) that a single click already destroys in
+         * one tick just as before.
+         */
+        private HeldAttackTarget heldAttackTarget(Minecraft client, LocalPlayer player) {
+            if (client.level == null || client.gameMode == null) return null;
+            var mode = client.gameMode.getPlayerMode();
+            if (mode != GameType.SURVIVAL && mode != GameType.ADVENTURE) return null;
+            var hit = player.pick(5.0F, 0.0F, false);
+            if (!(hit instanceof BlockHitResult blockHit)) return null;
+            var pos = blockHit.getBlockPos();
+            var state = client.level.getBlockState(pos);
+            if (state.isAir() || !state.getFluidState().isEmpty()) return null;
+            var progressPerTick = state.getDestroyProgress(player, client.level, pos);
+            if (progressPerTick <= 0.0 || progressPerTick >= 1.0) return null;
+            return new HeldAttackTarget(pos.immutable(), progressPerTick);
         }
 
         private Map<String, Object> selectSlot(dev.lodestone.adapter.InvocationContext invocation) {
