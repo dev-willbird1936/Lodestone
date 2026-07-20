@@ -367,7 +367,7 @@ public final class LodestoneRuntime implements AutoCloseable {
         if (quarantine != null) {
             return completedError(request, result, trace, "CAPABILITY_QUARANTINED",
                     quarantine.outcomeIndeterminate()
-                            ? "a previous irreversible invocation has an indeterminate outcome; reconcile state and restart the runtime before retrying"
+                            ? "a previous irreversible invocation has an indeterminate outcome; call minecraft.session.reconcile before retrying"
                             : "a previous invocation exceeded its deadline and is still running; retry after it finishes",
                     !quarantine.outcomeIndeterminate());
         }
@@ -996,6 +996,42 @@ public final class LodestoneRuntime implements AutoCloseable {
             audit.add(new AuditRecord(request.requestId(), sessionId, request.capability(), outcome, occurredAt));
             auditTrace.add(new AuditTraceRecord(request.requestId(), sessionId, trace.callerSessionId(),
                     request.capability(), trace.path(), outcome, occurredAt));
+        }
+    }
+
+    /**
+     * Dedicated audit trail for minecraft.session.reconcile's "clear" step, kept separate from
+     * the standard AuditRecord/AuditTraceRecord shapes (which have no field for referencing another
+     * invocation's ownerId, and are only ever written from the normal invoke() pipeline) rather
+     * than extending those shared record types for one capability's need.
+     */
+    private record QuarantineClearAudit(String requestId, String sessionId, String clearedQuarantineOwnerId,
+                                        Instant occurredAt) {
+    }
+
+    private static final int MAX_QUARANTINE_CLEAR_AUDIT_RECORDS = 1_024;
+    private final List<QuarantineClearAudit> quarantineClearAudit = new ArrayList<>();
+
+    private void recordQuarantineClear(String requestId, String clearedQuarantineOwnerId) {
+        synchronized (quarantineClearAudit) {
+            if (quarantineClearAudit.size() >= MAX_QUARANTINE_CLEAR_AUDIT_RECORDS) {
+                quarantineClearAudit.remove(0);
+            }
+            quarantineClearAudit.add(new QuarantineClearAudit(requestId, sessionId, clearedQuarantineOwnerId,
+                    Instant.now()));
+        }
+    }
+
+    /** Test/diagnostic accessor: an immutable snapshot of every quarantine-clear audit record. */
+    List<Map<String, Object>> quarantineClearAuditSnapshot() {
+        synchronized (quarantineClearAudit) {
+            return quarantineClearAudit.stream()
+                    .<Map<String, Object>>map(record -> Map.of(
+                            "requestId", record.requestId(),
+                            "sessionId", record.sessionId(),
+                            "clearedQuarantineOwnerId", record.clearedQuarantineOwnerId(),
+                            "occurredAt", record.occurredAt().toString()))
+                    .toList();
         }
     }
 
@@ -1951,7 +1987,7 @@ public final class LodestoneRuntime implements AutoCloseable {
 
         private CapabilityQuarantinedException(Quarantine quarantine) {
             super(quarantine.outcomeIndeterminate()
-                    ? "a previous irreversible invocation has an indeterminate outcome; reconcile state and restart the runtime before retrying"
+                    ? "a previous irreversible invocation has an indeterminate outcome; call minecraft.session.reconcile before retrying"
                     : "a previous invocation exceeded its deadline and is still running; retry after it finishes");
             this.quarantine = quarantine;
         }
@@ -1976,7 +2012,8 @@ public final class LodestoneRuntime implements AutoCloseable {
             if (capability.id().startsWith("lodestone.system.")
                     || capability.id().equals("minecraft.event.subscribe")
                     || capability.id().equals("minecraft.event.poll")
-                    || capability.id().equals("minecraft.event.unsubscribe")) {
+                    || capability.id().equals("minecraft.event.unsubscribe")
+                    || capability.id().equals("minecraft.session.reconcile")) {
                 return capability.forAdapter(descriptor, Availability.AVAILABLE, null);
             }
             return capability.forAdapter(descriptor, Availability.UNAVAILABLE,
@@ -2007,7 +2044,59 @@ public final class LodestoneRuntime implements AutoCloseable {
                                     ? query : ""))),
                     "minecraft.event.subscribe", this::subscribeEvents,
                     "minecraft.event.poll", this::pollEvents,
-                    "minecraft.event.unsubscribe", this::unsubscribeEvents);
+                    "minecraft.event.unsubscribe", this::unsubscribeEvents,
+                    "minecraft.session.reconcile", this::reconcileSession);
+        }
+
+        /**
+         * Handler for minecraft.session.reconcile. See the class-level SHARED_MUTATION_ORDER /
+         * activeQuarantine() / putIndeterminateQuarantine() comments for the quarantine mechanism
+         * this recovers from, and LodestoneAdapter#reconcileSession() for the quiesce contract.
+         * <p>
+         * This capability is declared with SideEffect.NONE (see protocol/catalog/core-
+         * capabilities.json) so that orderingKey() never routes it into SHARED_MUTATION_ORDER and
+         * activeQuarantine()'s fallback never blocks it - the only way, without touching those
+         * methods, for a capability to remain callable while every other minecraft.* mutation is
+         * quarantined. That is safe specifically because this handler never calls
+         * context.cancellation().commitMutation(): every action it takes (asking an adapter to null
+         * out already-terminating goal references and release already-idempotent input leases) is
+         * safe to interrupt or retry, so a timeout or failure here can never itself produce an
+         * OUTCOME_INDETERMINATE that would need quarantine protection - unlike every capability
+         * this exists to recover from.
+         */
+        private java.util.concurrent.CompletionStage<Map<String, Object>> reconcileSession(InvocationContext context) {
+            var priorQuarantine = quarantined.get(SHARED_MUTATION_ORDER);
+            if (priorQuarantine == null || !priorQuarantine.outcomeIndeterminate()) {
+                // Nothing to reconcile: either no quarantine is active, or the only entry present is
+                // the OTHER, transient "Quarantine.running" kind (a deadline exceeded without a
+                // committed mutation), which already self-clears on its own and is not this
+                // capability's concern - forcibly touching it here would race a real in-flight
+                // invocation elsewhere.
+                return CompletableFuture.completedFuture(Map.of("quarantinePresent", false, "cleared", false));
+            }
+            var reconciler = adapters.stream().findFirst();
+            if (reconciler.isEmpty()) {
+                return CompletableFuture.completedFuture(Map.of(
+                        "quarantinePresent", true, "cleared", false,
+                        "quarantineOwnerId", priorQuarantine.ownerId(), "quiesced", false));
+            }
+            return reconciler.get().reconcileSession().thenApply(adapterResult -> {
+                var quiesced = Boolean.TRUE.equals(adapterResult.get("quiesced"));
+                var response = new LinkedHashMap<String, Object>(adapterResult);
+                response.put("quarantinePresent", true);
+                response.put("quarantineOwnerId", priorQuarantine.ownerId());
+                // Compare-and-remove: only clear the exact quarantine entry observed at the top of
+                // this call. If a NEW indeterminate outcome landed on SHARED_MUTATION_ORDER while
+                // this reconcile was in flight, that newer entry (protecting a different, later
+                // problem this call never quiesced) must survive.
+                if (quiesced && quarantined.remove(SHARED_MUTATION_ORDER, priorQuarantine)) {
+                    response.put("cleared", true);
+                    recordQuarantineClear(context.request().requestId(), priorQuarantine.ownerId());
+                } else {
+                    response.put("cleared", false);
+                }
+                return Map.<String, Object>copyOf(response);
+            });
         }
 
         private java.util.concurrent.CompletionStage<Map<String, Object>> subscribeEvents(InvocationContext context) {

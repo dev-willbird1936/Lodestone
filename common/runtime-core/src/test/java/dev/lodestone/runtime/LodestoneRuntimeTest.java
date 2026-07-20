@@ -51,6 +51,11 @@ class LodestoneRuntimeTest {
             assertTrue(runtime.capabilities(null).stream()
                     .filter(capability -> capability.id().startsWith("minecraft."))
                     .filter(capability -> !capability.id().startsWith("minecraft.event."))
+                    // minecraft.session.reconcile is a SystemAdapter-level capability like
+                    // minecraft.event.* (runtime bookkeeping, not native-adapter-dependent) - it
+                    // is deliberately AVAILABLE with no native adapter, so it must clear the
+                    // recovery quarantine even before/without one ever attaching.
+                    .filter(capability -> !capability.id().equals("minecraft.session.reconcile"))
                     .allMatch(capability -> capability.availability() == Availability.UNAVAILABLE
                             && capability.reason() != null
                             && "no-native-adapter".equals(capability.reason().code())));
@@ -747,6 +752,149 @@ class LodestoneRuntimeTest {
                     .get(1, TimeUnit.SECONDS);
             assertEquals("CAPABILITY_QUARANTINED", second.error().code());
             assertFalse(second.error().retryable());
+        }
+    }
+
+    // --- minecraft.session.reconcile / CAPABILITY_QUARANTINED recovery -------------------------
+    // See LodestoneRuntime's class-level SHARED_MUTATION_ORDER/activeQuarantine()/
+    // putIndeterminateQuarantine() and the minecraft.session.reconcile handler for the mechanism
+    // these tests cover: every mutating minecraft.* capability shares one ordering key, so one
+    // capability's indeterminate outcome blocks every other one, and the only sanctioned recovery
+    // is an explicit, audited minecraft.session.reconcile call that only clears the quarantine once
+    // an adapter confirms it actually quiesced residual activity.
+
+    @Test
+    void indeterminateOutcomeOnOneMutatingCapabilityQuarantinesADifferentMutatingCapabilityToo() throws Exception {
+        // This locks in, as an explicit, intentional, regression-tested contract (previously there
+        // was no test either confirming or denying this), the exact cross-capability blocking
+        // behavior discovered live against a real NeoForge client this session: capability A never
+        // itself gets retried here - a genuinely DIFFERENT capability B is blocked by A's failure,
+        // because both are minecraft.* mutating capabilities and therefore share
+        // SHARED_MUTATION_ORDER. This is deliberate (see the class-level comment referenced above),
+        // not an accident of the shared-key implementation, and must not be "fixed" by narrowing
+        // the quarantine to per-capability scope.
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv("control-player"))) {
+            var capabilityA = capability("minecraft.test.cross-capability-a", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            var capabilityB = capability("minecraft.test.cross-capability-b", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            runtime.registerAdapter(adapter(List.of(capabilityA, capabilityB), Map.of(
+                    capabilityA.id(), context -> {
+                        context.cancellation().commitMutation();
+                        throw new IllegalStateException("capability A's native acknowledgement was lost");
+                    },
+                    capabilityB.id(), context -> CompletableFuture.completedFuture(Map.of("ok", true)))));
+
+            var failedA = runtime.invoke(request(runtime, capabilityA.id(), Map.of())).get(1, TimeUnit.SECONDS);
+            assertEquals("OUTCOME_INDETERMINATE", failedA.error().code());
+
+            var blockedB = runtime.invoke(request(runtime, capabilityB.id(), Map.of()), "caller-b")
+                    .get(1, TimeUnit.SECONDS);
+            assertEquals("CAPABILITY_QUARANTINED", blockedB.error().code());
+            assertFalse(blockedB.error().retryable());
+        }
+    }
+
+    @Test
+    void reconcileClearsTheSharedQuarantineWhenTheAdapterConfirmsQuiescence() throws Exception {
+        // minecraft.session.reconcile itself requires BOTH observe and control-player (see its
+        // catalog entry) - control-player alone (sufficient for the plain mutating test
+        // capabilities below) is not enough to invoke reconcile itself.
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv("observe,control-player"))) {
+            var failingCapability = capability("minecraft.test.reconcile-clears-a", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            var otherCapability = capability("minecraft.test.reconcile-clears-b", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            runtime.registerAdapter(reconcilingAdapter(List.of(failingCapability, otherCapability), Map.of(
+                    failingCapability.id(), context -> {
+                        context.cancellation().commitMutation();
+                        throw new IllegalStateException("native acknowledgement was lost");
+                    },
+                    otherCapability.id(), context -> CompletableFuture.completedFuture(Map.of("ok", true))),
+                    () -> CompletableFuture.completedFuture(Map.of(
+                            "quiesced", true, "stoppedGoalActors", List.of("navigationGoal")))));
+
+            runtime.invoke(request(runtime, failingCapability.id(), Map.of())).get(1, TimeUnit.SECONDS);
+            var stillBlocked = runtime.invoke(request(runtime, otherCapability.id(), Map.of()), "caller-before-reconcile")
+                    .get(1, TimeUnit.SECONDS);
+            assertEquals("CAPABILITY_QUARANTINED", stillBlocked.error().code());
+
+            var reconcile = runtime.invoke(request(runtime, "minecraft.session.reconcile", Map.of()))
+                    .get(1, TimeUnit.SECONDS);
+            assertEquals(ResultEnvelope.Status.OK, reconcile.status());
+            assertEquals(true, reconcile.output().get("quarantinePresent"));
+            assertEquals(true, reconcile.output().get("cleared"));
+            assertEquals(true, reconcile.output().get("quiesced"));
+
+            var recovered = runtime.invoke(request(runtime, otherCapability.id(), Map.of()), "caller-after-reconcile")
+                    .get(1, TimeUnit.SECONDS);
+            assertEquals(ResultEnvelope.Status.OK, recovered.status());
+        }
+    }
+
+    @Test
+    void reconcileLeavesTheSharedQuarantineInPlaceWhenTheAdapterCannotConfirmQuiescence() throws Exception {
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv("observe,control-player"))) {
+            var failingCapability = capability("minecraft.test.reconcile-partial-a", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            var otherCapability = capability("minecraft.test.reconcile-partial-b", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            runtime.registerAdapter(reconcilingAdapter(List.of(failingCapability, otherCapability), Map.of(
+                    failingCapability.id(), context -> {
+                        context.cancellation().commitMutation();
+                        throw new IllegalStateException("native acknowledgement was lost");
+                    },
+                    otherCapability.id(), context -> CompletableFuture.completedFuture(Map.of("ok", true))),
+                    () -> CompletableFuture.completedFuture(Map.of(
+                            "quiesced", false, "reason", "adapter could not confirm the client stopped moving"))));
+
+            runtime.invoke(request(runtime, failingCapability.id(), Map.of())).get(1, TimeUnit.SECONDS);
+
+            var reconcile = runtime.invoke(request(runtime, "minecraft.session.reconcile", Map.of()))
+                    .get(1, TimeUnit.SECONDS);
+            assertEquals(ResultEnvelope.Status.OK, reconcile.status());
+            assertEquals(true, reconcile.output().get("quarantinePresent"));
+            // Partial success (quiesce reported false) must NOT clear the quarantine - this is the
+            // exact "don't clear on partial success" contract the reconcile capability exists to
+            // uphold, distinct from and stricter than simply "the call didn't throw".
+            assertEquals(false, reconcile.output().get("cleared"));
+
+            var stillBlocked = runtime.invoke(request(runtime, otherCapability.id(), Map.of()), "caller-still-blocked")
+                    .get(1, TimeUnit.SECONDS);
+            assertEquals("CAPABILITY_QUARANTINED", stillBlocked.error().code());
+            assertFalse(stillBlocked.error().retryable());
+        }
+    }
+
+    @Test
+    void reconcileClearRecordsAnAuditEntryReferencingTheQuarantiningInvocation() throws Exception {
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv("observe,control-player"))) {
+            var failingCapability = capability("minecraft.test.reconcile-audit", Availability.AVAILABLE,
+                    Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
+            runtime.registerAdapter(reconcilingAdapter(List.of(failingCapability), Map.of(
+                    failingCapability.id(), context -> {
+                        context.cancellation().commitMutation();
+                        throw new IllegalStateException("native acknowledgement was lost");
+                    }),
+                    () -> CompletableFuture.completedFuture(Map.of("quiesced", true))));
+
+            assertTrue(runtime.quarantineClearAuditSnapshot().isEmpty());
+
+            runtime.invoke(request(runtime, failingCapability.id(), Map.of())).get(1, TimeUnit.SECONDS);
+            var reconcile = runtime.invoke(request(runtime, "minecraft.session.reconcile", Map.of()))
+                    .get(1, TimeUnit.SECONDS);
+            var clearedOwnerId = (String) reconcile.output().get("quarantineOwnerId");
+            assertTrue(clearedOwnerId != null && !clearedOwnerId.isBlank());
+
+            var auditSnapshot = runtime.quarantineClearAuditSnapshot();
+            assertEquals(1, auditSnapshot.size());
+            assertEquals(clearedOwnerId, auditSnapshot.get(0).get("clearedQuarantineOwnerId"));
+            assertTrue(auditSnapshot.get(0).get("requestId") instanceof String requestId && !requestId.isBlank());
+            assertTrue(auditSnapshot.get(0).get("occurredAt") instanceof String occurredAt && !occurredAt.isBlank());
+
+            // A second reconcile call with nothing left to clear must not add another audit entry.
+            runtime.invoke(request(runtime, "minecraft.session.reconcile", Map.of())).get(1, TimeUnit.SECONDS);
+            assertEquals(1, runtime.quarantineClearAuditSnapshot().size());
         }
     }
 
@@ -1842,6 +1990,40 @@ class LodestoneRuntimeTest {
             @Override
             public Map<String, CapabilityHandler> handlers() {
                 return handlers;
+            }
+        };
+    }
+
+    /**
+     * Like adapter(...), but also overrides LodestoneAdapter#reconcileSession() so tests can
+     * simulate a native adapter's quiesce outcome for minecraft.session.reconcile - the plain
+     * adapter(...) helper above leaves reconcileSession() at its default ("quiesced": false),
+     * which is only useful for proving reconcile correctly refuses to clear anything.
+     */
+    private static LodestoneAdapter reconcilingAdapter(List<CapabilityDescriptor> descriptors,
+                                                         Map<String, CapabilityHandler> handlers,
+                                                         java.util.function.Supplier<java.util.concurrent.CompletionStage<Map<String, Object>>> reconcileSession) {
+        var adapterDescriptor = new AdapterDescriptor("test.reconciling-adapter", "1.0.0", "minecraft", "test", "test",
+                Environment.REMOTE);
+        return new LodestoneAdapter() {
+            @Override
+            public AdapterDescriptor descriptor() {
+                return adapterDescriptor;
+            }
+
+            @Override
+            public CapabilityManifest manifest() {
+                return new CapabilityManifest(adapterDescriptor, descriptors);
+            }
+
+            @Override
+            public Map<String, CapabilityHandler> handlers() {
+                return handlers;
+            }
+
+            @Override
+            public java.util.concurrent.CompletionStage<Map<String, Object>> reconcileSession() {
+                return reconcileSession.get();
             }
         };
     }

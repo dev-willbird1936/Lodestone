@@ -15,7 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        assertEquals(56, CoreCatalog.load().size());
+        // 57 = 56 pre-existing capabilities + minecraft.session.reconcile (the
+        // CAPABILITY_QUARANTINED recovery capability added alongside this test update).
+        assertEquals(57, CoreCatalog.load().size());
     }
 
     @Test
