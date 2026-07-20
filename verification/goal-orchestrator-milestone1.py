@@ -360,6 +360,27 @@ def capability_id_to_tool_name(capability_id: str) -> str:
     return capability_id.replace(".", "_")
 
 
+# Task #18: minecraft.ui.click, minecraft.ui.text.insert, minecraft.inventory.container.read, and
+# minecraft.inventory.container.click all report UNAVAILABLE from NeoForgeClientController#available
+# (adapters/neoforge/1.21.1/.../NeoForgeClientController.java) whenever `client.screen == null` -
+# which is exactly the state the client is in at catalog-build time, right after bootstrap, before
+# any screen has ever opened. build_tool_catalog() used to treat that one-time snapshot as
+# permanent and silently drop these forever, even though a screen (a death screen, an inventory/
+# container screen) can legitimately open later in the same run. Confirmed live
+# (trace-3ca0c42b0534.jsonl): the model died, correctly found the death screen's Respawn button via
+# minecraft.ui.state.read, but had no working way to click it - minecraft.ui.click was never offered
+# as a tool at all - and burned half a 60-turn run stuck there. These four are included in the
+# catalog unconditionally regardless of their availability at catalog-build time, with a note added
+# to the description: a failed call with a clear error when no matching screen is open is far better
+# than the model never being able to call it in the first place.
+SCREEN_GATED_CAPABILITIES = (
+    "minecraft.ui.click",
+    "minecraft.ui.text.insert",
+    "minecraft.inventory.container.read",
+    "minecraft.inventory.container.click",
+)
+
+
 def build_tool_catalog(capabilities: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     """Auto-generate one Anthropic tool-use definition per available minecraft.* capability.
 
@@ -371,6 +392,9 @@ def build_tool_catalog(capabilities: list[dict[str, Any]]) -> tuple[list[dict[st
     dispatch: dict[str, dict[str, Any]] = {}
     seen_names: set[str] = set()
     for capability in capabilities:
+        capability_id = capability.get("id", "")
+        screen_gated = capability_id in SCREEN_GATED_CAPABILITIES
+
         # NOTE (empirically verified live against a real NeoForge 1.21.1 client this session, not
         # assumed): "restricted" in this listing is frequently just the STATIC descriptor default
         # baked into protocol/catalog/core-capabilities.json, carried through verbatim by
@@ -384,9 +408,9 @@ def build_tool_catalog(capabilities: list[dict[str, Any]]) -> tuple[list[dict[st
         # LodestoneRuntime/McpGateway regardless of what this script generates as a tool, so the
         # safe, correct filter is to exclude only the states that are genuinely never invokable:
         # "unavailable" (not-implemented / client-not-ready) and "degraded" (no server/world yet).
-        if capability.get("availability") not in ("available", "restricted"):
+        # screen_gated capabilities are the one deliberate exception - see SCREEN_GATED_CAPABILITIES.
+        if capability.get("availability") not in ("available", "restricted") and not screen_gated:
             continue
-        capability_id = capability.get("id", "")
         if not capability_id.startswith("minecraft."):
             continue
         if any(capability_id.startswith(prefix) for prefix in EXCLUDED_CAPABILITY_PREFIXES):
@@ -408,6 +432,12 @@ def build_tool_catalog(capabilities: list[dict[str, Any]]) -> tuple[list[dict[st
             input_schema = {"type": "object", "properties": {}}
 
         description = capability.get("documentation") or capability_id
+        if screen_gated:
+            description += (
+                " (NOTE: only works while a matching screen is open - e.g. a death screen after "
+                "dying, or a container/inventory screen; calling this with no such screen open will "
+                "fail with a clear error, not silently no-op)"
+            )
         tools.append({"name": tool_name, "description": description, "input_schema": input_schema})
         dispatch[tool_name] = {"capability": capability_id, "capabilityVersion": capability.get("version")}
     return tools, dispatch
@@ -468,6 +498,11 @@ ground ahead is safe (a possible drop-off, gap, or terrain you have not directly
 minecraft_goal_navigation_safe-waypoint instead, which does check. The harness will warn you here if \
 your health drops sharply or is critically low - treat that warning as urgent and stabilize (retreat \
 to safe ground, re-observe) before continuing toward the goal.
+
+You have no passive awareness of threats - standing still doing nothing but observation/search calls \
+for many turns in a row can let a hostile mob walk up and kill you unnoticed. During any extended \
+observation or search phase, periodically call minecraft_entity_nearby_read to check for approaching \
+hostiles, not just at the very start.
 
 IMPORTANT: each tool has its OWN "arguments" schema, shown next to it above - it is not shared \
 across tools. Some tools (like the safe-waypoint navigation tool) take fields such as \
