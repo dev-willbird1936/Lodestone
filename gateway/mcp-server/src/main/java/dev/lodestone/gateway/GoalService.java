@@ -32,11 +32,19 @@ import java.util.concurrent.TimeoutException;
  * MCP-facing orchestration facade. Native execution still goes through LodestoneRuntime.
  *
  * <p>Exactly one native Minecraft goal actor can run at a time (see
- * {@code NeoForgeClientController}), so every call that drives {@link GoalEngine} against the live
- * client - both {@link #run} and {@link #benchmark} - is serialized through the same
- * {@link GoalExecutionQueue} instance. That queue also blocks each calling thread until its own turn
- * arrives, so the synchronous {@code minecraft_goal} contract every caller depends on is unchanged
- * when nothing else is in flight.
+ * {@code NeoForgeClientController}), so every call that drives a goal against the live client - both
+ * {@link #run} and {@link #benchmark} - is serialized through the same {@link GoalExecutionQueue}
+ * instance. That queue also blocks each calling thread until its own turn arrives, so the synchronous
+ * {@code minecraft_goal} contract every caller depends on is unchanged when nothing else is in flight.
+ *
+ * <p>{@link #run} delegates to {@link GoalOrchestratorLauncher} (a real-model, subaction-loop, MCP
+ * loopback client, not a call into {@link GoalEngine}); {@link #benchmark} still drives
+ * {@link GoalEngine} directly through {@link GoalBenchmarkRunner} and is unaffected by that migration.
+ * Because the new backing does not yet support them, {@link #run} fails closed with
+ * {@link IllegalArgumentException} for {@code mode=script}, {@code dryRun}, a {@code customPlan}, a
+ * {@code taskId}, or a {@code worldSeed} - a caller silently getting realtime/no-plan/no-taskId
+ * behavior it never asked for would be far more surprising and harder to notice than an explicit
+ * rejection naming exactly which parameter is unsupported.
  */
 public final class GoalService {
     /**
@@ -49,12 +57,14 @@ public final class GoalService {
     private final LodestoneRuntime runtime;
     private final GoalEngine engine;
     private final GoalBenchmarkRunner benchmarks;
+    private final GoalOrchestratorLauncher orchestratorLauncher;
     private final GoalExecutionQueue executionQueue = new GoalExecutionQueue();
 
     public GoalService(LodestoneRuntime runtime) {
         this.runtime = runtime;
         this.engine = new GoalEngine();
         this.benchmarks = new GoalBenchmarkRunner(engine);
+        this.orchestratorLauncher = new GoalOrchestratorLauncher(runtime);
     }
 
     public GoalRunReport run(String goal, GoalMode mode, String taskId, int maxSteps, long maxDurationMs,
@@ -94,6 +104,12 @@ public final class GoalService {
      * this call ahead of other not-yet-started, already-queued calls (arrival order still applies
      * within each tier); it never interrupts a goal that is already running. See
      * {@link GoalExecutionQueue} for the full ordering, cancellation, and wait-timeout contract.
+     *
+     * @throws IllegalArgumentException if {@code mode} is {@code SCRIPT}, {@code dryRun} is
+     *                                  {@code true}, {@code customPlan} is non-null, {@code taskId} is
+     *                                  non-blank, or {@code worldSeed} is non-blank - none of these
+     *                                  are supported by {@link GoalOrchestratorLauncher} yet. Thrown
+     *                                  before this call ever enters the queue.
      */
     public GoalRunReport run(String goal, GoalMode mode, String taskId, int maxSteps, long maxDurationMs,
                              boolean dryRun, GoalPlan customPlan, boolean suppressInGameMessages,
@@ -103,13 +119,39 @@ public final class GoalService {
                              AuthorizationPolicy authorization) {
         var spec = new GoalSpec(goal, mode, taskId, maxSteps, maxDurationMs, dryRun, customPlan,
                 suppressInGameMessages, intelligence, safety, controls, worldSeed);
+        requireOrchestratorSupported(spec);
         var label = "minecraft_goal:" + (spec.taskId() != null ? spec.taskId() : spec.goal());
         return executionQueue.run(label, priority, spec.maxDurationMs(),
-                context -> withQueueMetadata(engine.run(spec, invoker(callerSessionId, authorization)), context),
+                context -> withQueueMetadata(
+                        orchestratorLauncher.launch(spec, callerSessionId, authorization), context),
                 context -> queueOutcomeReport(spec, context, GoalStatus.CANCELLED, "QUEUE_CANCELLED",
                         "cause=queue:cancelled; caller was interrupted", "goal never started"),
                 context -> queueOutcomeReport(spec, context, GoalStatus.TIMED_OUT, "QUEUE_TIMEOUT",
                         "cause=queue:timeout; queue wait budget was exhausted", "goal never started"));
+    }
+
+    /**
+     * Fails closed rather than silently ignoring a parameter {@link GoalOrchestratorLauncher} does
+     * not support. Runs before this call ever reaches {@link GoalExecutionQueue} so an unsupported
+     * request never consumes a queue slot or blocks another caller's wait budget.
+     */
+    private static void requireOrchestratorSupported(GoalSpec spec) {
+        if (spec.mode() != GoalMode.REALTIME) {
+            throw new IllegalArgumentException(
+                    "mode=script is not supported by the realtime goal orchestrator; use mode=realtime");
+        }
+        if (spec.dryRun()) {
+            throw new IllegalArgumentException("dryRun is not supported by the realtime goal orchestrator");
+        }
+        if (spec.customPlan() != null) {
+            throw new IllegalArgumentException("plan is not supported by the realtime goal orchestrator");
+        }
+        if (spec.taskId() != null) {
+            throw new IllegalArgumentException("taskId is not supported by the realtime goal orchestrator");
+        }
+        if (spec.worldSeed() != null) {
+            throw new IllegalArgumentException("worldSeed is not supported by the realtime goal orchestrator");
+        }
     }
 
     public List<GoalBenchmarkRunner.BenchmarkCase> benchmark(List<String> taskIds, boolean dryRun,

@@ -310,13 +310,16 @@ public final class McpGateway {
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
         if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal in script or realtime mode with independent intelligence and safety policies. Defaults to guarded-v1 plus balanced safety; long native tree and Nether workflows receive a 480-second default budget. Raw keeps the low-level planning profile but every survival action still crosses the typed verified-action boundary; adaptive is the highest profile, uses a low-latency model for realtime replanning, and can synthesize a bounded declarative plan for an otherwise unknown natural-language goal when a model provider is configured. Custom plan steps may declare state preconditions; realtime filters ineligible candidates and script fails closed before invoking them. Failed actions receive a bounded typed recovery decision rather than an unbounded retry loop. Only one goal runs at a time; a call arriving while another is running or queued waits its turn on this same request instead of racing it. priority=true moves this call ahead of other not-yet-started, already-queued calls without interrupting one already running.", schema(Map.ofEntries(
+            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal as a realtime, model-driven subaction loop: a Python orchestrator subprocess connects back to this same live client as a real MCP client, and a model decides one raw subaction at a time, turn by turn, executing with exactly this calling session's own already-resolved permissions (never more). Only mode=realtime is supported by this backing; mode=script, dryRun, a custom plan, taskId, and worldSeed are all rejected with an error naming the unsupported parameter rather than being silently ignored, because the realtime orchestrator does not implement them yet. intelligence/safety/observation/combatPolicy/allowBlockBreaking/allowBlockPlacing/allowCommands are accepted for forward compatibility but are not yet applied by this backing. Only one goal runs at a time; a call arriving while another is running or queued waits its turn on this same request instead of racing it. priority=true moves this call ahead of other not-yet-started, already-queued calls without interrupting one already running.", schema(Map.ofEntries(
                     Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
-                    Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
-                    Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
+                    Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"),
+                            "description", "Only \"realtime\" is supported; \"realtime\" runs the model-driven subaction loop, \"script\" is rejected.")),
+                    Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128,
+                            "description", "Rejected: built-in task IDs are not supported by the realtime goal orchestrator.")),
                     Map.entry("maxSteps", Map.of("type", "integer", "minimum", 1, "maximum", 1000)),
                     Map.entry("maxDurationMs", Map.of("type", "integer", "minimum", 100, "maximum", 600000)),
-                    Map.entry("dryRun", Map.of("type", "boolean")),
+                    Map.entry("dryRun", Map.of("type", "boolean", "description",
+                            "Rejected when true: dry runs are not supported by the realtime goal orchestrator.")),
                     Map.entry("suppressInGameMessages", Map.of("type", "boolean")),
                     Map.entry("intelligence", Map.of("type", "string", "enum", List.of("raw-v1", "guarded-v1", "adaptive-v1"))),
                     Map.entry("safety", Map.of("type", "string", "enum", List.of("low", "balanced", "high"))),
@@ -326,11 +329,11 @@ public final class McpGateway {
                     Map.entry("allowBlockPlacing", Map.of("type", "boolean")),
                     Map.entry("allowCommands", Map.of("type", "boolean")),
                     Map.entry("worldSeed", Map.of("type", "string", "minLength", 1, "maxLength", 20,
-                            "description", "Optional signed 64-bit Java seed entered through the normal create-world UI")),
+                            "description", "Rejected: a world seed entered through the create-world UI is not supported by the realtime goal orchestrator.")),
                     Map.entry("priority", Map.of("type", "boolean", "description",
                             "When true, positions this call ahead of other not-yet-started, already-queued minecraft_goal calls. Never interrupts a goal that is already running. Defaults to false.")),
                     Map.entry("plan", Map.of("type", "object", "description",
-                            "Optional declarative plan; invoke steps may declare assertion-shaped preconditions")))), List.of("goal")));
+                            "Rejected: a custom declarative plan is not supported by the realtime goal orchestrator.")))), List.of("goal")));
             tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
                     "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
             tools.add(tool("minecraft_goal_benchmark", "Run matched script and realtime task cases and compare correctness before elapsed time. Use dryRun only where the capability documents dry-run support; otherwise use an isolated fixture.", schema(Map.of(

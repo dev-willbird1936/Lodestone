@@ -17,7 +17,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** Optional authenticated loopback transport for an in-game adapter. */
+/**
+ * Optional authenticated loopback transport for an in-game adapter.
+ *
+ * <p>{@code port=0} requests an OS-assigned ephemeral port instead of a fixed one - used by
+ * {@link GoalOrchestratorLauncher} to stand up a private, throwaway loopback endpoint for a
+ * spawned orchestrator subprocess without contending for (or hardcoding) a specific port. Call
+ * {@link #port()} after {@link #start()} to read back the port the OS actually bound.
+ */
 public final class LoopbackHttpServer implements AutoCloseable {
     private static final int MAX_BODY_BYTES = 1_048_576;
     private static final long BODY_READ_TIMEOUT_MILLIS = 10_000;
@@ -30,7 +37,7 @@ public final class LoopbackHttpServer implements AutoCloseable {
     private final Semaphore activeExchanges = new Semaphore(MAX_ACTIVE_EXCHANGES);
 
     public LoopbackHttpServer(McpGateway gateway, int port, String token) {
-        if (port < 1 || port > 65_535 || token == null || token.isBlank()) {
+        if (port < 0 || port > 65_535 || token == null || token.isBlank()) {
             throw new IllegalArgumentException("loopback port and token are required");
         }
         this.gateway = gateway;

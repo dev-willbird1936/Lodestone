@@ -31,6 +31,16 @@ import java.util.function.Function;
  * bounded by {@code maxWaitMs} so a caller can never silently pile an unbounded, invisible wait on top
  * of the goal's own execution budget - if the deadline elapses first, the ticket is likewise withdrawn
  * without ever running and {@code queueWaitTimedOut} supplies the result.
+ *
+ * <p>Still required after {@link GoalService#run} moved from calling {@code GoalEngine.run} directly
+ * to spawning the Python goal orchestrator via {@link GoalOrchestratorLauncher}: the orchestrator
+ * subprocess is a real MCP client that reaches the exact same single live native Minecraft goal actor
+ * through the exact same shared {@code LodestoneRuntime} the direct-call path used - only the
+ * transport in between changed (an in-process call became an ephemeral loopback HTTP hop to a
+ * subprocess), not which native actor answers the calls or how many of it exist. Two concurrently
+ * running orchestrator subprocesses would still race the same client/world state exactly as two
+ * concurrent direct {@code GoalEngine.run} calls once did, so every caller that can trigger a goal -
+ * {@code run} and {@code benchmark} alike - must still be serialized through this same queue instance.
  */
 final class GoalExecutionQueue {
     /**
