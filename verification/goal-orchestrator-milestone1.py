@@ -141,6 +141,18 @@ DEFAULT_CLI_MODEL = "sonnet"  # "cli" backend model alias - confirmed live this 
 # to claude-sonnet-5 (see the real `claude -p --output-format json` response's `modelUsage` key)
 DEFAULT_GOAL = "mine one log from the nearest tree"
 
+# Raised from the original 20 (task #11): trace-b5227c321af8.jsonl ran a full 30 turns (already
+# raised once via --max-turns 30 on the CLI, not this default) and still hit max_turns_reached one
+# navigation hop short of ever attempting to mine - by turn 30 it had reached tree-adjacent block
+# coordinates but never issued a single interact/mine call. That run also spent roughly a third of
+# its turns recovering from 3 separate CAPABILITY_QUARANTINED events (each costs a
+# player_context_read + a retried navigation call, i.e. 2+ turns per incident) - now fixed
+# separately (minecraft.session.reconcile), but navigation retries in general still consume turns
+# even without a quarantine involved (see the same trace's OUTCOME_INDETERMINATE-only turns 5 and
+# 17). 60 gives roughly 2x the headroom that still weren't enough, while staying a bounded, finite
+# budget rather than open-ended.
+DEFAULT_MAX_TURNS = 60
+
 # See sonnet5-goal-model-proxy.py's own CLAUDE resolution comment: on Windows, `claude` resolves to
 # a `.cmd` npm shim, and subprocess.run(["claude", ...]) without shell=True calls CreateProcess
 # directly, which does not apply PATHEXT resolution the way cmd.exe does - it fails with WinError 2
@@ -194,6 +206,48 @@ EXCLUDED_CAPABILITY_PREFIXES = (
     "minecraft.goal.creative.",
     "minecraft.session.",
 )
+
+# --- Minimal between-turn safety guard (task #11) ------------------------------------------------
+# Two prior live full-run attempts (trace-b5227c321af8.jsonl, trace-3eb8d0d2ad19.jsonl) both failed
+# to complete "mine one log" for reasons unrelated to the CAPABILITY_QUARANTINED bug: one ran out of
+# turn budget just short of mining, the other died to fall damage around turn 11-12. This section
+# addresses the second failure mode with a deliberately small, reactive check - NOT the full
+# safety-tier system being built separately in verification/goal_orchestrator_draft/ (not touched
+# here). It mirrors the SHAPE of adapters/neoforge/1.21.1/.../NeoForgeGoalPolicy.java's
+# fallProtectionEnabled() - a single boolean gate off live state, not a tiered policy object - but
+# applied at the harness's own decision loop rather than inside a native goal actor: after every
+# turn, the harness itself calls minecraft.player.state.read directly (permissions:["observe"],
+# sideEffect:"none", rateLimit 30/1000ms - cheap, and NOT a model turn, so it costs no turn budget)
+# and, if health dropped sharply or is critically low, injects a corrective warning into the
+# replayed history for the model's next turn. It never blocks or overrides the model's tool choice,
+# matching the existing CAPABILITY_QUARANTINED auto-reconcile pattern right below: the harness acts/
+# observes and informs, the model still decides.
+#
+# The exact death in trace-3eb8d0d2ad19.jsonl: the model never once called minecraft.player.state.read
+# in turns 1-9 (health last confirmed 20.0 at turn 1), then at turn 10 called
+# minecraft_player_move({"forward":1,"jump":true,"sprint":true,"durationMs":2000}) - a raw jump-sprint
+# move, which unlike minecraft_goal_navigation_safe-waypoint performs no fall/hazard checking - and
+# turn 11's health read came back 0.0. A per-turn poll cannot always outrun a single instantly-fatal
+# fall, so this also flags that exact risky pattern (raw movement with jump set) proactively, right
+# after it is dispatched, rather than relying only on the reactive health delta.
+HEALTH_READ_CAPABILITY = "minecraft.player.state.read"
+CRITICAL_HEALTH = 6.0  # <= 3 hearts
+SHARP_HEALTH_DROP = 4.0  # a single fall/hit/hazard doing >= this much damage in one turn is never incidental
+
+
+def read_player_health(mcp_client: LodestoneMcpClient) -> tuple[float | None, dict[str, Any]]:
+    """Best-effort health poll for the between-turn safety guard below. Returns (health-or-None, raw
+    tool result) - None on any failure (capability not yet available, transient transport error,
+    missing/non-numeric field), so callers must treat a None health as "unknown", never as "full" or
+    "zero".
+    """
+    result = mcp_client.invoke_capability(HEALTH_READ_CAPABILITY, {})
+    if result.get("status") != "ok" or not isinstance(result.get("output"), dict):
+        return None, result
+    health = result["output"].get("health")
+    if not isinstance(health, (int, float)):
+        return None, result
+    return float(health), result
 
 
 class LodestoneMcpError(RuntimeError):
@@ -407,6 +461,13 @@ call read-only/observe tools as often as you need - they are cheap. For movement
 meaningful distance, prefer the safe waypoint navigation tool (minecraft_goal_navigation_safe-waypoint) \
 over raw low-level movement, since it already accounts for terrain and hazards. Stay in survival \
 mode and avoid unnecessary risk (lava, fall damage, hostile mobs) while pursuing the goal.
+
+SAFETY: minecraft_player_move performs NO fall or hazard checking at all - only use jump/sprint \
+with it over ground you have directly observed as solid and level. If you are not certain the \
+ground ahead is safe (a possible drop-off, gap, or terrain you have not directly seen), use \
+minecraft_goal_navigation_safe-waypoint instead, which does check. The harness will warn you here if \
+your health drops sharply or is critically low - treat that warning as urgent and stabilize (retreat \
+to safe ground, re-observe) before continuing toward the goal.
 
 IMPORTANT: each tool has its OWN "arguments" schema, shown next to it above - it is not shared \
 across tools. Some tools (like the safe-waypoint navigation tool) take fields such as \
@@ -697,6 +758,7 @@ def run_loop_cli(
     history: list[str] = []
     latencies: list[float] = []
     consecutive_call_failures = 0
+    last_health: float | None = None  # see the health/fall-damage guard below
 
     for turn in range(1, max_turns + 1):
         prompt = build_cli_prompt(goal, tool_catalog_text, history)
@@ -781,6 +843,49 @@ def run_loop_cli(
             result = mcp_client.invoke_capability(mapping["capability"], arguments, mapping.get("capabilityVersion"))
         trace.record_tool_call(turn, tool_name, arguments, result)
         history.append(render_history_entry(turn, decision, result))
+
+        # Minimal between-turn health/fall-damage guard - see the module-level comment above
+        # HEALTH_READ_CAPABILITY for why this exists and what it deliberately does NOT do (no
+        # blocking, no predictive terrain analysis, no safety-tier system). Never a model turn, so
+        # it costs no turn budget.
+        current_health, health_result = read_player_health(mcp_client)
+        trace.record_event(
+            "health_check", turn=turn, health=current_health, previousHealth=last_health, result=health_result
+        )
+        if current_health is not None:
+            if current_health <= 0:
+                history.append(
+                    f"Turn {turn}: SAFETY - your health just read {current_health}. If you are on the "
+                    "death screen, use minecraft_ui_state_read to see the exact screen, then "
+                    "minecraft_ui_key to respawn before doing anything else."
+                )
+            elif last_health is not None and (
+                current_health <= CRITICAL_HEALTH or (last_health - current_health) >= SHARP_HEALTH_DROP
+            ):
+                history.append(
+                    f"Turn {turn}: SAFETY WARNING - health went from {last_health} to {current_health}. "
+                    "Stop and re-observe before continuing toward the goal: work out what caused this "
+                    "(fall, mob, lava, drowning), retreat to solid/safe ground if needed, and avoid raw "
+                    "movement (minecraft_player_move, especially with jump/sprint) over any drop, gap, "
+                    "or terrain you have not directly confirmed is solid - prefer "
+                    "minecraft_goal_navigation_safe-waypoint for uncertain movement instead."
+                )
+            last_health = current_health
+
+        # Targeted, proactive caution for the exact pattern that killed a prior live run
+        # (trace-3eb8d0d2ad19.jsonl, turn 10 -> turn 11's health read of 0.0): a raw jump move can be
+        # instantly fatal if the ground ahead is not what the model assumed, since
+        # minecraft_player_move performs no fall/hazard checking at all (unlike
+        # minecraft_goal_navigation_safe-waypoint). The reactive check above cannot outrun a single
+        # instantly-fatal fall, so this fires right after the risky call itself, not on the next
+        # health delta.
+        if tool_name == "minecraft_player_move" and arguments.get("jump"):
+            history.append(
+                f"Turn {turn}: NOTE - that was a raw jump move. minecraft_player_move never checks "
+                "for fall hazards; only use jump/sprint over ground you have directly observed as "
+                "solid and level. Prefer minecraft_goal_navigation_safe-waypoint whenever you are not "
+                "certain the ground ahead is safe."
+            )
 
         # Automatic, harness-level recovery from CAPABILITY_QUARANTINED (see
         # LodestoneRuntime's SHARED_MUTATION_ORDER: one mutating minecraft.* capability's
@@ -891,7 +996,7 @@ def main() -> int:
         help=f"defaults to {DEFAULT_CLI_MODEL!r} for --backend cli, {DEFAULT_MODEL!r} for --backend api",
     )
     parser.add_argument("--effort", type=str, default="low", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--max-turns", type=int, default=20)
+    parser.add_argument("--max-turns", type=int, default=DEFAULT_MAX_TURNS)
     parser.add_argument(
         "--evidence-dir",
         type=str,
