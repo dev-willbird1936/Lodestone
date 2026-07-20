@@ -155,7 +155,16 @@ final class NeoForgePathCostExtensions {
 
     private static double placeCost(NeoForgeSafePathPlanner.EdgeContext ctx) {
         if (!ctx.policy().obstructionPlacementEnabled()) return Double.POSITIVE_INFINITY;
-        if (!ctx.snapshot().safePlacementSite(ctx.to())) return Double.POSITIVE_INFINITY;
+        // ctx.mutationTargets() is the actual gap being filled (candidate.below() in
+        // NeoForgeSafePathPlanner.mutationCandidate's terms), never ctx.to() (the candidate cell
+        // itself, one cell too high). safePlacementSite(target) computes support=target.below()
+        // internally and requires THAT to present a sturdy up-face to click against; calling it
+        // with ctx.to() would make support equal the very gap this edge exists to fill, which is
+        // never sturdy by construction (placeCandidateEligible already requires it non-solid) - so
+        // every genuine PLACE candidate would be rejected here before ever reaching the inventory
+        // check below, silently making every PLACE edge cost POSITIVE_INFINITY forever.
+        if (ctx.mutationTargets().isEmpty()
+                || !ctx.snapshot().safePlacementSite(ctx.mutationTargets().getFirst())) return Double.POSITIVE_INFINITY;
         var chosen = selectPlacementItem(ctx.player().getInventory());
         return chosen == null ? Double.POSITIVE_INFINITY : placeCost(chosen.count());
     }

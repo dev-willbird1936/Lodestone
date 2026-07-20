@@ -282,6 +282,11 @@ final class NeoForgeWorldAnalysisTest {
                 invoked.set(candidate);
                 return CompletableFuture.completedFuture(Map.of("capability", candidate));
             }
+
+            @Override
+            public java.util.concurrent.CompletionStage<Map<String, Object>> reconcileSession() {
+                return CompletableFuture.completedFuture(Map.of());
+            }
         });
 
         var handler = adapter.handlers().get(capability);

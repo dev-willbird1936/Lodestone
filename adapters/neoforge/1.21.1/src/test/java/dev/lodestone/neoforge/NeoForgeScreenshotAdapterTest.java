@@ -55,6 +55,10 @@ final class NeoForgeScreenshotAdapterTest {
                 invoked.set(capability);
                 return CompletableFuture.completedFuture(output);
             }
+
+            @Override public java.util.concurrent.CompletionStage<Map<String, Object>> reconcileSession() {
+                return CompletableFuture.completedFuture(Map.of());
+            }
         });
         return adapter;
     }
