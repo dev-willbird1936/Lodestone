@@ -206,6 +206,19 @@ public final class NeoForgeClientController {
         return System.nanoTime() / 1_000_000L;
     }
 
+    /**
+     * Builds the {@code minecraft.player.interact} output map. The catalog declares this
+     * capability's {@code outputSchema} as exactly {@code action}/{@code queued} with
+     * {@code additionalProperties:false} - any other key fails output schema validation and,
+     * because interact always commits its mutation before returning, surfaces to callers as
+     * {@code OUTCOME_INDETERMINATE} rather than a clean error. Kept as its own package-private
+     * method (instead of inlined in {@link ClientBridgeImpl#interactKey}) so it can be exercised
+     * directly by a regression test without requiring a live Minecraft client.
+     */
+    static Map<String, Object> interactOutput(String action) {
+        return Map.of("action", action, "queued", true);
+    }
+
     private static final class ClientBridgeImpl implements NeoForgeAdapter.ClientBridge {
         private final ArrayDeque<Map<String, Object>> chat = new ArrayDeque<>();
         private final InputLease movementLease = new InputLease();
@@ -1125,8 +1138,13 @@ public final class NeoForgeClientController {
             };
             invocation.cancellation().commitMutation();
             KeyMapping.click(mapping.getKey());
-            return Map.of("action", action, "queued", true,
-                    "intelligence", intelligence.isBlank() ? "unspecified" : intelligence);
+            // NOTE: the "intelligence" hint read above is intentionally not echoed into the
+            // output. minecraft.player.interact's catalog outputSchema is exactly
+            // {action, queued} with additionalProperties:false; it does not declare (nor does
+            // this capability's inputSchema accept) an "intelligence" field. Returning it here
+            // used to fail every single interact call's output validation - see
+            // NeoForgeClientController.interactOutput.
+            return interactOutput(action);
         }
 
         private Map<String, Object> selectSlot(dev.lodestone.adapter.InvocationContext invocation) {
