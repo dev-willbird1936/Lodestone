@@ -208,6 +208,17 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         refreshHook.run();
     }
 
+    @Override
+    public CompletionStage<Map<String, Object>> reconcileSession() {
+        var bridge = clientBridge;
+        if (bridge == null) {
+            return CompletableFuture.completedFuture(Map.of(
+                    "quiesced", false,
+                    "reason", "no live NeoForge client is attached to reconcile"));
+        }
+        return bridge.reconcileSession();
+    }
+
     void publishClientEvent(String event, Map<String, Object> payload) {
         publish(event, payload, -1);
     }
@@ -758,6 +769,9 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         boolean available(String capability);
 
         CompletionStage<Map<String, Object>> invoke(String capability, InvocationContext invocation);
+
+        /** See LodestoneAdapter#reconcileSession(); implemented by ClientBridgeImpl. */
+        CompletionStage<Map<String, Object>> reconcileSession();
     }
 
     private static Environment environment() {

@@ -321,6 +321,78 @@ public final class NeoForgeClientController {
             });
         }
 
+        @Override
+        public CompletionStage<Map<String, Object>> reconcileSession() {
+            return onClientThread(this::quiesceAndObserve);
+        }
+
+        /**
+         * Backs minecraft.session.reconcile's quiesce+re-observe step (see
+         * LodestoneAdapter#reconcileSession()). Force-stops every native goal actor this bridge
+         * might still be driving - nulling a goal's field here is exactly what stops its next
+         * tickXxxGoal() from doing anything further, see e.g. tickNavigationGoal() above - releases
+         * every input this bridge could still be holding down, then reports fresh player state so
+         * the caller can re-plan against reality instead of stale assumptions.
+         * <p>
+         * Every action here is idempotent and safe to run even when there was nothing active to
+         * stop (nulling an already-null field, releasing an already-released key, clearing an
+         * already-empty lease set), so this always reports "quiesced": true if it completes at all;
+         * onClientThread() converts any thrown failure (e.g. no Minecraft instance) into a failed
+         * CompletionStage, which is exactly the "reconcile failed, do not clear the quarantine"
+         * signal the caller needs.
+         */
+        private Map<String, Object> quiesceAndObserve() {
+            var stoppedGoalActors = new ArrayList<String>();
+            if (survivalTreeGoal != null && !survivalTreeGoal.done()) stoppedGoalActors.add("survivalTreeGoal");
+            if (woolTreeZombieGoal != null && !woolTreeZombieGoal.done()) stoppedGoalActors.add("woolTreeZombieGoal");
+            if (netherGoal != null && !netherGoal.done()) stoppedGoalActors.add("netherGoal");
+            if (navigationGoal != null && !navigationGoal.done()) stoppedGoalActors.add("navigationGoal");
+            if (combatGoal != null && !combatGoal.done()) stoppedGoalActors.add("combatGoal");
+            if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) stoppedGoalActors.add("spawnGauntletGoal");
+            if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) stoppedGoalActors.add("stoneToolsetGoal");
+            survivalTreeGoal = null;
+            woolTreeZombieGoal = null;
+            netherGoal = null;
+            navigationGoal = null;
+            combatGoal = null;
+            spawnGauntletGoal = null;
+            stoneToolsetGoal = null;
+
+            var client = Minecraft.getInstance();
+            // Goal actors (e.g. NeoForgeNavigationGoal) drive movement/interaction by setting these
+            // raw KeyMapping states directly on client.options, bypassing this bridge's own
+            // ownedMappings/leasedMappings bookkeeping entirely - see NeoForgeNavigationGoal's own
+            // releaseInput(client), whose exact key set this mirrors. releaseAllInput() below does
+            // NOT cover these, so they must be force-released independently here.
+            client.options.keyUp.setDown(false);
+            client.options.keySprint.setDown(false);
+            client.options.keyJump.setDown(false);
+            client.options.keyShift.setDown(false);
+            client.options.keyAttack.setDown(false);
+            client.options.keyUse.setDown(false);
+            var releaseResult = releaseAllInput();
+
+            var observation = new LinkedHashMap<String, Object>();
+            observation.put("stoppedGoalActors", List.copyOf(stoppedGoalActors));
+            observation.put("inputRelease", releaseResult);
+            var player = client.player;
+            var level = client.level;
+            if (player != null && level != null) {
+                observation.put("playerObserved", true);
+                observation.put("position", position(player.getX(), player.getY(), player.getZ()));
+                observation.put("blockPosition", blockPosition(player.blockPosition()));
+                observation.put("health", player.getHealth());
+                observation.put("dimension", level.dimension().location().toString());
+                observation.put("gameMode", client.gameMode == null || client.gameMode.getPlayerMode() == null
+                        ? "unknown" : client.gameMode.getPlayerMode().getName());
+                observation.put("heldItem", itemId(player.getMainHandItem()));
+            } else {
+                observation.put("playerObserved", false);
+            }
+            observation.put("quiesced", true);
+            return Map.copyOf(observation);
+        }
+
         private CompletionStage<Map<String, Object>> startSurvivalTreeGoal(
                 dev.lodestone.adapter.InvocationContext invocation) {
             var result = new CompletableFuture<Map<String, Object>>();
