@@ -146,8 +146,18 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
         return safety != Safety.LOW;
     }
 
+    // Deliberately safety-only, matching hazardAvoidanceEnabled()/threatPreemptionEnabled() right
+    // above and common/goal-engine's own GoalSafety.fallProtectionEnabled() ("Safety policies are
+    // explicit sub-policies, not hidden intelligence side effects"). This previously read
+    // `highSafety() || intelligence == Intelligence.ADAPTIVE_V1` - a since-superseded, one-off
+    // intelligence-tier coupling from when this method was first added (commit 3cc715f), predating
+    // GoalSafety's own fallProtectionEnabled() (commit 19d7cb1, later the same day) ever being
+    // written. That left every non-ADAPTIVE_V1 actor at BALANCED safety - guarded-v1+balanced,
+    // what every current benchmark actually runs at - with zero fall-damage braking during ordinary
+    // exploration, live-caught as a death regression (B2, seed 123456789012345, died:fall 223 ticks
+    // into SEARCH_TREES). LOW safety still gets none, matching its "fast"/no-safety-net design.
     boolean fallProtectionEnabled() {
-        return highSafety() || intelligence == Intelligence.ADAPTIVE_V1;
+        return safety != Safety.LOW;
     }
 
     String mode() {

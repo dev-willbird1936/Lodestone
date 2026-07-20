@@ -93,6 +93,26 @@ final class NeoForgeGoalPolicyCapabilityTest {
     }
 
     /**
+     * Regression guard for a live-caught death: fallProtectionEnabled() must match its siblings
+     * hazardAvoidanceEnabled()/threatPreemptionEnabled() (both already safety-only, `!= LOW`) and
+     * common/goal-engine's GoalSafety.fallProtectionEnabled() - not carry a one-off ADAPTIVE_V1
+     * side effect. Before this fix, guarded-v1+balanced (what every current benchmark actually
+     * runs at) got zero fall-damage braking; B2 live-caught the resulting death (seed
+     * 123456789012345, died:fall 223 ticks into SEARCH_TREES).
+     */
+    @Test
+    void fallProtectionIsSafetyOnlyNotAnIntelligenceTierSideEffect() {
+        for (var intelligence : new String[] {"raw-v1", "guarded-v1", "adaptive-v1"}) {
+            assertFalse(policy(intelligence, "low").fallProtectionEnabled(),
+                    "low safety must never get fall protection, regardless of intelligence: " + intelligence);
+            assertTrue(policy(intelligence, "balanced").fallProtectionEnabled(),
+                    "balanced safety must get fall protection, regardless of intelligence: " + intelligence);
+            assertTrue(policy(intelligence, "high").fallProtectionEnabled(),
+                    "high safety must get fall protection, regardless of intelligence: " + intelligence);
+        }
+    }
+
+    /**
      * Regression guard for the descent-cap widening: every actor that still builds its policy via
      * {@code .from()} directly (i.e. everyone except {@code NeoForgeSpawnGauntletGoal}, which
      * derives its own copy) must keep today's exact 1-block descent cap regardless of intelligence

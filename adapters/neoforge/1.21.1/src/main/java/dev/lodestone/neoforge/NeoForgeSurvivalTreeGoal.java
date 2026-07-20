@@ -738,7 +738,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     private void closeInventory(Minecraft client) {
         if (client.screen == null) {
             var preferred = resourceTree.base();
-            tablePosition = isClearTablePlacement(client, preferred) ? preferred : findTablePlacement(client);
+            tablePosition = isClearTablePlacement(client, preferred) ? preferred : findTablePlacement(client, null);
             announce(client, "Selected clear crafting-table placement at " + tablePosition
                     + " using read-only collision checks");
             transition(Stage.PLACE_TABLE, 15);
@@ -872,9 +872,31 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                 navigationDiagnostics.add("table placement vantage relocation " + placeTableVantageAttempts + "/"
                         + MAX_TABLE_PLACEMENT_VANTAGE_ATTEMPTS + " found no candidate in the widened search");
             }
-            throw new IllegalStateException("no unobstructed crafting-table placement vantage after "
-                    + placeTableVantageAttempts + " widening attempts; player=" + player.blockPosition()
-                    + ", table=" + tablePosition + ", eyeDistance=" + rounded(distance));
+            // Every attempt above widens the search LOOP's bounds, but real reach is fixed at
+            // 4.25 blocks regardless of how wide those bounds are told to scan - a candidate
+            // outside that sphere was never going to pass the eye.distanceTo(aim) <= 4.25 check no
+            // matter how far attempt 4 nominally searches. Live evidence confirmed this: two
+            // previously rock-solid seeds (-8172974586314107235, 7777777777777) still exhausted
+            // all 4 widened attempts here even with the player already standing within 2-3 blocks
+            // of support. Exhausting every attempt is a strong signal support is genuinely
+            // occluded from every standable angle actually within reach, not merely
+            // under-searched - the same "wrong choice, not a terminal failure" situation
+            // blacklistAndReElect() already treats as recoverable for tree elections. Abandon this
+            // specific tablePosition and pick a genuinely different one from the player's current
+            // position (excluding this one so a deterministic re-scan cannot just hand back the
+            // same doomed candidate); findTablePlacement's own "no clear in-reach position"
+            // failure becomes the final, honest terminal error if no alternative exists either.
+            // The outer stageTicks > 1_200 timeout (both here and in the distance > 4.25 approach
+            // branch above) is untouched by this branch and remains the hard backstop bounding how
+            // many times this can happen across the whole PLACE_TABLE stage.
+            var exhaustedTablePosition = tablePosition;
+            tablePosition = findTablePlacement(client, exhaustedTablePosition);
+            placeTableVantageAttempts = 0;
+            placeTableAimTicks = 0;
+            navigationDiagnostics.add("crafting-table placement vantage exhausted at " + exhaustedTablePosition
+                    + " - selected a different placement candidate: " + tablePosition);
+            announce(client, "Crafting table position unreachable from any angle - selecting a different spot");
+            return;
         }
         if (stageTicks % 20 == 1 && aimedAtSupport) {
             KeyMapping.click(client.options.keyUse.getKey());
@@ -939,7 +961,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
     record TablePlacementVantageBounds(int maxRadius, int minDy, int maxDy) {
     }
 
-    private BlockPos findTablePlacement(Minecraft client) {
+    private BlockPos findTablePlacement(Minecraft client, BlockPos excluded) {
         var player = requirePlayer(client);
         var origin = player.blockPosition();
         for (var radius = 2; radius <= 4; radius++) {
@@ -948,7 +970,7 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) continue;
                     for (var dy = 1; dy >= -3; dy--) {
                         var candidate = origin.offset(dx, dy, dz);
-                        if (!isClearTablePlacement(client, candidate)) continue;
+                        if (candidate.equals(excluded) || !isClearTablePlacement(client, candidate)) continue;
                         var supportPos = candidate.below();
                         var distance = player.getEyePosition().distanceTo(
                                 new net.minecraft.world.phys.Vec3(supportPos.getX() + 0.5,
@@ -1280,6 +1302,16 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
      * horizontal ring and the vertical band on each retry, so a second, third, or fourth call
      * against the same unchanged target genuinely searches a larger candidate pool instead of
      * deterministically repeating the first call's result.</p>
+     *
+     * <p>A candidate whose line of sight to the target is blocked only by hand-breakable foliage
+     * (a leaf, a vine) is accepted just as readily as a fully clear one: once the player actually
+     * navigates there and looks at the target, {@code handBreakableOcclusion} lets them attack
+     * that same foliage in place via {@code isAttackableMiningStance}, clearing it and exposing
+     * the log. Requiring a foliage-free line here as well would reject every vantage around a log
+     * that happens to be enclosed by leaves from every reachable angle - a real, live-caught
+     * failure mode ("target:obstructed" after exhausting all 4 attempts on ordinary, unremarkable
+     * trees) even though a stance-plus-one-swing would have worked fine from several of the
+     * rejected candidates.</p>
      */
     private BlockPos findMiningTargetVantage(Minecraft client, BlockPos target, BlockPos treeBase, int attempt) {
         var player = requirePlayer(client);
@@ -1300,7 +1332,9 @@ final class NeoForgeSurvivalTreeGoal implements NeoForgeResumableGoal {
                                 net.minecraft.world.level.ClipContext.Block.OUTLINE,
                                 net.minecraft.world.level.ClipContext.Fluid.NONE, player));
                         if (clip instanceof net.minecraft.world.phys.BlockHitResult blockHit
-                                && blockHit.getBlockPos().equals(target)) return candidate.immutable();
+                                && (blockHit.getBlockPos().equals(target) || handBreakableOcclusion(client, clip) != null)) {
+                            return candidate.immutable();
+                        }
                     }
                 }
             }
