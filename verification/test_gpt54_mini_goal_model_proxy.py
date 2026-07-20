@@ -1,7 +1,8 @@
 """Unit tests for the persistent per-goal-run conversation logic added to
 gpt54-mini-goal-model-proxy.py: the runId-keyed decision history (persistence, cap, reset-on-
-failure), the messages[-1]-discard bug fix, and the "fallback": true degraded-decision flag. These
-cover everything testable without a live NeoForge client or a real `codex exec` invocation - the
+failure), the messages[-1]-discard bug fix, the "fallback": true degraded-decision flag, and the
+idle-session sweep that bounds memory for runs that never send an explicit endSession. These cover
+everything testable without a live NeoForge client or a real `codex exec` invocation - the
 subprocess call itself is monkeypatched.
 
 Run with: python verification/test_gpt54_mini_goal_model_proxy.py
@@ -12,6 +13,7 @@ import importlib.util
 import json
 import os
 import threading
+import time
 import unittest
 from http.server import ThreadingHTTPServer
 from unittest import mock
@@ -46,6 +48,7 @@ class RenderMessagesTest(unittest.TestCase):
 class SessionHistoryTest(unittest.TestCase):
     def setUp(self):
         bridge.SESSIONS.clear()
+        bridge.SESSION_LAST_SEEN.clear()
 
     def test_unknown_run_id_has_no_history_block(self):
         self.assertEqual("", bridge.session_history_block("never-seen"))
@@ -89,10 +92,60 @@ class SessionHistoryTest(unittest.TestCase):
         self.assertNotIn("run-1", bridge.SESSIONS)
         self.assertEqual("", bridge.session_history_block("run-1"))
 
+    def test_recording_a_turn_stamps_last_seen(self):
+        bridge.record_session_turn("run-1", {"candidateIndex": 0, "rationale": "x"})
+        self.assertIn("run-1", bridge.SESSION_LAST_SEEN)
+
+    def test_reset_session_also_clears_last_seen(self):
+        bridge.record_session_turn("run-1", {"candidateIndex": 0, "rationale": "x"})
+        bridge.reset_session("run-1")
+        self.assertNotIn("run-1", bridge.SESSION_LAST_SEEN)
+
+
+class SessionSweepTest(unittest.TestCase):
+    """Covers the abandoned-run cleanup story: a run that never sends an explicit endSession (the
+    finally-block assumption documented in the module docstring) must still eventually be evicted,
+    bounding this bridge's memory rather than retaining the session for the rest of the process's
+    lifetime. See gpt54-mini-goal-model-proxy-soak-test.py for the equivalent black-box proof over
+    real HTTP against a real subprocess."""
+
+    def setUp(self):
+        bridge.SESSIONS.clear()
+        bridge.SESSION_LAST_SEEN.clear()
+
+    def test_sweep_evicts_a_session_idle_past_the_ttl(self):
+        bridge.record_session_turn("run-idle", {"candidateIndex": 0, "rationale": "abandoned turn"})
+        # Backdate the last-seen stamp past the TTL without waiting in real time.
+        bridge.SESSION_LAST_SEEN["run-idle"] = time.monotonic() - bridge.SESSION_IDLE_TTL_S - 1
+
+        bridge.sweep_idle_sessions()
+
+        self.assertNotIn("run-idle", bridge.SESSIONS)
+        self.assertNotIn("run-idle", bridge.SESSION_LAST_SEEN)
+
+    def test_sweep_leaves_a_recently_touched_session_alone(self):
+        bridge.record_session_turn("run-active", {"candidateIndex": 0, "rationale": "recent turn"})
+
+        bridge.sweep_idle_sessions()
+
+        self.assertIn("run-active", bridge.SESSIONS)
+        self.assertIn("run-active", bridge.SESSION_LAST_SEEN)
+
+    def test_sweep_only_evicts_the_idle_session_not_an_unrelated_active_one(self):
+        bridge.record_session_turn("run-idle", {"candidateIndex": 0, "rationale": "abandoned turn"})
+        bridge.SESSION_LAST_SEEN["run-idle"] = time.monotonic() - bridge.SESSION_IDLE_TTL_S - 1
+        bridge.record_session_turn("run-active", {"candidateIndex": 0, "rationale": "recent turn"})
+
+        bridge.sweep_idle_sessions()
+
+        self.assertNotIn("run-idle", bridge.SESSIONS)
+        self.assertIn("run-active", bridge.SESSIONS)
+
 
 class ChooseTest(unittest.TestCase):
     def setUp(self):
         bridge.SESSIONS.clear()
+        bridge.SESSION_LAST_SEEN.clear()
 
     def test_successful_call_records_a_turn_and_later_calls_see_it_as_prior_history(self):
         captured_prompts = []
@@ -151,10 +204,57 @@ class ChooseTest(unittest.TestCase):
 
         self.assertNotIn("fallback", decision)
 
+    def test_plan_shaped_response_is_returned_unchanged_not_replaced_with_fallback(self):
+        # Bug regression test: GoalPlanRequest calls share this same choose()/endpoint with
+        # GoalDecisionRequest calls (see HttpJsonGoalModelProvider.plan(), which reuses the same
+        # requestJson helper as choose()), but a genuine plan response - following that call's own
+        # prompt instructions - looks like {id, goal, metadata, segments} and never has a
+        # candidateIndex at all. This must NOT be treated as malformed and replaced with the
+        # fabricated fallback object; the caller (GoalPlan.fromMap on the Java side) needs the real
+        # plan shape back.
+        plan_response = {"id": "plan-1", "goal": "survival.wooden-axe-mine-tree",
+                          "metadata": {"completionPredicateReady": True}, "segments": []}
+
+        def fake_run(command, cwd, input, stdout, stderr, text, timeout, check):
+            return mock.Mock(stdout=json.dumps(plan_response), returncode=0)
+
+        with mock.patch.object(bridge.subprocess, "run", side_effect=fake_run):
+            result = bridge.choose([{"role": "user", "content": "plan request"}], "low", "run-plan")
+
+        self.assertEqual(plan_response, result)
+        self.assertNotIn("fallback", result)
+
+    def test_plan_shaped_response_does_not_become_a_decision_history_turn(self):
+        plan_response = {"id": "plan-1", "goal": "g", "metadata": {}, "segments": []}
+
+        def fake_run(command, cwd, input, stdout, stderr, text, timeout, check):
+            return mock.Mock(stdout=json.dumps(plan_response), returncode=0)
+
+        with mock.patch.object(bridge.subprocess, "run", side_effect=fake_run):
+            bridge.choose([{"role": "user", "content": "plan request"}], "low", "run-plan-history")
+
+        self.assertEqual([], bridge.SESSIONS.get("run-plan-history", []))
+        # Still counts as activity on this runId for idle-sweep purposes.
+        self.assertIn("run-plan-history", bridge.SESSION_LAST_SEEN)
+
+    def test_snake_case_candidate_index_is_tolerated_like_the_java_side(self):
+        # Mirrors HttpJsonGoalModelProvider.choose()'s own fallback to "candidate_index" when
+        # "candidateIndex" is absent - this bridge should not treat that shape as malformed either.
+        def fake_run(command, cwd, input, stdout, stderr, text, timeout, check):
+            return mock.Mock(stdout=json.dumps({"candidate_index": 2, "rationale": "snake case"}),
+                              returncode=0)
+
+        with mock.patch.object(bridge.subprocess, "run", side_effect=fake_run):
+            decision = bridge.choose([{"role": "user", "content": "goal state"}], "low", "run-snake")
+
+        self.assertNotIn("fallback", decision)
+        self.assertEqual(2, bridge.SESSIONS["run-snake"][0]["candidateIndex"])
+
 
 class EndSessionHttpTest(unittest.TestCase):
     def setUp(self):
         bridge.SESSIONS.clear()
+        bridge.SESSION_LAST_SEEN.clear()
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), bridge.Handler)
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)

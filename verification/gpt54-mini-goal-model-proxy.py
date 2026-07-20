@@ -12,7 +12,11 @@ world observation on every single call (see GoalDecisionState.project on the Jav
 bridge's memory is advisory context about the model's own past reasoning, never a cache of world
 truth that could go stale. A run's history is discarded when GoalEngine.run() reaches a terminal
 outcome (success, failure, or cancellation), via an explicit "endSession" request sent from
-HttpJsonGoalModelProvider.endSession() in that run's finally block.
+HttpJsonGoalModelProvider.endSession() in that run's finally block. That explicit path assumes the
+finally block is actually reached; a run whose client is killed or crashes mid-run (e.g. a benchmark
+harness timing out a live client) may never send it, so a background sweep (see
+SESSION_IDLE_TTL_S/sweep_idle_sessions) independently evicts any session that has gone untouched for
+too long, bounding this bridge's memory even when that assumption doesn't hold.
 
 Each individual round trip to the model stays a bounded, timeout-guarded, independent `codex exec`
 call, exactly as before - this deliberately does NOT become a long-lived interactive subprocess
@@ -52,8 +56,28 @@ CALL_TIMEOUT_S = int(os.environ.get("LODESTONE_PROXY_CALL_TIMEOUT_S", "30"))
 # run exceeds this many decisions, rather than growing the prompt without limit.
 MAX_SESSION_TURNS = int(os.environ.get("LODESTONE_PROXY_MAX_SESSION_TURNS", "24"))
 
+# Bounds how long a run's session may sit idle before this bridge assumes the owning goal run was
+# abandoned - e.g. a benchmark harness killing a client mid-run on a timeout, which never reaches
+# HttpJsonGoalModelProvider.endSession()'s call in that run's finally block (see module docstring) -
+# and evicts it, rather than retaining it in memory for the rest of this process's lifetime. 30
+# minutes comfortably exceeds any real gap between two decisions in a live goal run (individual
+# calls take single-digit-to-teens seconds; see CALL_TIMEOUT_S above) while still bounding memory
+# growth across many abandoned runs over a long-lived proxy process, e.g. one left running across an
+# entire multi-seed benchmark pass.
+SESSION_IDLE_TTL_S = float(os.environ.get("LODESTONE_PROXY_SESSION_IDLE_TTL_S", "1800"))
+
+# How often the background sweep below checks for idle sessions to evict. Independent of
+# SESSION_IDLE_TTL_S so a caller (or a test) can shrink both to seconds without changing the ratio
+# between them.
+SESSION_SWEEP_INTERVAL_S = float(os.environ.get("LODESTONE_PROXY_SESSION_SWEEP_INTERVAL_S", "60"))
+
 SESSIONS_LOCK = threading.Lock()
 SESSIONS: dict[str, list[dict]] = {}
+# Last-touched wall-clock (monotonic) time per runId, guarded by SESSIONS_LOCK alongside SESSIONS
+# itself. Kept as a separate dict rather than folded into SESSIONS' existing list-of-turns shape so
+# the existing SESSIONS[run_id] contract (a plain list of {candidateIndex, rationale} dicts) stays
+# unchanged for anything already relying on it.
+SESSION_LAST_SEEN: dict[str, float] = {}
 
 # Mirrors the Java-side HttpJsonGoalModelProvider.isValidReasoningEffort whitelist. Previously this
 # bridge ignored whatever "reasoning_effort" the caller sent and always ran codex at a hardcoded
@@ -107,6 +131,18 @@ def record_session_turn(run_id: str, decision: dict) -> None:
         })
         if len(history) > MAX_SESSION_TURNS:
             del history[: len(history) - MAX_SESSION_TURNS]
+        SESSION_LAST_SEEN[run_id] = time.monotonic()
+
+
+def touch_session(run_id: str) -> None:
+    """Refresh a run's idle-eviction clock without adding a decision-history turn. Used for a
+    successful plan-shaped response (see the candidateIndex comment in choose()), which is still
+    genuine activity on this runId's session for idle-sweep purposes even though it is not itself a
+    replayed "prior decision"."""
+    if not run_id:
+        return
+    with SESSIONS_LOCK:
+        SESSION_LAST_SEEN[run_id] = time.monotonic()
 
 
 def reset_session(run_id: str) -> None:
@@ -118,6 +154,39 @@ def reset_session(run_id: str) -> None:
         return
     with SESSIONS_LOCK:
         SESSIONS.pop(run_id, None)
+        SESSION_LAST_SEEN.pop(run_id, None)
+
+
+def sweep_idle_sessions() -> None:
+    """Evict every session that has gone untouched for SESSION_IDLE_TTL_S. This is the actual
+    cleanup story for a run that never reaches its own finally block's explicit endSession call
+    (see module docstring) - e.g. a benchmark harness killing a client mid-run on a timeout - so an
+    abandoned run's history does not sit in memory for the rest of this process's lifetime. Runs
+    independently of request traffic (see session_sweep_loop) so it still fires even if the
+    abandoned run's runId never gets another request of any kind."""
+    now = time.monotonic()
+    evicted = []
+    with SESSIONS_LOCK:
+        for run_id, last_seen in list(SESSION_LAST_SEEN.items()):
+            if now - last_seen >= SESSION_IDLE_TTL_S:
+                SESSIONS.pop(run_id, None)
+                SESSION_LAST_SEEN.pop(run_id, None)
+                evicted.append((run_id, now - last_seen))
+    for run_id, idle_s in evicted:
+        log("sweep evicted runId=%s idleS=%.1f" % (run_id, idle_s))
+
+
+def session_sweep_loop() -> None:
+    """Background daemon loop started from __main__ (never on plain module import, e.g. under
+    test) that periodically calls sweep_idle_sessions(). A per-iteration exception is logged and
+    swallowed rather than allowed to kill the thread, since a dead sweep loop would silently bring
+    back the unbounded-growth problem it exists to prevent."""
+    while True:
+        time.sleep(SESSION_SWEEP_INTERVAL_S)
+        try:
+            sweep_idle_sessions()
+        except Exception as error:
+            log("sweep error=%s" % error)
 
 
 def render_messages(messages) -> str:
@@ -164,15 +233,34 @@ def choose(messages, reasoning_effort: str, run_id: str) -> dict:
         if not match:
             raise RuntimeError("model did not return a JSON object")
         decision = json.loads(match.group(0))
-        if not isinstance(decision.get("candidateIndex"), int):
-            raise RuntimeError("model response omitted integer candidateIndex")
+        # Bug fix: this bridge previously required EVERY response to carry an integer
+        # candidateIndex, unconditionally - but the same runId/endpoint also carries
+        # GoalPlanRequest calls (see HttpJsonGoalModelProvider.plan()), whose own prompt asks the
+        # model to "return the plan object directly: {id, goal, metadata, segments}" - a shape that
+        # never has a candidateIndex at all. That made every genuine plan synthesis call silently
+        # fail: a well-formed plan response would fail this check, get discarded, and be replaced
+        # with the generic "fallback" decision object below, which the Java side cannot parse as a
+        # plan either - so GoalPlanRequest was 100% broken through this bridge regardless of what
+        # the model actually returned. A response missing candidateIndex is now accepted as-is
+        # (e.g. a plan); only a response that includes one with the wrong type is still rejected as
+        # malformed. candidate_index (snake_case) is also accepted, mirroring
+        # HttpJsonGoalModelProvider.choose()'s own tolerance for either key name on the Java side.
+        candidate_index = decision.get("candidateIndex", decision.get("candidate_index"))
+        if candidate_index is not None and not isinstance(candidate_index, int):
+            raise RuntimeError("model response had a non-integer candidateIndex")
         # historyTurns is how many of this SAME run's own prior decisions were replayed as context
         # ahead of this call's prompt (0 on a run's first call) - direct, log-visible proof that a
         # later call in a run actually carried earlier context, rather than starting from scratch
         # every time as this bridge did before.
         log("model=%s effort=%s runId=%s historyTurns=%d candidate=%s" % (
             MODEL, reasoning_effort, run_id, prior_turns, json.dumps(decision, separators=(",", ":"))))
-        record_session_turn(run_id, decision)
+        if isinstance(candidate_index, int):
+            # Only a genuine decision-shaped response becomes a replayed "prior decision" turn in
+            # this run's history - a plan response's very different shape has no candidateIndex/
+            # rationale to speak of, and does not belong in the decision-continuity context anyway.
+            record_session_turn(run_id, {"candidateIndex": candidate_index, "rationale": decision.get("rationale", "")})
+        else:
+            touch_session(run_id)
         return decision
     except Exception as error:
         log("model=%s effort=%s runId=%s historyTurns=%d error=%s" % (
@@ -226,5 +314,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 37842
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    threading.Thread(target=session_sweep_loop, daemon=True, name="session-sweep").start()
     log("listening port=%s model=%s" % (port, MODEL))
     server.serve_forever()

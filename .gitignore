@@ -45,6 +45,7 @@ other-repos/
 .serena/
 hs_err_pid*.log
 replay_pid*.log
+__pycache__/
 
 # In-progress local demo capture sessions; curated output is published separately.
 demo-videos/
