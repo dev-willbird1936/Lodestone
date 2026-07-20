@@ -499,21 +499,167 @@ def render_tool_catalog_for_prompt(tools: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def render_history_entry(turn: int, decision: dict[str, Any], result: dict[str, Any] | None) -> str:
-    decision_json = json.dumps(decision, separators=(",", ":"), default=str)
-    if result is None:
+# --- Bounded replayed history (task #16) -----------------------------------------------------
+# Root cause of trace-abdc6a99d3e5.jsonl's real completion attempt hitting a hard model context
+# limit (1,004,298 tokens, limit 1,000,000) at turn 17: `history` used to be a list of pre-rendered
+# strings that embedded a tool result's raw JSON verbatim, forever - a single
+# minecraft.world.blocks.read call over a 16x16x16 volume returns 4096 per-cell entries
+# ({position, block, air, loaded}) serializing to ~366KB, and because the cli backend has no native
+# multi-turn state, that whole blob got replayed in full on every subsequent turn's prompt. Three
+# layers fix this, all render/storage-side - no capability-side scan-size caps were touched (advisor
+# call: shrinking those would still let several smaller scans accumulate the same way, and the model
+# genuinely needs that search radius):
+#   1. reencode_volumetric_result(): applied ONCE, at ingestion into `history` (never to what goes
+#      into the JSONL trace, which keeps the raw, unabridged result regardless - see run_loop_cli()).
+#      Detects a minecraft.world.blocks.read-shaped output (a flat list of one entry per queried
+#      cell) and re-encodes it as a per-block-type coordinate map, eliding air cells to a count.
+#      Every non-air block's exact type and coordinate survives - a format change, not data loss.
+#      minecraft.world.region.scan's output is already a compact blockCounts histogram with no
+#      per-cell array, so it passes through unchanged (nothing to re-encode).
+#   2. HistoryEntry/render_history(): `history` is now a list of structured (turn, decision, result)
+#      entries (or harness-authored notes), not pre-rendered strings. Rendering only happens at
+#      prompt-build time, as a policy: the last RECENT_FULL_RENDER_TURNS turns' results render in
+#      full (using the already-re-encoded format from step 1); any older entry whose rendered size
+#      still exceeds DIGEST_THRESHOLD_BYTES renders as a compact digest instead (digest_result()) -
+#      small results always render in full regardless of age. This bounds prompt growth for
+#      arbitrarily long runs and needs no live client to test (see
+#      verification/test_goal_orchestrator_milestone1_history.py).
+#   3. The HISTORY_ENTRY_HARD_CAP_CHARS backstop in render_history(): applied to every rendered
+#      entry regardless of kind or the two mechanisms above, so an unanticipated future capability
+#      with a large, non-volumetric-shaped result still can't reproduce this failure mode.
+RECENT_FULL_RENDER_TURNS = 2
+DIGEST_THRESHOLD_BYTES = 4096
+DIGEST_MAX_COORDS = 50
+HISTORY_ENTRY_HARD_CAP_CHARS = 30_000
+
+
+def reencode_volumetric_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Lossless re-encoding of a minecraft.world.blocks.read-shaped result for storage in
+    `history` - see the module comment above. Any other shape (including a dict with no "blocks"
+    list, e.g. minecraft.world.region.scan's already-compact blockCounts histogram) passes through
+    unchanged, so this is safe to call unconditionally on every tool result before it enters
+    history, not just on results known in advance to be volumetric.
+    """
+    output = result.get("output")
+    if not isinstance(output, dict):
+        return result
+    blocks = output.get("blocks")
+    if not isinstance(blocks, list):
+        return result
+
+    by_type: dict[str, list[list[Any]]] = {}
+    air_count = 0
+    unloaded: list[list[Any]] = []
+    for entry in blocks:
+        if not isinstance(entry, dict):
+            continue
+        position = entry.get("position") or {}
+        coordinate = [position.get("x"), position.get("y"), position.get("z")]
+        if entry.get("loaded") is False:
+            unloaded.append(coordinate)
+            continue
+        if entry.get("air"):
+            air_count += 1
+            continue
+        block_id = str(entry.get("block", "unknown"))
+        by_type.setdefault(block_id, []).append(coordinate)
+
+    reencoded_output: dict[str, Any] = {
+        "dimension": output.get("dimension"),
+        "origin": output.get("origin"),
+        "size": output.get("size"),
+        "count": output.get("count"),
+        "airCellsElided": air_count,
+        "blockTypes": by_type,
+    }
+    if unloaded:
+        reencoded_output["unloadedCells"] = unloaded
+
+    reencoded = dict(result)
+    reencoded["output"] = reencoded_output
+    return reencoded
+
+
+def digest_result(result: dict[str, Any]) -> str:
+    """Render-time compact digest for an aged, large history entry - see render_history(). Status/
+    error always pass through (small, always meaningful). For a reencode_volumetric_result() output
+    (has "blockTypes"), summarizes as a per-type count histogram plus up to DIGEST_MAX_COORDS
+    example coordinates total, with an explicit staleness note. For any other large output shape
+    (unanticipated by step 1), falls back to just its top-level key set plus the same staleness
+    note, rather than reproducing it - the model can always re-observe if it needs current detail.
+    """
+    output = result.get("output")
+    parts: dict[str, Any] = {"status": result.get("status")}
+    if result.get("error"):
+        parts["error"] = result["error"]
+    block_types = output.get("blockTypes") if isinstance(output, dict) else None
+    if isinstance(block_types, dict):
+        parts["blockTypeCounts"] = {block_id: len(coords) for block_id, coords in block_types.items()}
+        examples: dict[str, list[list[Any]]] = {}
+        remaining = DIGEST_MAX_COORDS
+        for block_id, coords in block_types.items():
+            if remaining <= 0:
+                break
+            take = coords[:remaining]
+            examples[block_id] = take
+            remaining -= len(take)
+        parts["exampleCoordinates"] = examples
+        parts["note"] = "stale summary, re-scan to refresh if needed"
+    elif isinstance(output, dict):
+        parts["outputKeys"] = sorted(output.keys())
+        parts["note"] = "large result summarized/stale, re-observe to refresh if needed"
+    return json.dumps(parts, separators=(",", ":"), default=str)
+
+
+@dataclass
+class HistoryEntry:
+    """One entry in the cli backend's replayed history - see the module comment above
+    render_history(). Either a model decision (+ the tool result, already re-encoded compactly at
+    ingestion) that render_history()'s policy may show in full or as a digest depending on age/
+    size, or a harness-authored plain-text `note` (safety warnings, reconcile status, retry
+    prompts) that always renders as-is, subject only to the hard backstop cap.
+    """
+
+    turn: int
+    decision: dict[str, Any] | None = None
+    result: dict[str, Any] | None = None
+    note: str | None = None
+
+
+def render_action_entry(entry: HistoryEntry, full: bool) -> str:
+    decision_json = json.dumps(entry.decision, separators=(",", ":"), default=str)
+    if entry.result is None:
         return (
-            f"Turn {turn}: you responded {decision_json} - INVALID, no tool was called. Your "
+            f"Turn {entry.turn}: you responded {decision_json} - INVALID, no tool was called. Your "
             'response must always have either a real "tool" name or "done": true; try again.'
         )
-    result_json = json.dumps(result, separators=(",", ":"), default=str)
-    return f"Turn {turn}: you chose {decision_json} -> tool result: {result_json}"
+    result_json = json.dumps(entry.result, separators=(",", ":"), default=str)
+    if full or len(result_json) <= DIGEST_THRESHOLD_BYTES:
+        return f"Turn {entry.turn}: you chose {decision_json} -> tool result: {result_json}"
+    return f"Turn {entry.turn}: you chose {decision_json} -> tool result (digest): {digest_result(entry.result)}"
 
 
-def build_cli_prompt(goal: str, tool_catalog_text: str, history: list[str]) -> str:
+def render_history(history: list[HistoryEntry]) -> list[str]:
+    """Render-time policy for the whole replayed history - see the module comment above. Recency is
+    computed over distinct turn numbers, not list position: a single turn can produce several
+    entries (an action plus a safety-warning note plus a reconcile note, say), and all of them
+    should render in full together while that turn is recent.
+    """
+    distinct_turns = sorted({entry.turn for entry in history})
+    recent_turns = set(distinct_turns[-RECENT_FULL_RENDER_TURNS:])
+    rendered = []
+    for entry in history:
+        text = entry.note if entry.note is not None else render_action_entry(entry, full=entry.turn in recent_turns)
+        if len(text) > HISTORY_ENTRY_HARD_CAP_CHARS:
+            text = text[:HISTORY_ENTRY_HARD_CAP_CHARS] + " ...[TRUNCATED: entry exceeded the hard size cap]"
+        rendered.append(text)
+    return rendered
+
+
+def build_cli_prompt(goal: str, tool_catalog_text: str, history: list[HistoryEntry]) -> str:
     parts = [CLI_SYSTEM_PROMPT_TEMPLATE.format(goal=goal, tools=tool_catalog_text)]
     if history:
-        parts.append("--- Actions taken so far this run, oldest first ---\n" + "\n".join(history))
+        parts.append("--- Actions taken so far this run, oldest first ---\n" + "\n".join(render_history(history)))
     parts.append("Respond now with ONLY the JSON object describing your next action.")
     return "\n\n".join(parts)
 
@@ -755,7 +901,7 @@ def run_loop_cli(
     MAX_CONSECUTIVE_CALL_FAILURES = 3
 
     tool_catalog_text = render_tool_catalog_for_prompt(tools)
-    history: list[str] = []
+    history: list[HistoryEntry] = []
     latencies: list[float] = []
     consecutive_call_failures = 0
     last_health: float | None = None  # see the health/fall-damage guard below
@@ -786,10 +932,10 @@ def run_loop_cli(
                     "exceptionMessage": str(exc),
                     "turnLatenciesSeconds": latencies,
                 }
-            history.append(
+            history.append(HistoryEntry(turn=turn, note=(
                 f"Turn {turn}: your call failed ({type(exc).__name__}: {exc}). Respond again with "
                 "ONLY the required JSON object - no extra text before or after it."
-            )
+            )))
             continue
 
         consecutive_call_failures = 0
@@ -805,7 +951,7 @@ def run_loop_cli(
             trace.record_event(
                 "turn_no_action", turn=turn, reason="decision was not a JSON object", decision=decision
             )
-            history.append(render_history_entry(turn, {"raw": decision}, None))
+            history.append(HistoryEntry(turn=turn, decision={"raw": decision}, result=None))
             continue
 
         done = bool(decision.get("done"))
@@ -828,7 +974,7 @@ def run_loop_cli(
                 reason="decision had neither a 'tool' nor 'done': true",
                 decision=decision,
             )
-            history.append(render_history_entry(turn, decision, None))
+            history.append(HistoryEntry(turn=turn, decision=decision, result=None))
             continue
 
         arguments = decision.get("arguments") or {}
@@ -842,7 +988,10 @@ def run_loop_cli(
         else:
             result = mcp_client.invoke_capability(mapping["capability"], arguments, mapping.get("capabilityVersion"))
         trace.record_tool_call(turn, tool_name, arguments, result)
-        history.append(render_history_entry(turn, decision, result))
+        # reencode_volumetric_result() is applied ONLY to what goes into the replayed history, never
+        # to `result` itself - the trace call right above already logged the raw, unabridged result.
+        # See the module comment above render_history() (task #16).
+        history.append(HistoryEntry(turn=turn, decision=decision, result=reencode_volumetric_result(result)))
 
         # Minimal between-turn health/fall-damage guard - see the module-level comment above
         # HEALTH_READ_CAPABILITY for why this exists and what it deliberately does NOT do (no
@@ -854,22 +1003,22 @@ def run_loop_cli(
         )
         if current_health is not None:
             if current_health <= 0:
-                history.append(
+                history.append(HistoryEntry(turn=turn, note=(
                     f"Turn {turn}: SAFETY - your health just read {current_health}. If you are on the "
                     "death screen, use minecraft_ui_state_read to see the exact screen, then "
                     "minecraft_ui_key to respawn before doing anything else."
-                )
+                )))
             elif last_health is not None and (
                 current_health <= CRITICAL_HEALTH or (last_health - current_health) >= SHARP_HEALTH_DROP
             ):
-                history.append(
+                history.append(HistoryEntry(turn=turn, note=(
                     f"Turn {turn}: SAFETY WARNING - health went from {last_health} to {current_health}. "
                     "Stop and re-observe before continuing toward the goal: work out what caused this "
                     "(fall, mob, lava, drowning), retreat to solid/safe ground if needed, and avoid raw "
                     "movement (minecraft_player_move, especially with jump/sprint) over any drop, gap, "
                     "or terrain you have not directly confirmed is solid - prefer "
                     "minecraft_goal_navigation_safe-waypoint for uncertain movement instead."
-                )
+                )))
             last_health = current_health
 
         # Targeted, proactive caution for the exact pattern that killed a prior live run
@@ -880,12 +1029,12 @@ def run_loop_cli(
         # instantly-fatal fall, so this fires right after the risky call itself, not on the next
         # health delta.
         if tool_name == "minecraft_player_move" and arguments.get("jump"):
-            history.append(
+            history.append(HistoryEntry(turn=turn, note=(
                 f"Turn {turn}: NOTE - that was a raw jump move. minecraft_player_move never checks "
                 "for fall hazards; only use jump/sprint over ground you have directly observed as "
                 "solid and level. Prefer minecraft_goal_navigation_safe-waypoint whenever you are not "
                 "certain the ground ahead is safe."
-            )
+            )))
 
         # Automatic, harness-level recovery from CAPABILITY_QUARANTINED (see
         # LodestoneRuntime's SHARED_MUTATION_ORDER: one mutating minecraft.* capability's
@@ -905,7 +1054,7 @@ def run_loop_cli(
         ):
             reconcile_result = mcp_client.invoke_capability("minecraft.session.reconcile", {})
             trace.record_event("auto_reconcile", turn=turn, triggeredByTool=tool_name, result=reconcile_result)
-            history.append(
+            history.append(HistoryEntry(turn=turn, note=(
                 f"Turn {turn}: the harness automatically called minecraft.session.reconcile after your "
                 f"last tool hit CAPABILITY_QUARANTINED. Result: "
                 f"{json.dumps(reconcile_result, separators=(',', ':'), default=str)}. If cleared is true, "
@@ -913,7 +1062,7 @@ def run_loop_cli(
                 "again or re-observe first if you're unsure of the current state. If cleared is false, "
                 "the adapter could not confirm it was safe to clear; re-observe state and consider a "
                 "different approach."
-            )
+            )))
 
     return {"stopReason": "max_turns_reached", "turns": max_turns, "turnLatenciesSeconds": latencies}
 
