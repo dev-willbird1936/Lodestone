@@ -38,13 +38,21 @@ param(
     [string] $RunDirectory = 'runs/benchmark-multiseed',
     [string] $EvidenceDirectory = '',
     [string] $JavaHome = '',
-    # Realtime-only: launches verification\gpt54-mini-goal-model-proxy.py (the same proxy already
-    # proven by run-recorded-reach-nether-goal.ps1) and wires the LODESTONE_GOAL_MODEL_* env vars
-    # around the whole seed loop so -Mode realtime genuinely consults a low-latency model instead
-    # of silently falling back to DeterministicGoalModelProvider. Ignored entirely in script mode.
+    # Realtime-only: launches a local OpenAI-compatible bridge process and wires the
+    # LODESTONE_GOAL_MODEL_* env vars around the whole seed loop so -Mode realtime genuinely
+    # consults a model instead of silently falling back to DeterministicGoalModelProvider.
+    # Ignored entirely in script mode.
     [int] $ModelPort = 37842,
-    [ValidateSet('gpt-5.4-mini')]
-    [string] $ModelId = 'gpt-5.4-mini',
+    # gpt54-mini shells out to `codex exec` (verification\gpt54-mini-goal-model-proxy.py, the
+    # bridge already proven by run-recorded-reach-nether-goal.ps1). sonnet5 shells out to the
+    # `claude` CLI's non-interactive print mode instead (verification\sonnet5-goal-model-proxy.py)
+    # - this is the literal fulfillment of "the agent running the mcp is the model" for a goal that
+    # explicitly rejects a disconnected third-party LLM API as the definition of intelligence; see
+    # that file's own module docstring for the `claude -p` vs `--bare` auth tradeoff it documents.
+    [ValidateSet('gpt54-mini', 'sonnet5')]
+    [string] $ModelBackend = 'gpt54-mini',
+    [ValidateSet('gpt-5.4-mini', 'sonnet')]
+    [string] $ModelId = $(if ($ModelBackend -eq 'sonnet5') { 'sonnet' } else { 'gpt-5.4-mini' }),
     # Off by default, zero effect on a normal scoring pass. Sets
     # -Dlodestone.spawnGauntlet.reachabilityDiagnostic=true on the client JVM, which folds a
     # NeoForgeSafePathPlanner.floodFillReachable summary (max reachable horizontal distance and
@@ -308,7 +316,8 @@ function Start-RealtimeModelProxy {
     if (Get-NetTCPConnection -LocalPort $ModelPort -State Listen -ErrorAction SilentlyContinue) {
         throw "INFRA:model-proxy-port-occupied: model proxy port $ModelPort already has a listener"
     }
-    $proxyPath = Join-Path $repoRoot 'verification\gpt54-mini-goal-model-proxy.py'
+    $proxyFile = if ($ModelBackend -eq 'sonnet5') { 'sonnet5-goal-model-proxy.py' } else { 'gpt54-mini-goal-model-proxy.py' }
+    $proxyPath = Join-Path $repoRoot "verification\$proxyFile"
     if (-not (Test-Path -LiteralPath $proxyPath)) { throw "INFRA:model-proxy-missing: $proxyPath not found" }
     $env:LODESTONE_PROXY_MODEL = $ModelId
     $env:LODESTONE_PROXY_LOG = $script:modelProxyLog
@@ -327,7 +336,15 @@ function Start-RealtimeModelProxy {
     $env:LODESTONE_GOAL_MODEL_URL = "http://127.0.0.1:$ModelPort/v1/chat/completions"
     $env:LODESTONE_GOAL_MODEL_ID = $ModelId
     $env:LODESTONE_GOAL_MODEL_P95_MS = '150'
-    $env:LODESTONE_GOAL_MODEL_TIMEOUT_MS = '95000'
+    # sonnet5's bridge shells out to `claude -p`, which loads this machine's full interactive
+    # context on every call (see sonnet5-goal-model-proxy.py's module docstring) and was observed
+    # to take ~6-9s even for a trivial prompt; real goal-state prompts are larger. Its own
+    # CALL_TIMEOUT_S defaults to 90s, so the HTTP client-side timeout here must stay comfortably
+    # above that or Java gives up and reports a decision failure before the bridge's own subprocess
+    # timeout/fallback path ever gets to respond. gpt54-mini's codex-backed bridge measured
+    # 9-15s per call (see that file's own CALL_TIMEOUT_S comment) so its existing 95000 headroom
+    # is unchanged.
+    $env:LODESTONE_GOAL_MODEL_TIMEOUT_MS = if ($ModelBackend -eq 'sonnet5') { '110000' } else { '95000' }
 }
 
 function Stop-RealtimeModelProxy {
@@ -541,6 +558,7 @@ try {
         perSeed = $results
     }
     if ($Mode -eq 'realtime') {
+        $aggregate.realtimeModelBackend = $ModelBackend
         $aggregate.realtimeModelId = $ModelId
         $aggregate.realtimeModelPort = $ModelPort
         $aggregate.realtimeModelProxyLog = $script:modelProxyLog
