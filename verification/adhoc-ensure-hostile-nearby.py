@@ -17,7 +17,9 @@ The surface-reachability filter exists because accepting the first hostile found
 depth can hand the model a cave-dwelling target: live-evidenced (adhoc-benchmark-b5-run3) a run
 where the nearest hostile was 39 blocks away down in a cave, safe-waypoint kept reporting no safe
 route down to it, and 52 of that run's 55 turns went to approach rather than combat - the model got
-exactly one real attack attempt in before the turn budget ran out.
+exactly one real attack attempt in before the turn budget ran out. MAX_ACCEPT_DISTANCE (20 blocks)
+exists for the same reason on the distance axis: attempt 4's 32-block SURFACE target still ate the
+entire 40-turn budget on approach (and an unrelated ambush) before a single attack landed.
 
 Run with: python verification/adhoc-ensure-hostile-nearby.py --port 37821 --token <token>
 """
@@ -43,6 +45,9 @@ WAIT_SECONDS_PER_ROUND = 20.0
 SCAN_RADIUS = 64
 MAX_SURFACE_GAP = 6  # hostile's Y must be within this many blocks of the terrain surface at its
                      # own (x,z) column to count as "out in the open", not buried in a cave
+MAX_ACCEPT_DISTANCE = 20  # tightened from "closest surface hostile, any distance" - attempt 3's
+                          # 39 blocks and attempt 4's 32 blocks both let the approach phase eat
+                          # most or all of the run's turn budget before combat ever started
 
 
 def quit_to_title(client: "orchestrator.LodestoneMcpClient") -> dict:
@@ -101,12 +106,15 @@ def surface_height_at(client: "orchestrator.LodestoneMcpClient", x: float, z: fl
 
 
 def find_surface_reachable_hostile(client: "orchestrator.LodestoneMcpClient") -> tuple[dict | None, list[dict]]:
-    """Returns (chosen, all_hostiles) - chosen is the CLOSEST hostile whose Y is within
-    MAX_SURFACE_GAP of the terrain surface at its own column, or None if no hostile currently
-    found qualifies (still worth reporting all_hostiles for visibility even on a miss).
+    """Returns (chosen, all_hostiles) - chosen is the CLOSEST hostile within MAX_ACCEPT_DISTANCE
+    whose Y is within MAX_SURFACE_GAP of the terrain surface at its own column, or None if no
+    hostile currently found qualifies on both distance and surface-reachability (still worth
+    reporting all_hostiles for visibility even on a miss).
     """
     hostiles = sorted(find_hostiles(client), key=lambda h: h.get("distance", 1e9))
     for hostile in hostiles:
+        if hostile.get("distance", 1e9) > MAX_ACCEPT_DISTANCE:
+            continue
         position = hostile.get("position") or {}
         surface = surface_height_at(client, position.get("x", 0), position.get("z", 0))
         if surface is None:

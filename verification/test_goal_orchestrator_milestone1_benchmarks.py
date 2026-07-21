@@ -309,6 +309,34 @@ class VerifyB5Test(unittest.TestCase):
         self.assertEqual(1, len(result["checks"]["hostileNoLongerPresent"]))
         self.assertTrue(result["checks"]["attackedAnEntity"])
 
+    def test_passes_when_an_ambusher_not_in_the_baseline_is_the_one_killed(self):
+        # The coordinator's reframe: B5's target is whichever hostile is nearest at any moment,
+        # not just whatever the pre-flight/baseline happened to nominate. adhoc-benchmark-b5-run4
+        # showed a player die to a spider ambush that was never in the turn-0 baseline at all -
+        # the verifier must still credit a kill of an ambusher the model actually observed and
+        # fought mid-run, even though it wasn't present at baseline capture.
+        trace = _temp_trace()
+        trace.record_tool_call(5, "minecraft_entity_nearby_read", {}, {
+            "status": "ok", "error": None,
+            "output": {"entities": [
+                {"uuid": "u-zombie", "type": "minecraft:zombie"},  # the baseline hostile, still alive
+                {"uuid": "u-spider-ambusher", "type": "minecraft:spider"},  # never in the baseline
+            ]},
+        })
+        trace.record_tool_call(6, "minecraft_player_interact", {"action": "attack"}, {
+            "status": "ok", "error": None,
+            "output": {"action": "attack", "queued": True, "held": True, "targetKind": "entity"},
+        })
+        client = ScriptedMcpClient({
+            orchestrator.HEALTH_READ_CAPABILITY: player_state({"x": 0, "y": 64, "z": 0}, health=14.0),
+            # Final scan: the baseline zombie is still around, but the ambushing spider is gone.
+            "minecraft.entity.nearby.read": {"status": "ok", "output": {"entities": [{"uuid": "u-zombie"}]}},
+        })
+        result = orchestrator.verify_b5_attack_nearest(client, trace, self._baseline())
+        self.assertTrue(result["passed"])
+        killed_uuids = {h["uuid"] for h in result["checks"]["hostileNoLongerPresent"]}
+        self.assertEqual({"u-spider-ambusher"}, killed_uuids)
+
     def test_fails_when_hostile_gone_but_no_entity_attack_ever_landed(self):
         # The exact false positive live-evidenced in adhoc-benchmark-b5-run2: the model never
         # called player.interact at all, yet most baseline hostiles had vanished anyway (daytime

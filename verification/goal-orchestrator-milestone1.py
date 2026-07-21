@@ -1478,6 +1478,44 @@ def _entity_attack_landed(trace: TraceWriter) -> bool:
     return False
 
 
+def _all_observed_hostiles(trace: TraceWriter, baseline: dict[str, Any]) -> dict[str, dict]:
+    """Union of every hostile-typed entity ever seen during this run - the baseline snapshot at
+    turn 0 PLUS every minecraft.entity.nearby.read result the model itself logged while playing -
+    keyed by uuid.
+
+    Needed so a legitimate kill of an ambusher that wasn't present at baseline-capture time (e.g.
+    a spider that approached mid-run) still counts. Per the coordinator's reframe: B5's goal is
+    "defeat the NEAREST loaded hostile," not "defeat whichever hostile the pre-flight/baseline
+    happened to nominate" - whichever hostile is nearest at any moment during the run, including
+    one that only shows up later, is a valid target. Live-evidenced why the old baseline-only
+    check was wrong: adhoc-benchmark-b5-run4's player died mid-approach to a spider ambush that
+    was never in the turn-0 baseline at all.
+    """
+    seen: dict[str, dict] = {}
+    for hostile in baseline.get("hostiles") or []:
+        uuid = hostile.get("uuid")
+        if uuid:
+            seen[uuid] = hostile
+    try:
+        lines = trace.path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return seen
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") != "tool_call" or event.get("toolName") != "minecraft_entity_nearby_read":
+            continue
+        entities = ((event.get("result") or {}).get("output") or {}).get("entities") or []
+        for entity in entities:
+            if str(entity.get("type", "")) in HOSTILE_MOB_TYPES:
+                uuid = entity.get("uuid")
+                if uuid:
+                    seen[uuid] = entity
+    return seen
+
+
 def verify_b5_attack_nearest(
     mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
 ) -> dict[str, Any]:
@@ -1490,15 +1528,17 @@ def verify_b5_attack_nearest(
     result = mcp_client.invoke_capability("minecraft.entity.nearby.read", {"radius": 64, "limit": 64})
     trace.record_event("b5_final_entity_check", result=result)
     current_uuids = {e.get("uuid") for e in (result.get("output") or {}).get("entities") or []}
-    baseline_hostiles = baseline.get("hostiles") or []
-    killed = [h for h in baseline_hostiles if h.get("uuid") not in current_uuids]
+    ever_seen_hostiles = _all_observed_hostiles(trace, baseline)
+    killed = [h for h in ever_seen_hostiles.values() if h.get("uuid") not in current_uuids]
     attacked_an_entity = _entity_attack_landed(trace)
 
     return {
         "passed": alive and len(killed) > 0 and attacked_an_entity,
         "checks": {
             "alive": alive, "health": health,
-            "baselineHostileCount": len(baseline_hostiles), "hostileNoLongerPresent": killed,
+            "baselineHostileCount": len(baseline.get("hostiles") or []),
+            "everObservedHostileCount": len(ever_seen_hostiles),
+            "hostileNoLongerPresent": killed,
             "observedHostileDeath": len(killed) > 0, "attackedAnEntity": attacked_an_entity,
         },
         "finalState": output,
@@ -1567,13 +1607,20 @@ BENCHMARKS: dict[str, BenchmarkSpec] = {
     "b5": BenchmarkSpec(
         task_id="combat.attack-nearest",
         goal=(
-            "Find the nearest hostile mob and defeat it with ordinary movement and attacks. To "
-            "approach it, prefer direct minecraft_player_move/minecraft_player_look steps over the "
-            "safe-waypoint navigation tool, which has a known bug right now where it can report "
-            "reaching a target while your position hasn't actually changed - if you do use it, "
-            "confirm your real position changed afterward rather than trusting reachedTarget "
-            "alone. When you attack, check the result's targetKind field: it should read \"entity\" "
-            "(not \"none\") to confirm you are actually swinging at the mob, not empty air."
+            "Find the nearest hostile mob and defeat it with ordinary movement and attacks. Your "
+            "target is whichever hostile is currently nearest - if any hostile approaches or "
+            "attacks you during the run, that one becomes your target immediately; turn and fight "
+            "it rather than continuing toward a farther candidate or fleeing. An ambush is an "
+            "opportunity, not an interruption. To approach, prefer direct "
+            "minecraft_player_move/minecraft_player_look steps over the safe-waypoint navigation "
+            "tool; safe-waypoint now reports genuine failures honestly (a real 'no safe route' "
+            "result means exactly that, not a lie), so if it fails, either try a different route/"
+            "target or switch to manual movement rather than retrying the same route repeatedly. "
+            "Once within about 3 blocks of your target, commit: every turn, look at it and attack "
+            "it - don't disengage to re-scan or re-plan unless it's confirmed dead or your health "
+            "drops to 6 or below. Check the attack result's targetKind field every time: \"entity\" "
+            "means the swing landed on the mob (keep attacking), \"none\" means you missed (re-aim "
+            "and attack again immediately)."
         ),
         max_turns=40,
         capture_baseline=capture_b5_baseline,
