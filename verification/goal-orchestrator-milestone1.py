@@ -110,6 +110,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -1194,11 +1195,366 @@ def verify_log_in_inventory(mcp_client: LodestoneMcpClient, trace: TraceWriter) 
     return {"logFound": found_log, "inventoryResult": result}
 
 
+# --- Benchmark framework (task #20) ---------------------------------------------------------------
+# Five native-actor-backed goals from common/goal-engine/.../GoalTaskCatalog.java, each driven by
+# the SAME model-decision loop above and checked by an INDEPENDENT harness-side verifier - never
+# the model's own self-report, exactly like verify_log_in_inventory (which becomes b2's own
+# starter-log-count building block below). --benchmark selects the goal text handed to the model,
+# an appropriate turn budget, and which verifier runs at the end; omit --benchmark for the
+# original ad hoc --goal behavior (verify_log_in_inventory), unchanged.
+#
+# Baseline observations each verifier needs (spawn position, initial tree census, hostile roster,
+# start time) are captured HARNESS-SIDE, once, right after the world is ready and before the first
+# model turn - never left for the model to report, per that same independent-verification rule.
+
+HOSTILE_MOB_TYPES = {
+    "minecraft:zombie", "minecraft:husk", "minecraft:drowned", "minecraft:zombie_villager",
+    "minecraft:skeleton", "minecraft:stray", "minecraft:wither_skeleton", "minecraft:spider",
+    "minecraft:cave_spider", "minecraft:creeper", "minecraft:enderman", "minecraft:witch",
+    "minecraft:phantom", "minecraft:slime", "minecraft:magma_cube", "minecraft:pillager",
+    "minecraft:vindicator", "minecraft:evoker", "minecraft:ravager", "minecraft:silverfish",
+    "minecraft:blaze", "minecraft:ghast", "minecraft:piglin_brute", "minecraft:hoglin", "minecraft:zoglin",
+}
+
+STONE_TOOLS = ("minecraft:stone_pickaxe", "minecraft:stone_axe", "minecraft:stone_sword", "minecraft:stone_shovel")
+
+
+def _read_player_state(mcp_client: LodestoneMcpClient) -> dict[str, Any]:
+    return mcp_client.invoke_capability(HEALTH_READ_CAPABILITY, {})
+
+
+def _inventory_slots(mcp_client: LodestoneMcpClient, trace: TraceWriter, event: str) -> tuple[dict[str, Any], list[dict]]:
+    result = mcp_client.invoke_capability("minecraft.inventory.read", {})
+    trace.record_event(event, result=result)
+    slots: list[dict] = []
+    if result.get("status") == "ok" and isinstance(result.get("output"), dict):
+        slots = result["output"].get("slots") or []
+    return result, slots
+
+
+def _scan_log_cells(mcp_client: LodestoneMcpClient, cx: int, cy: int, cz: int, size: int = 16) -> list[dict]:
+    """One size^3 minecraft.world.blocks.read centered near (cx, cy, cz), filtered to log-typed,
+    loaded, non-air cells. size=16 keeps every call well under the adapter's 4096-cell cap
+    (16*16*16 == 4096 exactly).
+    """
+    half = size // 2
+    result = mcp_client.invoke_capability("minecraft.world.blocks.read", {
+        "x": cx - half, "y": max(cy - half, -60), "z": cz - half, "sizeX": size, "sizeY": size, "sizeZ": size,
+    })
+    if result.get("status") != "ok":
+        return []
+    blocks = (result.get("output") or {}).get("blocks") or []
+    return [
+        b for b in blocks
+        if isinstance(b, dict) and not b.get("air") and b.get("loaded") and "_log" in str(b.get("block", ""))
+    ]
+
+
+def _cluster_trees(log_cells: list[dict]) -> list[list[dict]]:
+    """Groups log cells into trees via union-find over XZ-column adjacency (Chebyshev distance <=
+    1, any Y) - enough to separate individually-spaced trees while keeping a multi-column (e.g.
+    2x2 dark oak) trunk as a single tree, without a full 3D flood-fill over the scan volume.
+    """
+    columns: dict[tuple[int, int], list[dict]] = {}
+    for cell in log_cells:
+        pos = cell.get("position") or {}
+        key = (int(pos.get("x", 0)), int(pos.get("z", 0)))
+        columns.setdefault(key, []).append(cell)
+
+    parent: dict[tuple[int, int], tuple[int, int]] = {key: key for key in columns}
+
+    def find(k: tuple[int, int]) -> tuple[int, int]:
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+
+    def union(a: tuple[int, int], b: tuple[int, int]) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    keys = list(columns.keys())
+    for i, (x1, z1) in enumerate(keys):
+        for x2, z2 in keys[i + 1:]:
+            if abs(x1 - x2) <= 1 and abs(z1 - z2) <= 1:
+                union((x1, z1), (x2, z2))
+
+    groups: dict[tuple[int, int], list[dict]] = {}
+    for key in keys:
+        groups.setdefault(find(key), []).extend(columns[key])
+    return list(groups.values())
+
+
+# --- Baseline capture (harness-side, once, before the first model turn) --------------------------
+
+def capture_b1_baseline(mcp_client: LodestoneMcpClient, trace: TraceWriter) -> dict[str, Any]:
+    state = _read_player_state(mcp_client)
+    trace.record_event("b1_baseline", result=state)
+    position = (state.get("output") or {}).get("position") or {}
+    return {"spawnPosition": position, "startedAtMonotonic": time.monotonic()}
+
+
+def capture_b2_baseline(mcp_client: LodestoneMcpClient, trace: TraceWriter) -> dict[str, Any]:
+    state = _read_player_state(mcp_client)
+    position = (state.get("output") or {}).get("position") or {}
+    cx, cy, cz = int(position.get("x", 0)), int(position.get("y", 64)), int(position.get("z", 0))
+    log_cells: list[dict] = []
+    # A small plus-pattern of scans around spawn, matching adhoc-ensure-treed-world.py's own
+    # pre-flight pattern, so the baseline census covers more than just one central cube.
+    for dx, dz in ((0, 0), (16, 0), (-16, 0), (0, 16), (0, -16)):
+        log_cells.extend(_scan_log_cells(mcp_client, cx + dx, cy, cz + dz))
+    tree_groups = _cluster_trees(log_cells)
+    trace.record_event(
+        "b2_baseline", playerPosition=position, logCellCount=len(log_cells), treeGroupCount=len(tree_groups)
+    )
+    return {"logCells": log_cells, "treeGroups": tree_groups}
+
+
+def capture_b5_baseline(mcp_client: LodestoneMcpClient, trace: TraceWriter) -> dict[str, Any]:
+    result = mcp_client.invoke_capability("minecraft.entity.nearby.read", {"radius": 64, "limit": 64})
+    trace.record_event("b5_baseline", result=result)
+    entities = (result.get("output") or {}).get("entities") or []
+    hostiles = [e for e in entities if str(e.get("type", "")) in HOSTILE_MOB_TYPES]
+    return {"hostiles": hostiles}
+
+
+def capture_no_baseline(mcp_client: LodestoneMcpClient, trace: TraceWriter) -> dict[str, Any]:
+    return {}
+
+
+# --- Verifiers (harness-side, independent - never the model's own self-report) -------------------
+
+def verify_b1_spawn_gauntlet(
+    mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
+) -> dict[str, Any]:
+    state = _read_player_state(mcp_client)
+    trace.record_event("b1_final_check", result=state)
+    output = state.get("output") or {}
+    health = output.get("health")
+    position = output.get("position") or {}
+    spawn = baseline.get("spawnPosition") or {}
+    elapsed_s = time.monotonic() - baseline.get("startedAtMonotonic", time.monotonic())
+    horizontal_distance = math.hypot(
+        float(position.get("x", 0)) - float(spawn.get("x", 0)),
+        float(position.get("z", 0)) - float(spawn.get("z", 0)),
+    )
+    alive = isinstance(health, (int, float)) and health > 0
+    survived_90s = elapsed_s >= 90.0
+    reached_waypoint = horizontal_distance >= 32.0
+    return {
+        "passed": alive and survived_90s and reached_waypoint,
+        "checks": {
+            "alive": alive, "health": health,
+            "survived90s": survived_90s, "elapsedSeconds": round(elapsed_s, 1),
+            "reachedWaypoint": reached_waypoint, "horizontalDistanceFromSpawn": round(horizontal_distance, 2),
+        },
+        "finalState": output,
+    }
+
+
+def verify_b2_wooden_axe_mine_tree(
+    mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
+) -> dict[str, Any]:
+    inventory_result, slots = _inventory_slots(mcp_client, trace, "b2_final_inventory")
+    has_axe = any("wooden_axe" in str((slot or {}).get("item", "")).lower() for slot in slots)
+
+    tree_groups = baseline.get("treeGroups") or []
+    cleared_tree_found = False
+    total_now_air = 0
+    tree_group_results = []
+    for group in tree_groups:
+        cells_now_air = 0
+        for cell in group:
+            pos = cell.get("position") or {}
+            read = mcp_client.invoke_capability(
+                "minecraft.world.block.read", {"x": int(pos["x"]), "y": int(pos["y"]), "z": int(pos["z"])}
+            )
+            is_air = read.get("status") == "ok" and (read.get("output") or {}).get("block") == "minecraft:air"
+            if is_air:
+                cells_now_air += 1
+                total_now_air += 1
+        fully_cleared = len(group) > 0 and cells_now_air == len(group)
+        tree_group_results.append({"cellCount": len(group), "nowAir": cells_now_air, "fullyCleared": fully_cleared})
+        cleared_tree_found = cleared_tree_found or fully_cleared
+
+    trace.record_event(
+        "b2_final_check", hasAxe=has_axe, treeGroupResults=tree_group_results, totalLogCellsNowAir=total_now_air
+    )
+    return {
+        "passed": has_axe and total_now_air >= 3 and cleared_tree_found,
+        "checks": {
+            "hasWoodenAxe": has_axe, "logsHandMined": total_now_air,
+            "atLeastThreeLogsMined": total_now_air >= 3, "aTreeWasFullyCleared": cleared_tree_found,
+            "treeGroups": tree_group_results,
+        },
+        "inventoryResult": inventory_result,
+    }
+
+
+def verify_b3_stone_toolset(
+    mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
+) -> dict[str, Any]:
+    inventory_result, slots = _inventory_slots(mcp_client, trace, "b3_final_inventory")
+    item_ids = {str((slot or {}).get("item", "")).lower() for slot in slots if not (slot or {}).get("empty")}
+    has_all_stone_tools = all(tool in item_ids for tool in STONE_TOOLS)
+
+    state = _read_player_state(mcp_client)
+    trace.record_event("b3_final_state", result=state)
+    output = state.get("output") or {}
+    position = output.get("position") or {}
+    px, py, pz = int(position.get("x", 0)), int(position.get("y", 0)), int(position.get("z", 0))
+
+    heightmap = mcp_client.invoke_capability(
+        "minecraft.world.heightmap.read", {"x": px - 1, "z": pz - 1, "sizeX": 3, "sizeZ": 3}
+    )
+    trace.record_event("b3_heightmap_check", result=heightmap)
+    columns = (heightmap.get("output") or {}).get("columns") or []
+    own_column = next((c for c in columns if int(c.get("x", -999)) == px and int(c.get("z", -999)) == pz), None)
+    surface_height = own_column.get("height") if own_column else None
+    # "back on the surface" - the player's own Y should be at or above the terrain surface
+    # directly under them, not left deep in a self-dug mineshaft (a couple of blocks of tolerance
+    # for standing on the surface block itself vs. its reported top).
+    above_ground = isinstance(surface_height, (int, float)) and py >= surface_height - 2
+
+    scan_area = mcp_client.invoke_capability("minecraft.world.blocks.read", {
+        "x": px - 12, "y": max(py - 8, -60), "z": pz - 12, "sizeX": 24, "sizeY": 16, "sizeZ": 24,
+    })
+    trace.record_event("b3_furnace_scan", result=scan_area)
+    blocks = (scan_area.get("output") or {}).get("blocks") or []
+    furnace_placed = any(isinstance(b, dict) and str(b.get("block", "")) == "minecraft:furnace" for b in blocks)
+
+    return {
+        "passed": has_all_stone_tools and furnace_placed and above_ground,
+        "checks": {
+            "hasAllFourStoneTools": has_all_stone_tools, "stoneToolsFound": sorted(item_ids & set(STONE_TOOLS)),
+            "furnacePlaced": furnace_placed, "aboveGround": above_ground,
+            "playerY": py, "surfaceHeight": surface_height,
+        },
+        "inventoryResult": inventory_result,
+    }
+
+
+def verify_b4_reach_nether(
+    mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
+) -> dict[str, Any]:
+    state = _read_player_state(mcp_client)
+    trace.record_event("b4_final_check", result=state)
+    output = state.get("output") or {}
+    dimension = output.get("dimension")
+    passed = dimension == "minecraft:the_nether"
+    return {"passed": passed, "checks": {"dimension": dimension, "inNether": passed}, "finalState": output}
+
+
+def verify_b5_attack_nearest(
+    mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
+) -> dict[str, Any]:
+    state = _read_player_state(mcp_client)
+    trace.record_event("b5_final_player_state", result=state)
+    output = state.get("output") or {}
+    health = output.get("health")
+    alive = isinstance(health, (int, float)) and health > 0
+
+    result = mcp_client.invoke_capability("minecraft.entity.nearby.read", {"radius": 64, "limit": 64})
+    trace.record_event("b5_final_entity_check", result=result)
+    current_uuids = {e.get("uuid") for e in (result.get("output") or {}).get("entities") or []}
+    baseline_hostiles = baseline.get("hostiles") or []
+    killed = [h for h in baseline_hostiles if h.get("uuid") not in current_uuids]
+
+    return {
+        "passed": alive and len(killed) > 0,
+        "checks": {
+            "alive": alive, "health": health,
+            "baselineHostileCount": len(baseline_hostiles), "hostileNoLongerPresent": killed,
+            "observedHostileDeath": len(killed) > 0,
+        },
+        "finalState": output,
+    }
+
+
+@dataclass
+class BenchmarkSpec:
+    task_id: str  # GoalTaskCatalog id, for cross-referencing the original native-actor definition
+    goal: str  # handed to the model verbatim as {goal} in the prompt template
+    max_turns: int
+    capture_baseline: Any  # (mcp_client, trace) -> dict
+    verify: Any  # (mcp_client, trace, baseline) -> {"passed": bool, "checks": {...}, ...}
+
+
+BENCHMARKS: dict[str, BenchmarkSpec] = {
+    "b1": BenchmarkSpec(
+        task_id="survival.spawn-gauntlet",
+        goal=(
+            "Survive the opening 90 seconds without dying, then reach a point at least 32 blocks "
+            "away horizontally from your current (spawn) position."
+        ),
+        max_turns=40,  # mostly survive+navigate - safe-waypoint navigation is already proven
+        capture_baseline=capture_b1_baseline,
+        verify=verify_b1_spawn_gauntlet,
+    ),
+    "b2": BenchmarkSpec(
+        task_id="survival.wooden-axe-mine-tree",
+        goal=(
+            "Hand-mine at least three logs from a tree, craft a crafting table, sticks, and a "
+            "wooden axe, equip the axe, then find a second tree and mine every log in it."
+        ),
+        # "mine one log" alone took up to 58-60 turns end to end (trace-7427eb58be3c.jsonl); this
+        # goal needs starter logs, a full crafting chain, AND fully clearing a second tree, so the
+        # budget is generous rather than evidence-tuned yet - expect to revisit after a live run.
+        max_turns=150,
+        capture_baseline=capture_b2_baseline,
+        verify=verify_b2_wooden_axe_mine_tree,
+    ),
+    "b3": BenchmarkSpec(
+        task_id="survival.stone-toolset",
+        goal=(
+            "Hand-mine starter logs, craft a wooden tool chain including a wooden pickaxe, use it "
+            "to mine cobblestone, craft a full stone toolset (pickaxe, axe, sword, shovel), craft "
+            "and place a furnace, then return to the surface."
+        ),
+        max_turns=220,  # superset of b2's crafting chain plus stone mining/crafting - untuned
+        capture_baseline=capture_no_baseline,
+        verify=verify_b3_stone_toolset,
+    ),
+    "b4": BenchmarkSpec(
+        task_id="survival.reach-nether",
+        goal=(
+            "Gather the materials needed for a Nether portal (obsidian, or a lava and water "
+            "source to make it, plus flint and steel), build and light a portal frame, and enter "
+            "the Nether."
+        ),
+        max_turns=280,  # by far the most complex chain (iron/flint/obsidian + portal) - untuned
+        capture_baseline=capture_no_baseline,
+        verify=verify_b4_reach_nether,
+    ),
+    "b5": BenchmarkSpec(
+        task_id="combat.attack-nearest",
+        goal="Find the nearest hostile mob and defeat it with ordinary movement and attacks.",
+        max_turns=40,
+        capture_baseline=capture_b5_baseline,
+        verify=verify_b5_attack_nearest,
+    ),
+}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, required=True, help="Lodestone MCP gateway port on the live client")
     parser.add_argument("--token", type=str, required=True, help="X-Lodestone-Token for the live client")
     parser.add_argument("--goal", type=str, default=DEFAULT_GOAL)
+    parser.add_argument(
+        "--benchmark",
+        type=str,
+        default=None,
+        choices=sorted(BENCHMARKS.keys()),
+        help=(
+            "selects one of GoalTaskCatalog's native-actor-backed benchmarks (task #20): "
+            "overrides --goal with the benchmark's own goal text, defaults --max-turns to the "
+            "benchmark's own budget (an explicit --max-turns still wins), and runs that "
+            "benchmark's independent harness-side verifier instead of verify_log_in_inventory. "
+            "Omit for the original ad hoc --goal behavior, unchanged."
+        ),
+    )
     parser.add_argument(
         "--backend",
         type=str,
@@ -1219,7 +1575,9 @@ def main() -> int:
         help=f"defaults to {DEFAULT_CLI_MODEL!r} for --backend cli, {DEFAULT_MODEL!r} for --backend api",
     )
     parser.add_argument("--effort", type=str, default="low", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--max-turns", type=int, default=DEFAULT_MAX_TURNS)
+    parser.add_argument(
+        "--max-turns", type=int, default=None, help=f"defaults to {DEFAULT_MAX_TURNS} ({{benchmark}}.max_turns if --benchmark is set)"
+    )
     parser.add_argument(
         "--evidence-dir",
         type=str,
@@ -1232,6 +1590,9 @@ def main() -> int:
     )
     args = parser.parse_args()
     model = args.model or (DEFAULT_CLI_MODEL if args.backend == "cli" else DEFAULT_MODEL)
+    benchmark = BENCHMARKS[args.benchmark] if args.benchmark else None
+    goal = benchmark.goal if benchmark else args.goal
+    max_turns = args.max_turns if args.max_turns is not None else (benchmark.max_turns if benchmark else DEFAULT_MAX_TURNS)
 
     run_id = uuid.uuid4().hex[:12]
     evidence_dir = Path(args.evidence_dir)
@@ -1243,13 +1604,16 @@ def main() -> int:
     summary: dict[str, Any] = {
         "runId": run_id,
         "startedAtUtc": datetime.now(timezone.utc).isoformat(),
-        "goal": args.goal,
+        "goal": goal,
         "backend": args.backend,
         "model": model,
         "effort": args.effort,
         "port": args.port,
         "tracePath": str(trace_path),
     }
+    if benchmark:
+        summary["benchmark"] = args.benchmark
+        summary["benchmarkTaskId"] = benchmark.task_id
 
     try:
         mcp_client = LodestoneMcpClient(args.port, args.token)
@@ -1290,10 +1654,13 @@ def main() -> int:
         summary["generatedToolCount"] = len(tools)
         summary["toolNames"] = sorted(dispatch.keys())
 
+        # Baseline observations (spawn position, initial tree census, hostile roster, start time)
+        # are captured HARNESS-SIDE here, before the first model turn - see the benchmark
+        # framework comment above capture_b1_baseline for why this must never be model-reported.
+        baseline = benchmark.capture_baseline(mcp_client, trace) if benchmark else {}
+
         if args.backend == "cli":
-            loop_result = run_loop_cli(
-                mcp_client, tools, dispatch, args.goal, model, args.effort, args.max_turns, trace
-            )
+            loop_result = run_loop_cli(mcp_client, tools, dispatch, goal, model, args.effort, max_turns, trace)
         else:
             try:
                 import anthropic  # lazy: only the api backend needs this - see top-of-file comment
@@ -1304,7 +1671,7 @@ def main() -> int:
                 ) from exc
             model_client = anthropic.Anthropic()
             loop_result = run_loop(
-                mcp_client, model_client, model, args.effort, tools, dispatch, args.goal, args.max_turns, trace
+                mcp_client, model_client, model, args.effort, tools, dispatch, goal, max_turns, trace
             )
         summary["loopResult"] = loop_result
 
@@ -1313,6 +1680,10 @@ def main() -> int:
             summary["blockerReason"] = (
                 f"{loop_result['exceptionType']}: {loop_result['exceptionMessage']}"
             )
+        elif benchmark:
+            verification = benchmark.verify(mcp_client, trace, baseline)
+            summary["verification"] = verification
+            summary["status"] = "SUCCEEDED" if verification["passed"] else "GOAL_NOT_CONFIRMED"
         else:
             verification = verify_log_in_inventory(mcp_client, trace)
             summary["verification"] = verification
