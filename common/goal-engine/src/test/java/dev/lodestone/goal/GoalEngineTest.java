@@ -16,6 +16,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GoalEngineTest {
     @Test
+    void publicPolicyTiersMapToRetainedInternalProfiles() {
+        assertEquals(GoalIntelligence.RAW_V1, GoalIntelligence.parse("low"));
+        assertEquals(GoalIntelligence.GUARDED_V1, GoalIntelligence.parse("medium"));
+        assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("high"));
+        assertEquals(GoalSafety.LOW, GoalSafety.parse("low"));
+        assertEquals(GoalSafety.BALANCED, GoalSafety.parse("medium"));
+        assertEquals(GoalSafety.HIGH, GoalSafety.parse("high"));
+    }
+
+    @Test
     void deliberateIntelligenceParsesNewAliasesAndKeepsHighestFrozenAtAdaptive() {
         assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("deliberate"));
         assertEquals(GoalIntelligence.DELIBERATE_V1, GoalIntelligence.parse("deliberate-v1"));

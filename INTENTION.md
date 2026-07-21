@@ -12,6 +12,11 @@ every Minecraft environment.
 
 ## INTENTION MATCHED
 
+- NeoForge 1.21.1 now exposes model-planned goal execution with public low/medium/high
+  intelligence and safety tiers, bounded script subaction batches, realtime single-action control,
+  polling-backed inventory condition hooks, and generic terminal MCP observations. The shared
+  `lodestone-goal` skill delegates through the current host's fastest available tool-capable native
+  subagent without pinning a vendor or model.
 - Standalone Lodestone branding, package names, protocol models, runtime, gateway, tests, docs, and
   provenance rules.
 - Protocol-first module boundaries with no native Minecraft imports in the MCP gateway.

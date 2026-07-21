@@ -49,3 +49,4 @@ __pycache__/
 
 # In-progress local demo capture sessions; curated output is published separately.
 demo-videos/
+settings/lodestone-goal-settings.json

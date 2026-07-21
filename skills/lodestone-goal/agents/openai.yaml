@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lodestone Goal"
+  short_description: "Complete Minecraft goals through Lodestone MCP"
+  default_prompt: "Use $lodestone-goal to achieve this Minecraft goal safely."

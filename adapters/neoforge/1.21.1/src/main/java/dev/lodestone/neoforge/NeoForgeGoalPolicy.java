@@ -166,11 +166,11 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
 
     private static Intelligence parseIntelligence(Object value) {
         var normalized = value == null || String.valueOf(value).isBlank()
-                ? "guarded-v1" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+                ? "medium" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
-            case "raw", "lowest", "raw-v1" -> Intelligence.RAW_V1;
+            case "low", "raw", "lowest", "raw-v1" -> Intelligence.RAW_V1;
             case "guarded", "medium", "guarded-v1" -> Intelligence.GUARDED_V1;
-            case "adaptive", "highest", "adaptive-v1" -> Intelligence.ADAPTIVE_V1;
+            case "high", "adaptive", "highest", "adaptive-v1" -> Intelligence.ADAPTIVE_V1;
             // deliberate-v1's extra behavior (realtime lookahead-plan consultation, situational
             // deliberation budget) lives entirely at the engine/model-provider layer above this
             // adapter; this loader has no separate tier for it and intentionally reuses
@@ -182,10 +182,10 @@ record NeoForgeGoalPolicy(Intelligence intelligence, Safety safety, String obser
 
     private static Safety parseSafety(Object value) {
         var normalized = value == null || String.valueOf(value).isBlank()
-                ? "balanced" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+                ? "medium" : String.valueOf(value).trim().toLowerCase(Locale.ROOT);
         return switch (normalized) {
             case "low", "fast" -> Safety.LOW;
-            case "balanced", "normal", "medium" -> Safety.BALANCED;
+            case "medium", "balanced", "normal" -> Safety.BALANCED;
             case "high", "strict", "safe" -> Safety.HIGH;
             default -> throw new IllegalArgumentException("unknown goal safety: " + value);
         };

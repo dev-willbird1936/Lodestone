@@ -3,19 +3,40 @@
 This surface is currently enabled only by the NeoForge 1.21.1 host. Other loaders continue to
 expose the individual capability gateway without these goal tools.
 
-NeoForge 1.21.1 exposes three goal tools through the MCP gateway:
+NeoForge 1.21.1 exposes these goal tools through the MCP gateway:
 
-- `minecraft_goal`: run one goal in `script` or `realtime` mode.
+- `minecraft_goal`: model-agnostic fallback runner for one goal in `script` or `realtime` mode.
 - `minecraft_goal_tasks`: list built-in tasks, required capabilities, execution modes, policy
   profiles, prerequisite contracts, and success contracts.
 - `minecraft_goal_benchmark`: run matched script/realtime cases and compare correctness before elapsed time.
+- `minecraft_subactions_execute`: execute one bounded, fail-fast script segment through the same
+  authorization and capability runtime as individual MCP actions.
+- `minecraft_hook_create`, `minecraft_hook_poll`, and `minecraft_hook_remove`: session-owned
+  inventory condition hooks. They poll fresh inventory state, so this feature does not need a
+  NeoForge JAR event change.
 
-`minecraft_goal` defaults to `guarded-v1` with `balanced` safety. Select `raw-v1` explicitly for
-legacy action order, `adaptive-v1` for prerequisite/replanning behavior, or `deliberate-v1` for the
-top tier described below. Adaptive and deliberate realtime both require an available model
-provider. Adaptive/deliberate script use deterministic native planning for known tasks and can ask
-the same low-latency provider to synthesize a bounded declarative plan when no built-in task
-matches.
+The public policy is now only `low`, `medium`, or `high` for both `intelligence` and `safety`.
+Both default to `medium`. Old `raw-v1`, `guarded-v1`, `adaptive-v1`, `deliberate-v1`, and
+`balanced` inputs remain accepted as compatibility aliases inside the Java implementation, but
+they are not advertised in MCP schemas.
+
+The preferred entry point is the shared `$lodestone-goal` agent skill. It asks the current agent
+host to start one native goal worker with the lowest-latency tool-capable model that host exposes.
+The skill does not name a provider or model. The parent agent monitors the worker and verifies the
+terminal predicate with fresh MCP reads. If native subagents are unavailable, the current agent
+uses the same workflow directly.
+
+In `script` mode, the worker observes the required state and submits deterministic subactions only
+through the next uncertainty boundary. Random drops, unreachable routes, changed inventory, combat,
+and UI transitions force a fresh observation and a new segment. In `realtime` mode, the worker
+observes and executes one logical subaction at a time. High safety observes threats and player
+state before every action or batch; medium checks at material boundaries; low retains baseline
+health and failure checks.
+
+## Legacy native engine internals
+
+The enum names below describe retained Java implementation profiles and benchmark history. They
+map to the new public low/medium/high contract and are not separate MCP choices.
 
 ### `deliberate-v1`: the top intelligence tier
 
@@ -119,16 +140,26 @@ Goal success is stricter than MCP invocation success. A native `ok` result only 
 
 The task catalog includes survival gathering and crafting, creative placement/removal, navigation, combat, commands, bounded observations, and stale-state failure checks. Each task declares its required capabilities and fixture assumptions. On NeoForge 1.21.1, guarded and adaptive `survival.collect-wood` are routed through the prerequisite workflow instead of a blind generic attack: visible walking/look input gathers starter logs, visible inventory/table clicks craft planks, sticks, and a wooden axe, and only then does the actor clear the target tree. `survival.wooden-axe-mine-tree` uses the same bounded physical-client input workflow with terminal readback of every initially observed target-tree log. `combat.attack-nearest` observes a loaded hostile, selects an available hotbar weapon at guarded or adaptive intelligence, path-plans with loaded chunks, attacks through the normal input mapping, and requires entity death readback while the player remains alive. Commands, teleportation, direct inventory edits, and direct block mutation are forbidden by the survival capability contracts.
 
-## Realtime model selection
+## Fallback runner model selection
 
-Realtime provider selection is environment-driven:
+The preferred skill uses the current agent host's own model inventory and native subagent launch.
+It selects the lowest-latency tool-capable model available at that time. It does not pin Sonnet,
+GPT, or another provider.
 
-1. load `GoalModelProvider` implementations through Java `ServiceLoader`;
-2. add the optional OpenAI-compatible provider when `LODESTONE_GOAL_MODEL_URL` is configured;
-3. choose the lowest configured measured p95 latency, preferring the pinned GPT-5.4 mini on ties;
-4. use deterministic plan order if no provider is available.
+The MCP-owned Python fallback is also environment-driven:
 
-Optional environment variables are `LODESTONE_GOAL_MODEL_ID`, `LODESTONE_GOAL_MODEL_API_KEY`, `LODESTONE_GOAL_MODEL_P95_MS`, `LODESTONE_GOAL_MODEL_TIMEOUT_MS`, and `LODESTONE_GOAL_MODEL_REASONING_EFFORT` (`low`, `medium`, `high`, or `xhigh`; `low` by default). Credentials are never included in reports. The provider returns JSON with `candidateIndex` and `rationale` for realtime decisions, or the bounded plan object for adaptive/deliberate plan synthesis. This configured value is the provider's *base* effort; `deliberate-v1`'s situational deliberation budget (above) may still request a higher effort for an individual safe decision regardless of this setting.
+1. detect installed Codex and Claude CLIs;
+2. compare optional `LODESTONE_CODEX_P95_MS` and `LODESTONE_CLAUDE_P95_MS` measurements;
+3. use the lowest measured backend, or the current Codex host when no measurements exist;
+4. omit a model override unless `LODESTONE_CODEX_FAST_MODEL` or
+   `LODESTONE_CLAUDE_FAST_MODEL` is explicitly configured.
+
+An explicit `--model` still wins. The raw Anthropic API fallback requires `--model` or
+`LODESTONE_ANTHROPIC_FAST_MODEL`. Credentials are never included in reports.
+
+Run `Open-Lodestone-Goal-Settings.bat` to open the local browser settings page for mode, policy,
+backend selection, and latency hints. Its Save button stores the defaults in that browser. Explicit
+skill or MCP arguments still take priority.
 
 ## KeepFocus profile
 

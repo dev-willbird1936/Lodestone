@@ -196,7 +196,7 @@ final class CoreCatalogTest {
         assertTrue(capability.featureFlags().contains("self-discovered-waypoint"));
         assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
         assertTrue(SchemaValidator.validate(capability.inputSchema(),
-                Map.of("intelligence", "guarded-v1", "safety", "balanced")).isEmpty());
+                Map.of("intelligence", "medium", "safety", "medium")).isEmpty());
         assertFalse(SchemaValidator.validate(capability.inputSchema(),
                 Map.of("targetX", 0, "targetY", 64, "targetZ", 0)).isEmpty());
         var output = new java.util.LinkedHashMap<String, Object>();

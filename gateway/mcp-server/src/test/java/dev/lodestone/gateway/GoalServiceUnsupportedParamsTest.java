@@ -21,24 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link GoalService#run} now delegates to {@link GoalOrchestratorLauncher} - a real
- * subprocess-spawning realtime orchestrator - which does not yet support {@code mode=script},
- * {@code dryRun}, a custom plan, {@code taskId}, or {@code worldSeed}. Every one of those must fail
+ * subprocess-spawning script/realtime orchestrator - which does not yet support
+ * {@code dryRun}, a custom plan, {@code taskId}, or {@code worldSeed}. These must fail
  * closed with {@link IllegalArgumentException} before the call ever reaches the execution queue (and
  * therefore before any process could be spawned), never silently ignored or downgraded to realtime
  * defaults.
  */
 class GoalServiceUnsupportedParamsTest {
-    @Test
-    void rejectsScriptMode() {
-        withService(service -> {
-            var failure = assertThrows(IllegalArgumentException.class, () -> service.run(
-                    "goal", GoalMode.SCRIPT, null, 10, 5_000, false, null, false,
-                    GoalIntelligence.GUARDED_V1, GoalSafety.BALANCED, GoalControls.defaults(), null, false,
-                    "caller", AuthorizationPolicy.observeOnly()));
-            assertTrue(failure.getMessage().contains("mode=script"), failure.getMessage());
-        });
-    }
-
     @Test
     void rejectsDryRun() {
         withService(service -> {

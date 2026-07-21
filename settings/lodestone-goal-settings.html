@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lodestone Goal Settings</title>
+  <style>
+    :root { color-scheme: dark; font: 16px/1.45 system-ui, sans-serif; background: #111827; color: #e5e7eb; }
+    main { max-width: 680px; margin: 5vh auto; padding: 24px; background: #1f2937; border-radius: 14px; }
+    h1 { margin-top: 0; } label { display: grid; gap: 6px; margin: 16px 0; }
+    select, input, button { font: inherit; padding: 10px; border: 1px solid #4b5563; border-radius: 8px; background: #111827; color: inherit; }
+    button { background: #2563eb; border: 0; cursor: pointer; font-weight: 700; }
+    small, #status { color: #9ca3af; } code { color: #93c5fd; }
+  </style>
+</head>
+<body><main>
+  <h1>Lodestone Goal Settings</h1>
+  <p>These local defaults configure the fallback goal runner. An explicit MCP or skill argument always wins.</p>
+  <label>Mode<select id="mode"><option>realtime</option><option>script</option></select></label>
+  <label>Intelligence<select id="intelligence"><option>low</option><option selected>medium</option><option>high</option></select></label>
+  <label>Safety<select id="safety"><option>low</option><option selected>medium</option><option>high</option></select></label>
+  <label>Model selection<select id="selection"><option value="auto">Lowest measured latency (auto)</option><option value="codex-cli">Codex CLI</option><option value="claude-cli">Claude CLI</option></select></label>
+  <label>Codex p95 latency hint (ms)<input id="codexP95" type="number" min="1" placeholder="optional"></label>
+  <label>Claude p95 latency hint (ms)<input id="claudeP95" type="number" min="1" placeholder="optional"></label>
+  <button id="save" type="button">Save</button>
+  <p id="status" role="status"></p>
+  <small>The runner reads latency hints from <code>LODESTONE_CODEX_P95_MS</code> and <code>LODESTONE_CLAUDE_P95_MS</code>. No model name is pinned.</small>
+</main><script>
+  const ids = ['mode', 'intelligence', 'safety', 'selection', 'codexP95', 'claudeP95'];
+  const key = 'lodestone.goal.settings.v1';
+  fetch('/api/settings').then(response => response.json()).then(saved => {
+    ids.forEach(id => { if (saved[id] !== undefined) document.getElementById(id).value = saved[id]; });
+  }).catch(() => {
+    const saved = JSON.parse(localStorage.getItem(key) || '{}');
+    ids.forEach(id => { if (saved[id] !== undefined) document.getElementById(id).value = saved[id]; });
+  });
+  document.getElementById('save').addEventListener('click', async () => {
+    const value = Object.fromEntries(ids.map(id => [id, document.getElementById(id).value]));
+    localStorage.setItem(key, JSON.stringify(value));
+    const response = await fetch('/api/settings', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(value)
+    });
+    document.getElementById('status').textContent = response.ok ? 'Saved.' : 'Save failed.';
+  });
+</script></body></html>

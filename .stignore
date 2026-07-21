@@ -4,6 +4,8 @@
 **/runs/
 **/logs/
 **/crash-reports/
+**/__pycache__/
+**/.pytest_cache/
 .idea/
 .vscode/
 out/
@@ -11,3 +13,4 @@ bin/
 *.log
 *.jar
 *.zip
+settings/lodestone-goal-settings.json

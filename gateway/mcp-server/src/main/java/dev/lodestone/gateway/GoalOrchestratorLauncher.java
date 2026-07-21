@@ -153,6 +153,20 @@ final class GoalOrchestratorLauncher {
         command.add(token);
         command.add("--goal");
         command.add(spec.goal());
+        command.add("--mode");
+        command.add(spec.mode() == dev.lodestone.goal.GoalMode.SCRIPT ? "script" : "realtime");
+        command.add("--intelligence");
+        command.add(switch (spec.intelligence()) {
+            case RAW_V1 -> "low";
+            case GUARDED_V1 -> "medium";
+            case ADAPTIVE_V1, DELIBERATE_V1 -> "high";
+        });
+        command.add("--safety");
+        command.add(switch (spec.safety()) {
+            case LOW -> "low";
+            case BALANCED -> "medium";
+            case HIGH -> "high";
+        });
         command.add("--max-turns");
         command.add(String.valueOf(Math.min(spec.maxSteps(), MAX_ORCHESTRATOR_TURNS)));
         command.add("--evidence-dir");

@@ -83,14 +83,11 @@ public enum GoalIntelligence {
         if (value == null || value.isBlank()) return GUARDED_V1;
         var normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');
         return switch (normalized) {
-            case "raw", "lowest", "raw-v1" -> RAW_V1;
-            case "guarded", "medium", "guarded-v1" -> GUARDED_V1;
-            // "highest" is a legacy alias frozen at adaptive-v1 for existing MCP callers; use
-            // deliberate/deliberate-v1/perfect/xhigh to opt into the newer top tier below.
+            case "low", "raw", "lowest", "raw-v1" -> RAW_V1;
+            case "medium", "guarded", "guarded-v1" -> GUARDED_V1;
             case "adaptive", "highest", "adaptive-v1" -> ADAPTIVE_V1;
-            case "deliberate", "deliberate-v1", "perfect", "xhigh" -> DELIBERATE_V1;
-            default -> throw new IllegalArgumentException(
-                    "intelligence must be raw-v1, guarded-v1, adaptive-v1, or deliberate-v1");
+            case "high", "deliberate", "deliberate-v1", "perfect", "xhigh" -> DELIBERATE_V1;
+            default -> throw new IllegalArgumentException("intelligence must be low, medium, or high");
         };
     }
 }

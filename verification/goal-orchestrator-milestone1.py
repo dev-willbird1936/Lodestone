@@ -1,4 +1,4 @@
-"""Milestone 1 standalone model-orchestrated goal loop (replacement-architecture spike).
+"""Model-agnostic Lodestone MCP goal fallback for NeoForge 1.21.1.
 
 CAPABILITY_QUARANTINED recovery: an earlier run this session found and reported a severe,
 reproducible bug - any mutating minecraft.* capability that commits a native mutation and then
@@ -10,13 +10,9 @@ clear the quarantine only on confirmed success) - see run_loop_cli()'s automatic
 CAPABILITY_QUARANTINED handling below, which calls it deterministically the moment that error code
 is observed, rather than leaving recovery to the model's own discretion.
 
-This is a throwaway-if-wrong proof of concept for the NEW goal-engine design the user chose to
-replace GoalTaskCatalog/BuiltinGoalPlanner/GoalEngine with: instead of a hardcoded Java plan
-executed step-by-step, a fast/low-thinking model decides every "subaction" itself, one real MCP
-tool call at a time, by directly driving the same MCP capability surface any Lodestone client
-already exposes. Nothing here wires into the existing `minecraft_goal` MCP tool and nothing about
-GoalTaskCatalog/BuiltinGoalPlanner/GoalEngine is touched or deleted - this script only proves the
-loop shape and the capability-schema -> Anthropic-tool-schema conversion work.
+This runner backs the MCP `minecraft_goal` compatibility path. The preferred entry point is the
+shared `lodestone-goal` skill, which uses the current host's native subagent support. This fallback
+still drives the same typed MCP capability surface and never bypasses authorization.
 
 Architecture proved here:
   1. A REAL MCP client (LodestoneMcpClient below) speaks the exact JSON-RPC-over-HTTP protocol
@@ -47,10 +43,10 @@ Architecture proved here:
      "available" (as the brief originally implied by treating the listing's availability as
      authoritative) would have silently hidden the exact subactions - movement and mining - this
      milestone's goal depends on. See build_tool_catalog() below for the corrected filter.
-  3. Realtime-only decision loop: one Anthropic Messages API turn -> zero or more tool calls
-     dispatched for real against the live client -> tool results returned to the model -> repeat.
-     No script-mode batching, no safety-tier injection - both explicitly out of scope this
-     milestone. The model itself decides when to observe (nearby blocks/entities/inventory), when
+  3. Script or realtime decision loop. Realtime executes one logical subaction before observing
+     again. Script mode executes a bounded, fail-fast batch only through the next uncertainty
+     boundary. Low, medium, and high safety tiers control extra player/threat observations.
+     The model itself decides when to observe (nearby blocks/entities/inventory), when
      to navigate (it can just call `minecraft_goal_navigation_safe-waypoint`... see NAME NOTE
      below), when to mine, and when it believes the goal is done; nothing about that sequencing is
      hardcoded in this script.
@@ -65,16 +61,15 @@ Architecture proved here:
      verification/evidence/goal-orchestrator-milestone1/ - that trace file, not "the goal
      succeeded", is this milestone's actual deliverable per the brief.
 
-Model backend (two, selectable via --backend, "cli" is the default): this milestone was originally
-specced against the raw Anthropic Messages API directly via the `anthropic` Python SDK (the "api"
-backend, run_loop() below) - native `tools=`/`tool_use` blocks, model id `claude-sonnet-5`,
-`output_config.effort="low"`. That path is fully implemented and stays in this file, but it is
+Historical backend note: this runner was originally
+specced against the raw Anthropic Messages API directly via the `anthropic` Python SDK. That path is
 BLOCKED end to end on this machine: exhaustively confirmed (env vars in Process/User/Machine scope,
 this machine's agent-env.json credential config, `ant` CLI presence, OAuth profile directories, repo
 .env files - all absent) that no ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN/OAuth profile exists here,
 and the coordinator independently confirmed the same. Per explicit coordinator direction mid-
-milestone, the DEFAULT backend for actually running this milestone is now "cli" (run_loop_cli()
-below): shell out to the `claude` CLI's non-interactive print mode, reusing
+milestone. The current default is `auto`: choose the installed Codex or Claude CLI with the lowest
+configured measured p95 latency. A model name is optional and is never pinned by default. The
+Claude path reuses
 verification/sonnet5-goal-model-proxy.py's exact proven invocation shape (`claude -p --model sonnet
 --output-format json --effort <level> --strict-mcp-config`, JSON piped via stdin, response parsed
 from the `result` field's embedded `{...}` via the same greedy-DOTALL regex that proxy uses) -
@@ -116,6 +111,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass
@@ -137,10 +133,8 @@ if TYPE_CHECKING:
 
 
 PROTOCOL_VERSION = "2025-11-25"
-DEFAULT_MODEL = "claude-sonnet-5"  # "api" backend model id
-DEFAULT_CLI_MODEL = "sonnet"  # "cli" backend model alias - confirmed live this session to resolve
-# to claude-sonnet-5 (see the real `claude -p --output-format json` response's `modelUsage` key)
 DEFAULT_GOAL = "mine one log from the nearest tree"
+GOAL_SETTINGS_PATH = Path(__file__).resolve().parent.parent / "settings" / "lodestone-goal-settings.json"
 
 # Raised from the original 20 (task #11): trace-b5227c321af8.jsonl ran a full 30 turns (already
 # raised once via --max-turns 30 on the CLI, not this default) and still hit max_turns_reached one
@@ -160,12 +154,9 @@ DEFAULT_MAX_TURNS = 60
 # even though `claude` runs fine from an interactive shell. shutil.which() resolves the same PATH
 # search cmd.exe would, including the .cmd extension.
 CLAUDE_EXE = os.environ.get("CLAUDE_EXE") or shutil.which("claude") or "claude"
+CODEX_EXE = os.environ.get("CODEX_EXE") or shutil.which("codex") or "codex"
 
-# Mirrors sonnet5-goal-model-proxy.py's CALL_TIMEOUT_S default and its own documented rationale: a
-# bare `claude -p` call here loads this machine's full interactive context and was observed (both
-# in that proxy's own smoke test and this script's own smoke test this session) to take single-
-# digit seconds on a cold cache; 90s leaves generous headroom without a fresh measurement across
-# many turns.
+# Bounds one fallback CLI decision for both supported agent CLIs.
 CLI_CALL_TIMEOUT_S = int(os.environ.get("LODESTONE_ORCHESTRATOR_CLI_TIMEOUT_S", "90"))
 
 # Matches sonnet5-goal-model-proxy.py's VALID_REASONING_EFFORTS exactly - the claude CLI's own
@@ -703,23 +694,45 @@ def render_history(history: list[HistoryEntry]) -> list[str]:
     return rendered
 
 
-def build_cli_prompt(goal: str, tool_catalog_text: str, history: list[HistoryEntry]) -> str:
+def build_cli_prompt(
+    goal: str,
+    tool_catalog_text: str,
+    history: list[HistoryEntry],
+    mode: str = "realtime",
+    intelligence: str = "medium",
+    safety: str = "medium",
+) -> str:
     parts = [CLI_SYSTEM_PROMPT_TEMPLATE.format(goal=goal, tools=tool_catalog_text)]
+    parts.append(
+        f"Execution policy: mode={mode}, intelligence={intelligence}, safety={safety}. "
+        "Treat intelligence as planning depth and safety as observation/hazard conservatism."
+    )
+    if mode == "script":
+        parts.append(
+            "SCRIPT mode: return either the normal one-action object, or a batch object shaped "
+            '{"actions":[{"tool":"<tool>","arguments":{}}],"done":false,'
+            '"boundaryReason":"why fresh data is needed next","rationale":"..."}. '
+            "Batch only deterministic actions through the next uncertainty boundary. Stop before "
+            "random drops, path uncertainty, combat, inventory uncertainty, UI changes, or any "
+            "point that needs fresh world data. The harness executes the batch sequentially and "
+            "stops on the first failure."
+        )
+    else:
+        parts.append("REALTIME mode: return exactly one logical subaction, then inspect its result.")
     if history:
         parts.append("--- Actions taken so far this run, oldest first ---\n" + "\n".join(render_history(history)))
     parts.append("Respond now with ONLY the JSON object describing your next action.")
     return "\n\n".join(parts)
 
 
-def call_claude_cli(prompt: str, model: str, effort: str, timeout_s: float) -> dict[str, Any]:
+def call_claude_cli(prompt: str, model: str | None, effort: str, timeout_s: float) -> dict[str, Any]:
     """Shell out to `claude -p`, reusing sonnet5-goal-model-proxy.py's exact invocation shape and
     response-parsing logic (see that file's `choose()`), so this milestone's cli backend is a
     direct reuse of an already-proven pattern, not a fresh reinvention.
     """
-    command = [
-        CLAUDE_EXE, "-p", "--model", model, "--output-format", "json",
-        "--effort", effort, "--strict-mcp-config",
-    ]
+    command = [CLAUDE_EXE, "-p", "--output-format", "json", "--effort", effort, "--strict-mcp-config"]
+    if model:
+        command[2:2] = ["--model", model]
     completed = subprocess.run(
         command, cwd=os.path.expanduser("~"), input=prompt,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout_s, check=False,
@@ -738,6 +751,115 @@ def call_claude_cli(prompt: str, model: str, effort: str, timeout_s: float) -> d
         raise RuntimeError(f"model did not return a JSON object; raw answer={answer!r}")
     decision = json.loads(match.group(0))
     return {"decision": decision, "envelope": envelope}
+
+
+def call_codex_cli(prompt: str, model: str | None, effort: str, timeout_s: float) -> dict[str, Any]:
+    """Call a Codex CLI model without pinning a provider or model when none was configured."""
+    output_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix="lodestone-goal-", suffix=".txt", delete=False) as stream:
+            output_path = stream.name
+        command = [
+            CODEX_EXE, "exec", "--ephemeral", "--ignore-user-config", "--skip-git-repo-check",
+            "--sandbox", "read-only", "-c", f'model_reasoning_effort="{effort}"',
+            "--color", "never", "--output-last-message", output_path, "-",
+        ]
+        if model:
+            command[2:2] = ["--model", model]
+        completed = subprocess.run(
+            command, cwd=os.path.expanduser("~"), input=prompt,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout_s, check=False,
+        )
+        answer = Path(output_path).read_text(encoding="utf-8").strip() if Path(output_path).exists() else ""
+        match = re.search(r"\{.*\}", answer, re.DOTALL) or re.search(r"\{.*\}", completed.stdout, re.DOTALL)
+        if completed.returncode != 0 or not match:
+            raise RuntimeError(
+                f"codex CLI did not return a JSON decision (exit={completed.returncode}): "
+                f"{completed.stdout[:2000]!r}"
+            )
+        decision = json.loads(match.group(0))
+        return {
+            "decision": decision,
+            "envelope": {"result": answer, "stdout": completed.stdout, "backend": "codex-cli"},
+        }
+    finally:
+        if output_path:
+            try:
+                os.unlink(output_path)
+            except FileNotFoundError:
+                pass
+
+
+def load_goal_settings() -> dict[str, Any]:
+    try:
+        value = json.loads(GOAL_SETTINGS_PATH.read_text(encoding="utf-8"))
+        if not isinstance(value, dict):
+            return {}
+        allowed = {
+            "mode": {"script", "realtime"},
+            "intelligence": {"low", "medium", "high"},
+            "safety": {"low", "medium", "high"},
+            "selection": {"auto", "codex-cli", "claude-cli"},
+        }
+        cleaned = {field: value[field] for field, choices in allowed.items() if value.get(field) in choices}
+        for field in ("codexP95", "claudeP95"):
+            try:
+                if float(value.get(field, 0)) > 0:
+                    cleaned[field] = value[field]
+            except (TypeError, ValueError):
+                pass
+        return cleaned
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+
+
+def select_cli_backend(requested: str, settings: dict[str, Any] | None = None) -> str:
+    """Select the lowest measured-latency installed CLI. Hints are p95 milliseconds."""
+    if requested == "cli":
+        requested = "auto"
+    if requested != "auto":
+        return requested
+    settings = settings or {}
+
+    def latency(env_name: str, setting_name: str) -> float:
+        try:
+            value = float(os.environ.get(env_name) or settings.get(setting_name) or "inf")
+            return value if value > 0 and math.isfinite(value) else math.inf
+        except (TypeError, ValueError):
+            return math.inf
+
+    candidates: list[tuple[float, str]] = []
+    if shutil.which(str(CODEX_EXE)) or Path(str(CODEX_EXE)).exists():
+        candidates.append((latency("LODESTONE_CODEX_P95_MS", "codexP95"), "codex-cli"))
+    if shutil.which(str(CLAUDE_EXE)) or Path(str(CLAUDE_EXE)).exists():
+        candidates.append((latency("LODESTONE_CLAUDE_P95_MS", "claudeP95"), "claude-cli"))
+    if not candidates:
+        raise RuntimeError("no supported agent CLI is installed (checked codex and claude)")
+    finite = [candidate for candidate in candidates if math.isfinite(candidate[0])]
+    if finite:
+        return min(finite, key=lambda candidate: candidate[0])[1]
+    # With no measurements, prefer the current host's native Codex CLI, then Claude.
+    return next(name for _latency, name in candidates if name == "codex-cli") if any(
+        name == "codex-cli" for _latency, name in candidates
+    ) else candidates[0][1]
+
+
+def apply_policy_floor(
+    arguments: dict[str, Any],
+    schema: dict[str, Any],
+    intelligence: str,
+    safety: str,
+) -> dict[str, Any]:
+    """Prevent a model-planned typed action from weakening the goal's requested policy."""
+    result = dict(arguments)
+    properties = (schema.get("properties") or {}) if isinstance(schema, dict) else {}
+    ranks = {"low": 0, "medium": 1, "high": 2}
+    for field, floor in (("intelligence", intelligence), ("safety", safety)):
+        if field not in properties:
+            continue
+        requested = str(result.get(field, floor)).lower()
+        result[field] = requested if ranks.get(requested, -1) >= ranks[floor] else floor
+    return result
 
 
 @dataclass
@@ -918,10 +1040,14 @@ def run_loop_cli(
     tools: list[dict[str, Any]],
     dispatch: dict[str, dict[str, Any]],
     goal: str,
-    model: str,
+    model: str | None,
     effort: str,
     max_turns: int,
     trace: TraceWriter,
+    mode: str = "realtime",
+    intelligence: str = "medium",
+    safety: str = "medium",
+    cli_backend: str = "claude-cli",
 ) -> dict[str, Any]:
     """cli backend: see the module docstring's "cli backend" section and
     sonnet5-goal-model-proxy.py's `choose()` for the pattern this reuses. Each turn rebuilds the
@@ -948,16 +1074,31 @@ def run_loop_cli(
     MAX_CONSECUTIVE_CALL_FAILURES = 3
 
     tool_catalog_text = render_tool_catalog_for_prompt(tools)
+    schemas = {tool["name"]: tool.get("input_schema", {}) for tool in tools}
     history: list[HistoryEntry] = []
     latencies: list[float] = []
     consecutive_call_failures = 0
     last_health: float | None = None  # see the health/fall-damage guard below
 
     for turn in range(1, max_turns + 1):
-        prompt = build_cli_prompt(goal, tool_catalog_text, history)
+        if safety == "high" or (safety == "medium" and (turn == 1 or turn % 5 == 0)):
+            player_observation = mcp_client.invoke_capability("minecraft.player.state.read", {})
+            entity_observation = mcp_client.invoke_capability("minecraft.entity.nearby.read", {"radius": 16})
+            trace.record_event(
+                "policy_safety_observation", turn=turn, safety=safety,
+                player=player_observation, entities=entity_observation,
+            )
+            history.append(HistoryEntry(turn=turn, note=(
+                f"Safety observation before turn {turn}: player={json.dumps(player_observation, default=str)}; "
+                f"nearbyEntities={json.dumps(entity_observation, default=str)}"
+            )))
+        prompt = build_cli_prompt(goal, tool_catalog_text, history, mode, intelligence, safety)
         started = time.monotonic()
         try:
-            call_result = call_claude_cli(prompt, model, effort, CLI_CALL_TIMEOUT_S)
+            if cli_backend == "codex-cli":
+                call_result = call_codex_cli(prompt, model, effort, CLI_CALL_TIMEOUT_S)
+            else:
+                call_result = call_claude_cli(prompt, model, effort, CLI_CALL_TIMEOUT_S)
         except Exception as exc:  # noqa: BLE001 - broad on purpose: any of CLI-missing/timeout/
             # non-JSON-stdout/is_error/no-JSON-found/bad-decision-JSON lands here and must be
             # logged explicitly (never silently dropped) and retried up to the cap above.
@@ -1003,6 +1144,58 @@ def run_loop_cli(
 
         done = bool(decision.get("done"))
         tool_name = decision.get("tool")
+        batch_actions = decision.get("actions") if mode == "script" else None
+        if isinstance(batch_actions, list) and batch_actions:
+            batch_results: list[dict[str, Any]] = []
+            for action_index, action in enumerate(batch_actions[:64]):
+                if not isinstance(action, dict) or not action.get("tool"):
+                    result = {
+                        "status": "error",
+                        "error": {"code": "INVALID_SCRIPT_ACTION", "message": "action needs a tool"},
+                        "output": None,
+                    }
+                    action_name = "<invalid>"
+                    arguments = {}
+                else:
+                    action_name = str(action["tool"])
+                    arguments = action.get("arguments") or {}
+                    if isinstance(arguments, dict):
+                        arguments = apply_policy_floor(
+                            arguments, schemas.get(action_name, {}), intelligence, safety
+                        )
+                    mapping = dispatch.get(action_name)
+                    result = (
+                        mcp_client.invoke_capability(
+                            mapping["capability"], arguments, mapping.get("capabilityVersion")
+                        ) if mapping is not None else {
+                            "status": "error",
+                            "error": {"code": "UNKNOWN_TOOL", "message": f"unknown tool '{action_name}'"},
+                            "output": None,
+                        }
+                    )
+                trace.record_tool_call(turn, action_name, arguments, result)
+                batch_results.append({"index": action_index, "tool": action_name, "result": result})
+                if result.get("status") != "ok":
+                    break
+            history.append(HistoryEntry(
+                turn=turn,
+                decision=decision,
+                result={"status": "ok" if len(batch_results) == len(batch_actions) and all(
+                    row["result"].get("status") == "ok" for row in batch_results
+                ) else "error", "batchResults": batch_results},
+            ))
+            trace.record_event(
+                "script_batch_complete", turn=turn, requested=len(batch_actions),
+                executed=len(batch_results), boundaryReason=decision.get("boundaryReason"),
+            )
+            if done and len(batch_results) == len(batch_actions) and all(
+                row["result"].get("status") == "ok" for row in batch_results
+            ):
+                return {
+                    "stopReason": "model_declared_done", "turns": turn,
+                    "finalRationale": decision.get("rationale", ""), "turnLatenciesSeconds": latencies,
+                }
+            continue
         contradicted_done = False
         if done and tool_name:
             # Exactly the contradiction CLI_SYSTEM_PROMPT_TEMPLATE's completion-discipline hard rule
@@ -1045,6 +1238,8 @@ def run_loop_cli(
             continue
 
         arguments = decision.get("arguments") or {}
+        if isinstance(arguments, dict):
+            arguments = apply_policy_floor(arguments, schemas.get(tool_name, {}), intelligence, safety)
         mapping = dispatch.get(tool_name)
         if mapping is None:
             result = {
@@ -1193,6 +1388,43 @@ def verify_log_in_inventory(mcp_client: LodestoneMcpClient, trace: TraceWriter) 
                 found_log = True
                 break
     return {"logFound": found_log, "inventoryResult": result}
+
+
+def verify_generic_goal_state(
+    mcp_client: LodestoneMcpClient,
+    trace: TraceWriter,
+    loop_result: dict[str, Any],
+    verifier_decision: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Capture fresh terminal state for arbitrary goals without assuming the goal is about logs."""
+    observations = {
+        "player": mcp_client.invoke_capability("minecraft.player.state.read", {}),
+        "inventory": mcp_client.invoke_capability("minecraft.inventory.read", {}),
+        "ui": mcp_client.invoke_capability("minecraft.ui.state.read", {}),
+        "entities": mcp_client.invoke_capability("minecraft.entity.nearby.read", {"radius": 16, "limit": 64}),
+    }
+    trace.record_event("final_generic_goal_check", observations=observations)
+    completed = loop_result.get("stopReason") == "model_declared_done"
+    readable = any(result.get("status") == "ok" for result in observations.values())
+    verified = bool(verifier_decision and verifier_decision.get("verified") is True)
+    return {
+        "passed": completed and readable and verified,
+        "method": "independent-model-verifier-with-fresh-mcp-state",
+        "agentDeclaredComplete": completed,
+        "freshStateReadable": readable,
+        "verifierDecision": verifier_decision,
+        "observations": observations,
+    }
+
+
+def generic_verification_prompt(goal: str, observations: dict[str, Any]) -> str:
+    return (
+        "Independently verify a Minecraft goal from fresh Lodestone MCP observations. Do not trust "
+        "the worker's completion statement. Return exactly one JSON object shaped "
+        '{"verified":true-or-false,"rationale":"specific evidence or missing evidence"}. '
+        "Set verified=true only when the exact goal predicate is positively supported.\n\n"
+        f"Goal: {goal}\nFresh observations:\n{json.dumps(observations, default=str)}"
+    )
 
 
 # --- Benchmark framework (task #20) ---------------------------------------------------------------
@@ -1630,6 +1862,7 @@ BENCHMARKS: dict[str, BenchmarkSpec] = {
 
 
 def main() -> int:
+    settings = load_goal_settings()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, required=True, help="Lodestone MCP gateway port on the live client")
     parser.add_argument("--token", type=str, required=True, help="X-Lodestone-Token for the live client")
@@ -1650,23 +1883,26 @@ def main() -> int:
     parser.add_argument(
         "--backend",
         type=str,
-        default="cli",
-        choices=["cli", "api"],
+        default=settings.get("selection", "auto"),
+        choices=["auto", "cli", "codex-cli", "claude-cli", "api"],
         help=(
-            "'cli' (default): shell out to the claude CLI (subscription/OAuth auth, no API key "
-            "needed, but pays full-interactive-context overhead per call - see module docstring). "
+            "'auto' selects the installed CLI with the lowest configured p95 latency hint; "
+            "LODESTONE_CODEX_P95_MS and LODESTONE_CLAUDE_P95_MS supply those measurements. "
+            "'cli' is a compatibility alias for auto. "
             "'api': raw Anthropic Messages API via the anthropic SDK (native tool-use, no per-call "
-            "context overhead, but requires ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN, confirmed "
-            "absent on this machine at the time this backend flag was added)."
+            "context overhead and requires credentials plus an explicit model)."
         ),
     )
+    parser.add_argument("--mode", choices=["script", "realtime"], default=settings.get("mode", "realtime"))
+    parser.add_argument("--intelligence", choices=["low", "medium", "high"], default=settings.get("intelligence", "medium"))
+    parser.add_argument("--safety", choices=["low", "medium", "high"], default=settings.get("safety", "medium"))
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help=f"defaults to {DEFAULT_CLI_MODEL!r} for --backend cli, {DEFAULT_MODEL!r} for --backend api",
+        help="optional model override; omitted by default so the selected agent uses its configured fast model",
     )
-    parser.add_argument("--effort", type=str, default="low", choices=["low", "medium", "high", "xhigh", "max"])
+    parser.add_argument("--effort", type=str, default=None, choices=["low", "medium", "high", "xhigh", "max"])
     parser.add_argument(
         "--max-turns", type=int, default=None, help=f"defaults to {DEFAULT_MAX_TURNS} ({{benchmark}}.max_turns if --benchmark is set)"
     )
@@ -1681,7 +1917,16 @@ def main() -> int:
         help="assume the client is already in a loaded survival world; skip create-world flow",
     )
     args = parser.parse_args()
-    model = args.model or (DEFAULT_CLI_MODEL if args.backend == "cli" else DEFAULT_MODEL)
+    selected_backend = select_cli_backend(args.backend, settings) if args.backend != "api" else "api"
+    model = args.model
+    if model is None:
+        if selected_backend == "codex-cli":
+            model = os.environ.get("LODESTONE_CODEX_FAST_MODEL")
+        elif selected_backend == "claude-cli":
+            model = os.environ.get("LODESTONE_CLAUDE_FAST_MODEL")
+        elif selected_backend == "api":
+            model = os.environ.get("LODESTONE_ANTHROPIC_FAST_MODEL")
+    effort = args.effort or args.intelligence
     benchmark = BENCHMARKS[args.benchmark] if args.benchmark else None
     goal = benchmark.goal if benchmark else args.goal
     max_turns = args.max_turns if args.max_turns is not None else (benchmark.max_turns if benchmark else DEFAULT_MAX_TURNS)
@@ -1697,9 +1942,12 @@ def main() -> int:
         "runId": run_id,
         "startedAtUtc": datetime.now(timezone.utc).isoformat(),
         "goal": goal,
-        "backend": args.backend,
+        "backend": selected_backend,
         "model": model,
-        "effort": args.effort,
+        "effort": effort,
+        "mode": args.mode,
+        "intelligence": args.intelligence,
+        "safety": args.safety,
         "port": args.port,
         "tracePath": str(trace_path),
     }
@@ -1751,8 +1999,11 @@ def main() -> int:
         # framework comment above capture_b1_baseline for why this must never be model-reported.
         baseline = benchmark.capture_baseline(mcp_client, trace) if benchmark else {}
 
-        if args.backend == "cli":
-            loop_result = run_loop_cli(mcp_client, tools, dispatch, goal, model, args.effort, max_turns, trace)
+        if selected_backend in ("codex-cli", "claude-cli"):
+            loop_result = run_loop_cli(
+                mcp_client, tools, dispatch, goal, model, effort, max_turns, trace,
+                args.mode, args.intelligence, args.safety, selected_backend,
+            )
         else:
             try:
                 import anthropic  # lazy: only the api backend needs this - see top-of-file comment
@@ -1761,9 +2012,11 @@ def main() -> int:
                     "--backend api requires the 'anthropic' package (pip install anthropic); "
                     f"import failed: {exc}"
                 ) from exc
+            if not model:
+                raise SystemExit("--backend api requires --model or LODESTONE_ANTHROPIC_FAST_MODEL")
             model_client = anthropic.Anthropic()
             loop_result = run_loop(
-                mcp_client, model_client, model, args.effort, tools, dispatch, goal, max_turns, trace
+                mcp_client, model_client, model, effort, tools, dispatch, goal, max_turns, trace
             )
         summary["loopResult"] = loop_result
 
@@ -1777,9 +2030,35 @@ def main() -> int:
             summary["verification"] = verification
             summary["status"] = "SUCCEEDED" if verification["passed"] else "GOAL_NOT_CONFIRMED"
         else:
-            verification = verify_log_in_inventory(mcp_client, trace)
+            verification = verify_generic_goal_state(mcp_client, trace, loop_result)
+            if loop_result.get("stopReason") == "model_declared_done" and selected_backend in (
+                "codex-cli", "claude-cli"
+            ):
+                try:
+                    prompt = generic_verification_prompt(goal, verification["observations"])
+                    verifier_call = call_codex_cli(prompt, model, effort, CLI_CALL_TIMEOUT_S) \
+                        if selected_backend == "codex-cli" else \
+                        call_claude_cli(prompt, model, effort, CLI_CALL_TIMEOUT_S)
+                    verifier_decision = verifier_call.get("decision")
+                    verification["verifierDecision"] = verifier_decision
+                    verification["passed"] = (
+                        verification["agentDeclaredComplete"]
+                        and verification["freshStateReadable"]
+                        and isinstance(verifier_decision, dict)
+                        and verifier_decision.get("verified") is True
+                    )
+                    trace.record_event("final_generic_goal_verifier", decision=verifier_decision)
+                except Exception as verifier_failure:  # noqa: BLE001 - verification fails closed
+                    verification["verifierError"] = (
+                        f"{type(verifier_failure).__name__}: {verifier_failure}"
+                    )
+                    trace.record_event(
+                        "final_generic_goal_verifier_failed",
+                        exceptionType=type(verifier_failure).__name__,
+                        exceptionMessage=str(verifier_failure),
+                    )
             summary["verification"] = verification
-            summary["status"] = "SUCCEEDED" if verification["logFound"] else "GOAL_NOT_CONFIRMED"
+            summary["status"] = "SUCCEEDED" if verification["passed"] else "GOAL_NOT_CONFIRMED"
 
     except Exception as exc:  # noqa: BLE001 - top-level: always write a summary, never crash silently
         trace.record_event("fatal_error", exceptionType=type(exc).__name__, exceptionMessage=str(exc))

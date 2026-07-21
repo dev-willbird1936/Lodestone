@@ -27,9 +27,9 @@ public enum GoalSafety {
         var normalized = value.trim().toLowerCase(Locale.ROOT).replace('_', '-');
         return switch (normalized) {
             case "low", "fast" -> LOW;
-            case "balanced", "normal", "medium" -> BALANCED;
+            case "medium", "balanced", "normal" -> BALANCED;
             case "high", "strict", "safe" -> HIGH;
-            default -> throw new IllegalArgumentException("safety must be low, balanced, or high");
+            default -> throw new IllegalArgumentException("safety must be low, medium, or high");
         };
     }
 }

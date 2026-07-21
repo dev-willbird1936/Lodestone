@@ -41,7 +41,7 @@ import java.util.concurrent.TimeoutException;
  * loopback client, not a call into {@link GoalEngine}); {@link #benchmark} still drives
  * {@link GoalEngine} directly through {@link GoalBenchmarkRunner} and is unaffected by that migration.
  * Because the new backing does not yet support them, {@link #run} fails closed with
- * {@link IllegalArgumentException} for {@code mode=script}, {@code dryRun}, a {@code customPlan}, a
+ * {@link IllegalArgumentException} for {@code dryRun}, a {@code customPlan}, a
  * {@code taskId}, or a {@code worldSeed} - a caller silently getting realtime/no-plan/no-taskId
  * behavior it never asked for would be far more surprising and harder to notice than an explicit
  * rejection naming exactly which parameter is unsupported.
@@ -105,8 +105,8 @@ public final class GoalService {
      * within each tier); it never interrupts a goal that is already running. See
      * {@link GoalExecutionQueue} for the full ordering, cancellation, and wait-timeout contract.
      *
-     * @throws IllegalArgumentException if {@code mode} is {@code SCRIPT}, {@code dryRun} is
-     *                                  {@code true}, {@code customPlan} is non-null, {@code taskId} is
+     * @throws IllegalArgumentException if {@code dryRun} is {@code true},
+     *                                  {@code customPlan} is non-null, {@code taskId} is
      *                                  non-blank, or {@code worldSeed} is non-blank - none of these
      *                                  are supported by {@link GoalOrchestratorLauncher} yet. Thrown
      *                                  before this call ever enters the queue.
@@ -136,21 +136,17 @@ public final class GoalService {
      * request never consumes a queue slot or blocks another caller's wait budget.
      */
     private static void requireOrchestratorSupported(GoalSpec spec) {
-        if (spec.mode() != GoalMode.REALTIME) {
-            throw new IllegalArgumentException(
-                    "mode=script is not supported by the realtime goal orchestrator; use mode=realtime");
-        }
         if (spec.dryRun()) {
-            throw new IllegalArgumentException("dryRun is not supported by the realtime goal orchestrator");
+            throw new IllegalArgumentException("dryRun is not supported by the goal orchestrator");
         }
         if (spec.customPlan() != null) {
-            throw new IllegalArgumentException("plan is not supported by the realtime goal orchestrator");
+            throw new IllegalArgumentException("plan is not supported by the goal orchestrator");
         }
         if (spec.taskId() != null) {
-            throw new IllegalArgumentException("taskId is not supported by the realtime goal orchestrator");
+            throw new IllegalArgumentException("taskId is not supported by the goal orchestrator");
         }
         if (spec.worldSeed() != null) {
-            throw new IllegalArgumentException("worldSeed is not supported by the realtime goal orchestrator");
+            throw new IllegalArgumentException("worldSeed is not supported by the goal orchestrator");
         }
     }
 
