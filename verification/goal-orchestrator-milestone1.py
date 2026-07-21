@@ -1002,7 +1002,27 @@ def run_loop_cli(
 
         done = bool(decision.get("done"))
         tool_name = decision.get("tool")
-        if done:
+        contradicted_done = False
+        if done and tool_name:
+            # Exactly the contradiction CLI_SYSTEM_PROMPT_TEMPLATE's completion-discipline hard rule
+            # warns against - the model named a tool to call (usually a recheck) in the same decision
+            # as done: true. Live-evidenced twice (trace-f0679eb8edb3.jsonl turn 39, and
+            # trace-bb1f682f27cb.jsonl turn 22 - the latter AFTER the hard rule was added, with the
+            # rationale itself saying "recheck instead" while still setting done: true): the
+            # prompt-level rule alone is not a reliable enough backstop, since it relies on the model
+            # to keep its own structured output consistent with its own stated reasoning. Trusting
+            # "done" here would let the harness short-circuit past the very check the model itself
+            # asked for, so reject the "done" half, run the requested tool call anyway, and force
+            # another turn instead of stopping.
+            trace.record_event(
+                "turn_done_contradiction",
+                turn=turn,
+                reason="decision set done: true but also named a tool - executing the tool and continuing",
+                decision=decision,
+            )
+            done = False
+            contradicted_done = True
+        elif done:
             return {
                 "stopReason": "model_declared_done",
                 "turns": turn,
@@ -1038,6 +1058,14 @@ def run_loop_cli(
         # to `result` itself - the trace call right above already logged the raw, unabridged result.
         # See the module comment above render_history() (task #16).
         history.append(HistoryEntry(turn=turn, decision=decision, result=reencode_volumetric_result(result)))
+        if contradicted_done:
+            history.append(HistoryEntry(turn=turn, note=(
+                f'Turn {turn}: you set "done": true in the same decision as calling {tool_name} - that '
+                "is a contradiction (the hard rule above only allows \"done\": true on a turn where no "
+                "further check is needed). The harness ran your requested tool call above instead of "
+                "ending the run - look at its real result before deciding whether the goal is actually "
+                "complete."
+            )))
 
         # Minimal between-turn health/fall-damage guard - see the module-level comment above
         # HEALTH_READ_CAPABILITY for why this exists and what it deliberately does NOT do (no
