@@ -39,8 +39,8 @@ public final class LodestonePaperPlugin extends JavaPlugin implements Listener {
         runtime.registerAdapter(adapter);
         getServer().getPluginManager().registerEvents(this, this);
         var port = Integer.parseInt(System.getProperty("lodestone.port", "37821"));
-        var token = token();
-        httpServer = new LoopbackHttpServer(new McpGateway(runtime), port, token);
+        ensureTokenFile();
+        httpServer = new LoopbackHttpServer(new McpGateway(runtime), port);
         try {
             httpServer.start();
         } catch (IOException failure) {
@@ -85,14 +85,18 @@ public final class LodestonePaperPlugin extends JavaPlugin implements Listener {
         adapter.publishEvent("minecraft.chat.received", Map.of("uuid", event.getPlayer().getUniqueId().toString(), "name", event.getPlayer().getName(), "message", message));
     }
 
-    private String token() {
+    /**
+     * The loopback endpoint no longer reads this token; the file is still created because the
+     * launcher transports and discovery/registry tooling continue to reference it.
+     */
+    private void ensureTokenFile() {
         var configured = System.getProperty("lodestone.token", System.getenv("LODESTONE_TOKEN"));
-        if (configured != null && !configured.isBlank()) return configured.trim();
+        if (configured != null && !configured.isBlank()) return;
         var path = Path.of(getDataFolder().getPath(), "lodestone.token");
         try {
             var bytes = new byte[32]; new SecureRandom().nextBytes(bytes);
             var generated = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-            return TokenFile.readOrCreate(path, generated);
+            TokenFile.readOrCreate(path, generated);
         } catch (IOException failure) {
             throw new IllegalStateException("unable to create Lodestone token file", failure);
         }

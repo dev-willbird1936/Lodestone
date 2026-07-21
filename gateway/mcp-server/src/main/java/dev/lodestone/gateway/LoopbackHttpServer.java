@@ -18,7 +18,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Optional authenticated loopback transport for an in-game adapter.
+ * Loopback MCP transport for an in-game adapter.
+ *
+ * <p>Without a token (two-argument constructor) the endpoint is zero-config: any local MCP client
+ * connects with no credential. The trust boundary is the machine, not a shared secret - the
+ * listener binds only IPv4 loopback, accepts only POST, and rejects requests whose {@code Origin}
+ * or {@code Host} header names anything other than this loopback listener, which keeps browser
+ * pages (including DNS-rebinding attacks) from driving the endpoint.
+ *
+ * <p>With a token (three-argument constructor) every request must also carry it in
+ * {@code X-Lodestone-Token}. The RCON and legacy-bridge launchers keep this mode because they
+ * bridge onward to servers that may not be local, and {@link GoalOrchestratorLauncher} uses it for
+ * the private endpoint handed to a spawned orchestrator subprocess.
  *
  * <p>{@code port=0} requests an OS-assigned ephemeral port instead of a fixed one - used by
  * {@link GoalOrchestratorLauncher} to stand up a private, throwaway loopback endpoint for a
@@ -35,6 +46,15 @@ public final class LoopbackHttpServer implements AutoCloseable {
     private HttpServer server;
     private ExecutorService executor;
     private final Semaphore activeExchanges = new Semaphore(MAX_ACTIVE_EXCHANGES);
+
+    public LoopbackHttpServer(McpGateway gateway, int port) {
+        if (port < 0 || port > 65_535) {
+            throw new IllegalArgumentException("loopback port out of range");
+        }
+        this.gateway = gateway;
+        this.port = port;
+        this.token = null;
+    }
 
     public LoopbackHttpServer(McpGateway gateway, int port, String token) {
         if (port < 0 || port > 65_535 || token == null || token.isBlank()) {
@@ -77,15 +97,22 @@ public final class LoopbackHttpServer implements AutoCloseable {
                 send(exchange, 403, "origin not allowed");
                 return;
             }
+            var host = exchange.getRequestHeaders().getFirst("Host");
+            if (host != null && !allowedHost(host)) {
+                send(exchange, 403, "host not allowed");
+                return;
+            }
             var protocolHeader = exchange.getRequestHeaders().getFirst("MCP-Protocol-Version");
             if (protocolHeader != null && !McpProtocol.supports(protocolHeader)) {
                 send(exchange, 400, "unsupported MCP protocol version");
                 return;
             }
-            var provided = exchange.getRequestHeaders().getFirst("X-Lodestone-Token");
-            if (provided == null || !MessageDigest.isEqual(token, provided.getBytes(StandardCharsets.UTF_8))) {
-                send(exchange, 401, "unauthorized");
-                return;
+            if (token != null) {
+                var provided = exchange.getRequestHeaders().getFirst("X-Lodestone-Token");
+                if (provided == null || !MessageDigest.isEqual(token, provided.getBytes(StandardCharsets.UTF_8))) {
+                    send(exchange, 401, "unauthorized");
+                    return;
+                }
             }
             var length = exchange.getRequestHeaders().getFirst("Content-Length");
             if (length != null) {
@@ -178,6 +205,26 @@ public final class LoopbackHttpServer implements AutoCloseable {
         } catch (IllegalArgumentException invalidOrigin) {
             return false;
         }
+    }
+
+    /**
+     * A DNS-rebinding page's requests arrive over a genuine loopback connection but carry the
+     * attacker's hostname here, and unlike {@link #allowedOrigin} this also covers clients that
+     * never send an {@code Origin} header.
+     */
+    private static boolean allowedHost(String header) {
+        var value = header.trim();
+        if (value.startsWith("[")) {
+            var closing = value.indexOf(']');
+            if (closing < 0) {
+                return false;
+            }
+            var address = value.substring(1, closing);
+            return "::1".equals(address) || "0:0:0:0:0:0:0:1".equals(address);
+        }
+        var colon = value.indexOf(':');
+        var name = colon < 0 ? value : value.substring(0, colon);
+        return "localhost".equalsIgnoreCase(name) || "127.0.0.1".equals(name);
     }
 
     private static ExecutorService createExecutor() {

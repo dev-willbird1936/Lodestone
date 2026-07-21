@@ -22,17 +22,23 @@ one instance. The exact supported rows and caveats live in
 
 ## 2. Start Minecraft or the server
 
-Modern hosts and plugins start an authenticated MCP HTTP endpoint at
-`http://127.0.0.1:37821/mcp`. On first launch they create `config/lodestone.token` with owner-only
-permissions. Keep this token secret; do not paste it into logs, issues, or configuration committed
-to Git.
+Modern hosts and plugins start a zero-config MCP HTTP endpoint at
+`http://127.0.0.1:37821/mcp`. Point an MCP client at that URL; no token or other client-side
+configuration is necessary. A client that still sends the legacy `X-Lodestone-Token` header keeps
+working because the header is now ignored.
 
-An HTTP MCP client must send the token in `X-Lodestone-Token`. Lodestone accepts MCP protocol
-versions `2025-11-25`, `2025-06-18`, and `2025-03-26`. Preserve the `Mcp-Session-Id` returned by
-initialization for later requests in that session.
+Lodestone accepts MCP protocol versions `2025-11-25`, `2025-06-18`, and `2025-03-26`. Preserve the
+`Mcp-Session-Id` returned by initialization for later requests in that session.
 
-The listener intentionally binds only to IPv4 loopback. For remote use, keep Lodestone local and
-use a separately secured tunnel; do not expose the endpoint directly to a LAN or the internet.
+The listener intentionally binds only to IPv4 loopback and rejects any request whose `Origin` or
+`Host` header names something other than the loopback listener; this keeps browser pages, including
+DNS-rebinding attacks, from driving the endpoint. Any non-browser program on the same machine can
+use the endpoint at the granted permission level. For remote use, keep Lodestone local and use a
+separately secured tunnel; do not expose the endpoint directly to a LAN or the internet.
+
+On first launch hosts still create `config/lodestone.token` with owner-only permissions. The
+loopback HTTP endpoint no longer reads it; the file remains for the launcher transports and
+discovery tooling that do. Keep it out of logs, issues, and configuration committed to Git.
 
 ## 3. Grant the minimum permissions
 
@@ -72,12 +78,17 @@ LODESTONE_PERMISSIONS=administer-server
 ```
 
 RCON exposes authenticated command execution only. It does not provide native player input, menu,
-inventory, or structured world capabilities.
+inventory, or structured world capabilities. Unlike the in-game hosts' zero-config endpoint, the
+RCON launcher's own MCP endpoint keeps requiring `LODESTONE_TOKEN` in `X-Lodestone-Token`, because
+the launcher can bridge onward to a server that is not local.
 
 ## Troubleshooting
 
-- **401 unauthorized:** use the exact token from `config/lodestone.token` and the
-  `X-Lodestone-Token` header.
+- **403 origin or host not allowed:** the request carried a browser `Origin` or a non-loopback
+  `Host` header. Connect straight to `http://127.0.0.1:37821/mcp` from a local MCP client, not
+  through a browser page or a proxy that rewrites the host.
+- **401 unauthorized:** only the RCON and legacy-bridge launcher endpoints still require
+  `X-Lodestone-Token`; send the launcher's configured `LODESTONE_TOKEN` value.
 - **Connection refused:** confirm the game/server finished starting, port 37821 is unused, and the
   client is on the same machine or inside the intended secure tunnel.
 - **Capability is restricted:** add only its documented permission class, then restart.

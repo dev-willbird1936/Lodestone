@@ -78,7 +78,7 @@ and runtime requirements.
 
 - `protocol/`: versioned schemas and capability catalog
 - `common/`: protocol model, adapter API, and runtime
-- `gateway/`: authenticated MCP transports
+- `gateway/`: MCP transports - zero-config on loopback, token-authenticated launchers
 - `adapters/`: exact-version platform integrations
 - `hosts/`: loader and plugin entrypoints
 - `verification/`: contract, matrix, profile, and release assembly checks

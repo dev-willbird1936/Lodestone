@@ -30,6 +30,14 @@ Post-v1 control release. Immutable v1.0.0 assets and certification remain unchan
 
 ### Changed
 
+- **Breaking (security model):** the in-game hosts' loopback MCP HTTP endpoint is now zero-config
+  and no longer requires the `X-Lodestone-Token` header; point an MCP client at
+  `http://127.0.0.1:37821/mcp` and it controls the running instance. The header is ignored when
+  sent, so existing clients keep working. The endpoint still binds only IPv4 loopback and now also
+  rejects non-loopback `Host` headers alongside the existing `Origin` allowlist, keeping browser
+  pages and DNS rebinding out. `config/lodestone.token` is still generated for the launcher
+  transports and discovery tooling. The RCON and legacy-bridge launcher endpoints keep their
+  `LODESTONE_TOKEN` requirement.
 - `highest` remains a legacy alias frozen at `adaptive-v1` for backward compatibility with existing
   MCP callers; it does not resolve to the new `deliberate-v1` tier. Use `deliberate`,
   `deliberate-v1`, `perfect`, or `xhigh` to opt into the new top tier.

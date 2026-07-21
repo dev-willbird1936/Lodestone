@@ -37,12 +37,12 @@ public final class LodestoneForgeMod {
         MinecraftForge.EVENT_BUS.register(this);
 
         var port = Integer.parseInt(System.getProperty("lodestone.port", "37821"));
-        var token = token();
-        httpServer = new LoopbackHttpServer(new McpGateway(runtime), port, token);
+        ensureTokenFile();
+        httpServer = new LoopbackHttpServer(new McpGateway(runtime), port);
         try {
             httpServer.start();
-            LOGGER.info("Lodestone MCP loopback endpoint listening on 127.0.0.1:{}; token file: {}",
-                    httpServer.port(), tokenPath());
+            LOGGER.info("Lodestone MCP loopback endpoint listening on 127.0.0.1:{} (no token required)",
+                    httpServer.port());
         } catch (IOException failure) {
             throw new IllegalStateException("unable to start Lodestone MCP loopback endpoint", failure);
         }
@@ -67,14 +67,18 @@ public final class LodestoneForgeMod {
         }
     }
 
-    private static String token() {
+    /**
+     * The loopback endpoint no longer reads this token; the file is still created because the
+     * launcher transports and discovery/registry tooling continue to reference it.
+     */
+    private static void ensureTokenFile() {
         var configured = System.getProperty("lodestone.token", System.getenv("LODESTONE_TOKEN"));
-        if (configured != null && !configured.isBlank()) return configured.trim();
+        if (configured != null && !configured.isBlank()) return;
         var path = tokenPath();
         try {
             var bytes = new byte[32]; new SecureRandom().nextBytes(bytes);
             var generated = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-            return TokenFile.readOrCreate(path, generated);
+            TokenFile.readOrCreate(path, generated);
         } catch (IOException failure) {
             throw new IllegalStateException("unable to create Lodestone token file", failure);
         }
