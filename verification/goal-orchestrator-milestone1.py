@@ -504,6 +504,12 @@ for many turns in a row can let a hostile mob walk up and kill you unnoticed. Du
 observation or search phase, periodically call minecraft_entity_nearby_read to check for approaching \
 hostiles, not just at the very start.
 
+Breaking a block drops an item entity at that block's position - it is only added to your inventory \
+by physical proximity, not automatically. After mining something for a collection goal, walk to \
+(or within about 1 block of) the position where it broke, then confirm it via minecraft_inventory_read \
+before considering that step done. If the item is still missing, call minecraft_entity_nearby_read to \
+check for an uncollected dropped item entity nearby and go pick it up.
+
 IMPORTANT: each tool has its OWN "arguments" schema, shown next to it above - it is not shared \
 across tools. Some tools (like the safe-waypoint navigation tool) take fields such as \
 "intelligence"/"safety"/"observation"; most simple action tools (like the raw interact/move/look \
@@ -518,8 +524,13 @@ explanation outside the object. Shape:
 {{"tool": "<tool name from the catalog above, or null if you are done>", "arguments": {{...}}, \
 "done": true or false, "rationale": "one short sentence"}}
 
-Set "done": true (and "tool": null) only when you believe the goal has genuinely been achieved - \
-the harness will independently verify your inventory before accepting that the goal is complete."""
+Set "done": true (and "tool": null) only when the goal condition has just been positively confirmed \
+by an observation (inventory read, block read, etc.) in this turn or the immediately preceding one. \
+Hard rule: if your most recent check showed the condition NOT met, do not set "done": true in that \
+same decision - issue the recheck or fix first and wait for its result instead. For example, \
+rationale like "the log wasn't in inventory yet, so recheck instead" paired with "done": true in the \
+same decision is exactly the contradiction this rule forbids. The harness will independently verify \
+your inventory before accepting that the goal is complete."""
 
 
 def render_tool_catalog_for_prompt(tools: list[dict[str, Any]]) -> str:
