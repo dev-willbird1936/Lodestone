@@ -355,8 +355,35 @@ final class NeoForgeNavigationGoal {
     }
 
     private boolean reached(LocalPlayer player) {
-        return horizontalDistance(player, target) <= 2.7
+        var withinAcceptanceRadius = horizontalDistance(player, target) <= 2.7
                 && Math.abs(player.blockPosition().getY() - target.getY()) <= 2;
+        var level = player.level();
+        var feet = player.blockPosition();
+        var feetBlocked = !level.getBlockState(feet).getCollisionShape(level, feet).isEmpty();
+        var head = feet.above();
+        var headBlocked = !level.getBlockState(head).getCollisionShape(level, head).isEmpty();
+        return confirmedArrival(withinAcceptanceRadius, feetBlocked, headBlocked);
+    }
+
+    /**
+     * Whether a proximity-based "already there" result should actually be honored as a genuine
+     * arrival. {@code withinAcceptanceRadius} is the raw distance-based proximity test alone;
+     * {@code feetBlocked}/{@code headBlocked} report whether the player's own current cell has
+     * non-empty collision at feet or head - the exact signal {@link NeoForgeSafePathPlanner}'s
+     * own path-search origin admissibility check ({@code NeoForgeWorldSnapshot.walkable}, via
+     * {@code NeoForgeSurvivalInvariant.normalRouteOriginAllowed}) and {@link
+     * NeoForgeGoalSupervisor#recoverObstructionOrStall} already use to detect a player wedged in
+     * terrain or foliage. Without this guard, a player embedded in blocking collision (e.g. a
+     * benchmark spawn placed it inside dense foliage, or it walked into an obstruction while
+     * failing an earlier call) reports false success for every later target that happens to land
+     * within the acceptance radius of wherever it got stuck - while an equally-close target that
+     * misses the radius correctly falls through to a real path search from the very same blocked
+     * origin and honestly reports {@code unreachableReason:"no-safe-route-from-current-position"}.
+     * The player never moved either way; only the coincidental distance to the next requested
+     * target decided whether the call lied about it. Package-private and pure for direct testing.
+     */
+    static boolean confirmedArrival(boolean withinAcceptanceRadius, boolean feetBlocked, boolean headBlocked) {
+        return withinAcceptanceRadius && !feetBlocked && !headBlocked;
     }
 
     private static boolean closeTo(LocalPlayer player, BlockPos position, double radius) {
