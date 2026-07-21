@@ -1,0 +1,36 @@
+﻿{
+    "formatVersion":  1,
+    "benchmarkName":  "b1-fix-verify",
+    "taskId":  "survival.spawn-gauntlet",
+    "mode":  "script",
+    "intelligence":  "guarded-v1",
+    "safety":  "balanced",
+    "sourceCommit":  "e27c210593998f605bada96aa1a219033c068538",
+    "startedAtUtc":  "20260718T060757Z",
+    "completedAtUtc":  "2026-07-18T06:11:33.6651045Z",
+    "seedCount":  1,
+    "excludedInfraFailures":  0,
+    "scoredCount":  1,
+    "succeededCount":  0,
+    "successRate":  0,
+    "deathCount":  0,
+    "stallCount":  0,
+    "overBudgetCount":  0,
+    "elapsedMsMedianSucceeded":  null,
+    "elapsedMsMinSucceeded":  null,
+    "elapsedMsMaxSucceeded":  null,
+    "failureCauseHistogram":  {
+                                  "worldSeed must be a signed 64-bit Java seed":  1
+                              },
+    "perSeed":  [
+                    {
+                        "seed":  "2,3,4,100,918273645,-1122334455",
+                        "status":  "rpc-error",
+                        "failureCause":  "worldSeed must be a signed 64-bit Java seed",
+                        "elapsedMs":  7,
+                        "goalStatus":  "rpc-error",
+                        "goalOutput":  null,
+                        "infra":  null
+                    }
+                ]
+}

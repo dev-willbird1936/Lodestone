@@ -1,0 +1,5 @@
+# B1 spot-check: seed 1, a previously-succeeding seed under the OLD probe-based algorithm
+# (probes=75/1357, waypoint-selection:accepted at distance ~34.2 blocks from spawn). Used to check
+# for a regression under the new findToAny-based computeWaypoint and to gather real waypoint-
+# distance evidence, since the 6-seed previously-failing spot-check produced zero successes.
+1

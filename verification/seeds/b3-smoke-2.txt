@@ -1,0 +1,6 @@
+# B3 "Stone Age" smoke check: first 2 seeds from verification/seeds/b3-stone-age.txt. Used for a
+# first live look at survival.stone-toolset, which has never been run once before this session -
+# completely unknown state going in. A first look here is high-information: could surface a crash
+# or a totally different dominant failure class from B1/B2's target:unreachable/target:obstructed.
+7
+-7

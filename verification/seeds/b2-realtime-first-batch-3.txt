@@ -1,0 +1,15 @@
+# B2 first official multi-seed REALTIME batch (adaptive-v1). Zero official multi-seed realtime
+# runs have ever completed for B2 before this session - only single-sample ad hoc probes existed
+# (verification/evidence/b2-realtime-sample*), both of which predate the a3c1ae1 fix for the
+# "realtime goal has no eligible step" checkpointed-workflow deadlock. This batch specifically
+# re-exercises that checkpointed sequential-dependency path (gather-resource -> craft-axe ->
+# mine-target, three separate realtime-selected INVOKE steps) now that the fix is in place.
+#
+# Mix: seed 302304127329527063 (the exact seed a3c1ae1's own commit message says was re-run live
+# and confirmed fixed - re-confirming here as part of real batch coverage, not just a single
+# one-off check), plus two script-mode successes from the B2 postfix rescoring v2 run
+# (7777777777777, 2026071700) to see whether realtime/adaptive-v1 behaves consistently on seeds
+# already known to be terrain-solvable.
+302304127329527063
+7777777777777
+2026071700

@@ -1,0 +1,36 @@
+﻿{
+    "formatVersion":  1,
+    "benchmarkName":  "b2-diagonal-step1-smoke",
+    "taskId":  "b2-diagonal-step1-smoke",
+    "mode":  "script",
+    "intelligence":  "guarded-v1",
+    "safety":  "balanced",
+    "sourceCommit":  "5910f7d1a878ad11a0e3587206b9c3fa6d8dda5a",
+    "startedAtUtc":  "20260717T200248Z",
+    "completedAtUtc":  "2026-07-17T20:05:13.6274040Z",
+    "seedCount":  1,
+    "excludedInfraFailures":  0,
+    "scoredCount":  1,
+    "succeededCount":  0,
+    "successRate":  0,
+    "deathCount":  0,
+    "stallCount":  0,
+    "overBudgetCount":  0,
+    "elapsedMsMedianSucceeded":  null,
+    "elapsedMsMinSucceeded":  null,
+    "elapsedMsMaxSucceeded":  null,
+    "failureCauseHistogram":  {
+                                  "worldSeed must be a signed 64-bit Java seed":  1
+                              },
+    "perSeed":  [
+                    {
+                        "seed":  "302304127329527063,-8172974586314107235,44210",
+                        "status":  "rpc-error",
+                        "failureCause":  "worldSeed must be a signed 64-bit Java seed",
+                        "elapsedMs":  20,
+                        "goalStatus":  "rpc-error",
+                        "goalOutput":  null,
+                        "infra":  null
+                    }
+                ]
+}

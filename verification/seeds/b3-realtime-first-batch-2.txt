@@ -1,0 +1,8 @@
+# B3 first official multi-seed REALTIME batch (adaptive-v1). Zero official multi-seed realtime
+# runs have ever completed for B3 before this session - B3 itself had never been run once (script
+# or realtime) before this session either. Mix: seed 7 (failed resource:exhausted at guarded-v1/
+# script this session - tree search itself, not election, so realtime/adaptive-v1 is unlikely to
+# change that specific outcome but establishes a baseline) and seed 20260718 (untested this
+# session, a fresh data point).
+7
+20260718

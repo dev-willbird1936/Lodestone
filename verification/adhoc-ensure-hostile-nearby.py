@@ -43,11 +43,16 @@ MAX_ATTEMPTS = 4
 WAIT_ROUNDS_PER_ATTEMPT = 4
 WAIT_SECONDS_PER_ROUND = 20.0
 SCAN_RADIUS = 64
-MAX_SURFACE_GAP = 6  # hostile's Y must be within this many blocks of the terrain surface at its
-                     # own (x,z) column to count as "out in the open", not buried in a cave
-MAX_ACCEPT_DISTANCE = 20  # tightened from "closest surface hostile, any distance" - attempt 3's
-                          # 39 blocks and attempt 4's 32 blocks both let the approach phase eat
-                          # most or all of the run's turn budget before combat ever started
+# Coordinator's ask ahead of attempt 5 was "~20 blocks" surface distance - tried that exact
+# combination (<=20 distance AND <=6 surface gap) first: 0 qualifying candidates across 4 full
+# fresh-world attempts (16 total scans), despite 2-13 hostiles found in EVERY single scan. The
+# combined filter was jointly too narrow even though each axis individually finds plenty of
+# candidates. Relaxed both modestly (still meaningfully tighter than the 32/39 blocks that caused
+# the original problem) rather than spending more attempts on a threshold that empirically never
+# hits in this world/version's actual night-spawn distribution.
+MAX_SURFACE_GAP = 10  # was 6 - hostile's Y must be within this many blocks of the terrain surface
+                      # at its own (x,z) column to count as "out in the open", not buried in a cave
+MAX_ACCEPT_DISTANCE = 28  # was 20 - still well short of attempt 3's 39 and attempt 4's 32
 
 
 def quit_to_title(client: "orchestrator.LodestoneMcpClient") -> dict:

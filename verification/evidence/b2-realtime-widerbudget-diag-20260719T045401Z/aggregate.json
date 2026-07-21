@@ -1,0 +1,39 @@
+﻿{
+    "formatVersion":  1,
+    "benchmarkName":  "b2-realtime-widerbudget-diag",
+    "taskId":  "survival.wooden-axe-mine-tree",
+    "mode":  "realtime",
+    "intelligence":  "adaptive-v1",
+    "safety":  "balanced",
+    "sourceCommit":  "2beefeafea15be2a02a8662bcbd576bd72635836",
+    "startedAtUtc":  "20260719T045401Z",
+    "completedAtUtc":  "2026-07-19T04:56:58.7592500Z",
+    "seedCount":  1,
+    "excludedInfraFailures":  0,
+    "scoredCount":  1,
+    "succeededCount":  0,
+    "successRate":  0,
+    "deathCount":  0,
+    "stallCount":  0,
+    "overBudgetCount":  0,
+    "elapsedMsMedianSucceeded":  null,
+    "elapsedMsMinSucceeded":  null,
+    "elapsedMsMaxSucceeded":  null,
+    "failureCauseHistogram":  {
+                                  "maxDurationMs must be between 100 and 600000":  1
+                              },
+    "perSeed":  [
+                    {
+                        "seed":  "302304127329527063",
+                        "status":  "rpc-error",
+                        "failureCause":  "maxDurationMs must be between 100 and 600000",
+                        "elapsedMs":  9,
+                        "goalStatus":  "rpc-error",
+                        "goalOutput":  null,
+                        "infra":  null
+                    }
+                ],
+    "realtimeModelId":  "gpt-5.4-mini",
+    "realtimeModelPort":  37842,
+    "realtimeModelProxyLog":  "C:\\SyncedProjects\\Game Development\\Minecraft\\Mods\\Lodestone\\verification\\evidence\\b2-realtime-widerbudget-diag-20260719T045401Z\\model-proxy.log"
+}

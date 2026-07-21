@@ -1,0 +1,37 @@
+﻿{
+    "formatVersion":  1,
+    "benchmarkName":  "b2-smoke-mechanics-check2",
+    "taskId":  "survival.wooden-axe-mine-tree",
+    "mode":  "script",
+    "intelligence":  "guarded-v1",
+    "safety":  "balanced",
+    "sourceCommit":  "42870dab41eada560f183147008c6152553f6cbf",
+    "startedAtUtc":  "20260717T145609Z",
+    "completedAtUtc":  "2026-07-17T15:01:16.9488586Z",
+    "seedCount":  1,
+    "excludedInfraFailures":  1,
+    "scoredCount":  0,
+    "succeededCount":  0,
+    "successRate":  null,
+    "deathCount":  0,
+    "stallCount":  0,
+    "overBudgetCount":  0,
+    "elapsedMsMedianSucceeded":  null,
+    "elapsedMsMinSucceeded":  null,
+    "elapsedMsMaxSucceeded":  null,
+    "failureCauseHistogram":  {
+                                  "infra:title-screen-timeout":  1
+                              },
+    "perSeed":  [
+                    {
+                        "seed":  "302304127329527063",
+                        "status":  "INFRA_FAILURE",
+                        "failureCause":  "infra:title-screen-timeout",
+                        "elapsedMs":  null,
+                        "goalStatus":  null,
+                        "goalOutput":  null,
+                        "infra":  "title-screen-timeout",
+                        "harnessMessage":  "INFRA:title-screen-timeout: fresh title screen not reached: inWorld=False, screen=net.minecraft.client.gui.screens.AccessibilityOnboardingScreen"
+                    }
+                ]
+}

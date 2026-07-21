@@ -1,0 +1,18 @@
+# B1 first official multi-seed REALTIME batch. Zero official multi-seed realtime runs have ever
+# completed for any of B1/B2/B3 before this session - realtime mode requires adaptive-v1 or
+# deliberate-v1 (guarded-v1/raw-v1 never call a model even in GoalMode.REALTIME, per
+# GoalIntelligence.modelReplanningEnabled()==false short-circuiting to declared order), so this is
+# also the first live look at B1 running under adaptive-v1's obstruction-mining-enabled policy
+# (NeoForgeSafePathPlanner.relaxNeighbor's mutation branch only activates when
+# policy.intelligence()==ADAPTIVE_V1) - a different actor behavior than every guarded-v1 run this
+# session has tested so far.
+#
+# Mix: seed 1 (succeeded at guarded-v1/script in the official rescoring2 run, baseline check that
+# realtime+adaptive-v1 doesn't regress an easy case), seed 3 and seed 100 (both failed
+# target:unreachable at guarded-v1/script this session, with live reachabilityDiagnostic evidence
+# showing genuine local isolation - visited=1 and visited=4 respectively, zero search-budget
+# involvement - testing whether adaptive-v1's obstruction mining/placing can actually rescue a
+# pocket this small).
+1
+3
+100

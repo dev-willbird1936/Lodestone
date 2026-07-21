@@ -1,0 +1,14 @@
+# B2 table-placement-vantage-attempts-not-reset regression re-check: these 3 seeds were clean
+# SUCCEEDED runs at commit 9a3cfaf (stale 50% baseline) but flipped to a new, previously-unseen
+# failure - "no unobstructed crafting-table placement vantage after 4 widening attempts" - in the
+# 2026-07-19 official rescoring at commit 20704a2 (after the table-placement-vantage widening fix
+# in 89f53b2). Root cause: placeTableVantageAttempts was never reset between separate relocation
+# episodes, so a seed needing more than 4 total >20-tick aim-timeout episodes across the whole
+# PLACE_TABLE stage (previously unbounded, matching the actor's unrelated 1200-tick stageTicks
+# ceiling) now hit the 4-attempt widening budget as an accidental total-episode cap instead.
+# Fixed by resetting placeTableVantageAttempts to 0 on every successful relocation. Re-running
+# these exact 3 seeds against guarded-v1/balanced/script (matching the official rescoring's exact
+# parameters) to confirm the fix restores their prior SUCCEEDED outcome.
+302304127329527063
+-8172974586314107235
+123456789012345

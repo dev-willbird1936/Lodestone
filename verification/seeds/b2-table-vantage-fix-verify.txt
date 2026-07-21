@@ -1,0 +1,8 @@
+# B2 table-placement-vantage widening fix re-check: seed 302304127329527063, which showed
+# "no unobstructed crafting-table placement vantage; player=BlockPos{x=0, y=82, z=-1},
+# table=BlockPos{x=2, y=82, z=-3}, eyeDistance=3.5" in
+# verification/evidence/b2-diag-script-adaptive-20260719T044837Z at commit 2beefea (before the
+# findTablePlacementVantage widening-retry fix in commit 89f53b2). Re-running live against the
+# exact same seed/task/mode/intelligence/safety combination to confirm the widened search now
+# finds a vantage where the original fixed-size search found none.
+302304127329527063

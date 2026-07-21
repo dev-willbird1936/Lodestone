@@ -1,0 +1,13 @@
+# B1 follow-up spot-check: 5 of the 15 seeds that failed target:unreachable in
+# verification/evidence/b1-official-rescoring2-20260718-20260718T200636Z (which predates the
+# 360-degree annulus search (67ebe7e) and policy-driven widened descent cap (0b48c24) being tested
+# together). Used with -ReachabilityDiagnostic to check whether those two fixes rescue any of these
+# seeds, and to gather a second and third reachability-diagnostic data point after seed 3's live
+# result showed visited=1 (zero neighbors reachable from the origin at all, under both the default
+# 1-block and this actor's widened 3-block descent cap, visitBudgetExhausted=false both times) -
+# i.e. genuine local isolation at the very first hop, not a search-budget or annulus-width problem.
+4
+5
+100
+99999
+271828182

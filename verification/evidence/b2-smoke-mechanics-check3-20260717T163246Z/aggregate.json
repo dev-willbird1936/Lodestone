@@ -1,0 +1,1252 @@
+﻿{
+    "formatVersion":  1,
+    "benchmarkName":  "b2-smoke-mechanics-check3",
+    "taskId":  "survival.wooden-axe-mine-tree",
+    "mode":  "script",
+    "intelligence":  "guarded-v1",
+    "safety":  "balanced",
+    "sourceCommit":  "42870dab41eada560f183147008c6152553f6cbf",
+    "startedAtUtc":  "20260717T163246Z",
+    "completedAtUtc":  "2026-07-17T16:34:05.7663377Z",
+    "seedCount":  1,
+    "excludedInfraFailures":  0,
+    "scoredCount":  1,
+    "succeededCount":  0,
+    "successRate":  0,
+    "deathCount":  0,
+    "stallCount":  0,
+    "overBudgetCount":  0,
+    "elapsedMsMedianSucceeded":  null,
+    "elapsedMsMinSucceeded":  null,
+    "elapsedMsMaxSucceeded":  null,
+    "failureCauseHistogram":  {
+                                  "transient:error":  1
+                              },
+    "perSeed":  [
+                    {
+                        "seed":  "302304127329527063",
+                        "status":  "FAILED",
+                        "failureCause":  "transient:error",
+                        "elapsedMs":  10850,
+                        "goalStatus":  "FAILED",
+                        "goalOutput":  {
+                                           "runId":  "bcb2d971-f643-404d-ab6f-f6b83cafa668",
+                                           "planId":  "survival.wooden-axe-mine-tree",
+                                           "goal":  "load into survival, get a wooden axe and mine a full tree with it",
+                                           "mode":  "SCRIPT",
+                                           "status":  "FAILED",
+                                           "message":  "navigation target label was not found: World (coverage=opaque, truncated=true)",
+                                           "elapsedMs":  10834,
+                                           "completedSteps":  4,
+                                           "completedSegments":  2,
+                                           "selectedModel":  "script-interpreter",
+                                           "trace":  [
+                                                         {
+                                                             "elapsedMs":  2306,
+                                                             "kind":  "INVOKE",
+                                                             "status":  "ok",
+                                                             "capability":  "lodestone.ui.navigate",
+                                                             "step":  "open-singleplayer"
+                                                         },
+                                                         {
+                                                             "status":  "ok",
+                                                             "capability":  "minecraft.ui.state.read",
+                                                             "kind":  "observe",
+                                                             "step":  "postObserve.open-singleplayer"
+                                                         },
+                                                         {
+                                                             "elapsedMs":  8423,
+                                                             "kind":  "INVOKE",
+                                                             "status":  "ok",
+                                                             "capability":  "lodestone.ui.navigate",
+                                                             "step":  "open-create-world"
+                                                         },
+                                                         {
+                                                             "status":  "ok",
+                                                             "capability":  "minecraft.ui.state.read",
+                                                             "kind":  "observe",
+                                                             "step":  "postObserve.open-create-world"
+                                                         },
+                                                         {
+                                                             "failure":  "TRANSIENT",
+                                                             "step":  "recovery.open-world-options",
+                                                             "kind":  "bounded-recovery",
+                                                             "rationale":  "bounded retry for transient action failure",
+                                                             "attempt":  1,
+                                                             "decision":  "RETRY_ONCE"
+                                                         },
+                                                         {
+                                                             "failure":  "TRANSIENT",
+                                                             "step":  "recovery.open-world-options",
+                                                             "kind":  "bounded-recovery",
+                                                             "rationale":  "recovery budget exhausted or no declared alternative exists",
+                                                             "attempt":  1,
+                                                             "decision":  "ABORT_STEP"
+                                                         },
+                                                         {
+                                                             "elapsedMs":  25,
+                                                             "step":  "open-world-options",
+                                                             "errorCode":  "ADAPTER_FAILURE",
+                                                             "kind":  "INVOKE",
+                                                             "status":  "error",
+                                                             "capability":  "lodestone.ui.navigate"
+                                                         }
+                                                     ],
+                                           "state":  {
+                                                         "recoveryLayer":  "bounded-typed-v1",
+                                                         "observation":  "loaded-chunks",
+                                                         "mode":  "SCRIPT",
+                                                         "safety":  "balanced",
+                                                         "obstructionMining":  false,
+                                                         "lastRecovery":  {
+                                                                              "failure":  "TRANSIENT",
+                                                                              "attempt":  1,
+                                                                              "rationale":  "recovery budget exhausted or no declared alternative exists",
+                                                                              "decision":  "ABORT_STEP",
+                                                                              "step":  "open-world-options"
+                                                                          },
+                                                         "toolPrerequisitePlanning":  true,
+                                                         "allowCommands":  false,
+                                                         "planningDepth":  1,
+                                                         "fallProtection":  true,
+                                                         "hazardAvoidance":  true,
+                                                         "planId":  "survival.wooden-axe-mine-tree",
+                                                         "safetyPriority":  false,
+                                                         "planSource":  "declared",
+                                                         "safeNavigationPlanning":  true,
+                                                         "actionSegmentReplanning":  false,
+                                                         "scriptSegmentObservation":  true,
+                                                         "prerequisitePlanning":  true,
+                                                         "executorModel":  "deterministic-fallback",
+                                                         "failureCause":  "transient:error",
+                                                         "verifiedActionBoundary":  true,
+                                                         "allowBlockPlacing":  true,
+                                                         "steps":  {
+                                                                       "open-singleplayer":  {
+                                                                                                 "after":  {
+                                                                                                               "capturedAtTick":  15.0,
+                                                                                                               "coverage":  "complete",
+                                                                                                               "guiScale":  2.0,
+                                                                                                               "height":  240.0,
+                                                                                                               "inWorld":  false,
+                                                                                                               "open":  true,
+                                                                                                               "screen":  "CreateWorldScreen",
+                                                                                                               "screenClass":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                               "screenToken":  "neo121-2",
+                                                                                                               "snapshotRevision":  "a9afcbd9510059d9dbe36226c8bdf19615bc9d21694b86a2d9170c7494120782",
+                                                                                                               "title":  "Create New World",
+                                                                                                               "truncated":  false,
+                                                                                                               "truncationCauses":  [
+
+                                                                                                                                    ],
+                                                                                                               "widgets":  [
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+
+                                                                                                                                               ],
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "nodeId":  "neo121-2:0",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                0.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.tabs.TabNavigationBar"
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  24.0,
+                                                                                                                                                  "width":  124.0,
+                                                                                                                                                  "x":  28.0,
+                                                                                                                                                  "y":  0.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  1.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "Game",
+                                                                                                                                   "narration":  "Game",
+                                                                                                                                   "nodeId":  "neo121-2:0.0",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                   "path":  [
+                                                                                                                                                0.0,
+                                                                                                                                                0.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  24.0,
+                                                                                                                                                  "width":  124.0,
+                                                                                                                                                  "x":  152.0,
+                                                                                                                                                  "y":  0.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  1.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "World",
+                                                                                                                                   "narration":  "World",
+                                                                                                                                   "nodeId":  "neo121-2:0.1",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                   "path":  [
+                                                                                                                                                0.0,
+                                                                                                                                                1.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  24.0,
+                                                                                                                                                  "width":  124.0,
+                                                                                                                                                  "x":  276.0,
+                                                                                                                                                  "y":  0.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  1.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "More",
+                                                                                                                                   "narration":  "More",
+                                                                                                                                   "nodeId":  "neo121-2:0.2",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                   "path":  [
+                                                                                                                                                0.0,
+                                                                                                                                                2.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  20.0,
+                                                                                                                                                  "width":  150.0,
+                                                                                                                                                  "x":  59.0,
+                                                                                                                                                  "y":  214.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "Create New World",
+                                                                                                                                   "narration":  "Create New World",
+                                                                                                                                   "nodeId":  "neo121-2:1",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                1.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  20.0,
+                                                                                                                                                  "width":  150.0,
+                                                                                                                                                  "x":  217.0,
+                                                                                                                                                  "y":  214.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "Cancel",
+                                                                                                                                   "narration":  "Cancel",
+                                                                                                                                   "nodeId":  "neo121-2:2",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                2.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+
+                                                                                                                                               ],
+                                                                                                                                   "active":  false,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  9.0,
+                                                                                                                                                  "width":  55.0,
+                                                                                                                                                  "x":  109.0,
+                                                                                                                                                  "y":  35.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "World Name",
+                                                                                                                                   "narration":  "World Name",
+                                                                                                                                   "nodeId":  "neo121-2:3",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                3.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.StringWidget",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  20.0,
+                                                                                                                                                  "width":  208.0,
+                                                                                                                                                  "x":  109.0,
+                                                                                                                                                  "y":  48.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  true,
+                                                                                                                                   "label":  "World Name",
+                                                                                                                                   "narration":  "World Name",
+                                                                                                                                   "nodeId":  "neo121-2:4",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                4.0
+                                                                                                                                            ],
+                                                                                                                                   "textLength":  9.0,
+                                                                                                                                   "textPresent":  true,
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.EditBox",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  20.0,
+                                                                                                                                                  "width":  210.0,
+                                                                                                                                                  "x":  108.0,
+                                                                                                                                                  "y":  76.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "Game Mode: Survival",
+                                                                                                                                   "narration":  "Game Mode: Survival",
+                                                                                                                                   "nodeId":  "neo121-2:5",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                5.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  20.0,
+                                                                                                                                                  "width":  210.0,
+                                                                                                                                                  "x":  108.0,
+                                                                                                                                                  "y":  104.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "Difficulty: Normal",
+                                                                                                                                   "narration":  "Difficulty: Normal",
+                                                                                                                                   "nodeId":  "neo121-2:6",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                6.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                   "visible":  true
+                                                                                                                               },
+                                                                                                                               {
+                                                                                                                                   "actions":  [
+                                                                                                                                                   "click"
+                                                                                                                                               ],
+                                                                                                                                   "active":  true,
+                                                                                                                                   "bounds":  {
+                                                                                                                                                  "height":  20.0,
+                                                                                                                                                  "width":  210.0,
+                                                                                                                                                  "x":  108.0,
+                                                                                                                                                  "y":  132.0
+                                                                                                                                              },
+                                                                                                                                   "depth":  0.0,
+                                                                                                                                   "focused":  false,
+                                                                                                                                   "label":  "Allow Commands: OFF",
+                                                                                                                                   "narration":  "Allow Commands: OFF",
+                                                                                                                                   "nodeId":  "neo121-2:7",
+                                                                                                                                   "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                   "path":  [
+                                                                                                                                                7.0
+                                                                                                                                            ],
+                                                                                                                                   "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                   "visible":  true
+                                                                                                                               }
+                                                                                                                           ],
+                                                                                                               "width":  427.0
+                                                                                                           },
+                                                                                                 "match":  "exact",
+                                                                                                 "before":  {
+                                                                                                                "capturedAtTick":  14.0,
+                                                                                                                "coverage":  "complete",
+                                                                                                                "guiScale":  2.0,
+                                                                                                                "height":  240.0,
+                                                                                                                "inWorld":  false,
+                                                                                                                "open":  true,
+                                                                                                                "screen":  "TitleScreen",
+                                                                                                                "screenClass":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                "screenToken":  "neo121-1",
+                                                                                                                "snapshotRevision":  "f1ecd3bb29b12a91112897b687a3c2b739ede2b29a46cad528c74b7c06e31648",
+                                                                                                                "title":  "Title Screen",
+                                                                                                                "truncated":  false,
+                                                                                                                "truncationCauses":  [
+
+                                                                                                                                     ],
+                                                                                                                "widgets":  [
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  200.0,
+                                                                                                                                                   "x":  113.0,
+                                                                                                                                                   "y":  92.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Singleplayer",
+                                                                                                                                    "narration":  "Singleplayer",
+                                                                                                                                    "nodeId":  "neo121-1:0",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 0.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  200.0,
+                                                                                                                                                   "x":  113.0,
+                                                                                                                                                   "y":  116.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Multiplayer",
+                                                                                                                                    "narration":  "Multiplayer",
+                                                                                                                                    "nodeId":  "neo121-1:1",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 1.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  200.0,
+                                                                                                                                                   "x":  113.0,
+                                                                                                                                                   "y":  140.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Minecraft Realms",
+                                                                                                                                    "narration":  "Minecraft Realms",
+                                                                                                                                    "nodeId":  "neo121-1:2",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 2.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  200.0,
+                                                                                                                                                   "x":  113.0,
+                                                                                                                                                   "y":  164.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Mods",
+                                                                                                                                    "narration":  "Mods",
+                                                                                                                                    "nodeId":  "neo121-1:3",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 3.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.neoforged.neoforge.client.gui.widget.ModsButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  20.0,
+                                                                                                                                                   "x":  89.0,
+                                                                                                                                                   "y":  198.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Language...",
+                                                                                                                                    "narration":  "Language...",
+                                                                                                                                    "nodeId":  "neo121-1:4",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 4.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  98.0,
+                                                                                                                                                   "x":  113.0,
+                                                                                                                                                   "y":  198.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Options...",
+                                                                                                                                    "narration":  "Options...",
+                                                                                                                                    "nodeId":  "neo121-1:5",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 5.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  98.0,
+                                                                                                                                                   "x":  215.0,
+                                                                                                                                                   "y":  198.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Quit Game",
+                                                                                                                                    "narration":  "Quit Game",
+                                                                                                                                    "nodeId":  "neo121-1:6",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 6.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  20.0,
+                                                                                                                                                   "x":  317.0,
+                                                                                                                                                   "y":  198.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Accessibility Settings...",
+                                                                                                                                    "narration":  "Accessibility Settings...",
+                                                                                                                                    "nodeId":  "neo121-1:7",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 7.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.SpriteIconButton$CenteredIcon",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  10.0,
+                                                                                                                                                   "width":  196.0,
+                                                                                                                                                   "x":  229.0,
+                                                                                                                                                   "y":  230.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Copyright Mojang AB. Do not distribute!",
+                                                                                                                                    "narration":  "Copyright Mojang AB. Do not distribute!",
+                                                                                                                                    "nodeId":  "neo121-1:8",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.TitleScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 8.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.PlainTextButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                }
+                                                                                                                            ],
+                                                                                                                "width":  427.0
+                                                                                                            },
+                                                                                                 "target":  "singleplayer",
+                                                                                                 "label":  "Singleplayer",
+                                                                                                 "click":  {
+                                                                                                               "handled":  true,
+                                                                                                               "nodeId":  "neo121-1:0",
+                                                                                                               "screenToken":  "neo121-1",
+                                                                                                               "snapshotRevision":  "f1ecd3bb29b12a91112897b687a3c2b739ede2b29a46cad528c74b7c06e31648",
+                                                                                                               "x":  213.0,
+                                                                                                               "y":  102.0
+                                                                                                           },
+                                                                                                 "handled":  true
+                                                                                             },
+                                                                       "postObserve":  {
+                                                                                           "open-singleplayer":  {
+                                                                                                                     "truncated":  false,
+                                                                                                                     "title":  "Create New World",
+                                                                                                                     "coverage":  "complete",
+                                                                                                                     "width":  427.0,
+                                                                                                                     "capturedAtTick":  25.0,
+                                                                                                                     "truncationCauses":  [
+
+                                                                                                                                          ],
+                                                                                                                     "widgets":  [
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+
+                                                                                                                                                     ],
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "nodeId":  "neo121-2:0",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      0.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.tabs.TabNavigationBar"
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  24.0,
+                                                                                                                                                        "width":  124.0,
+                                                                                                                                                        "x":  28.0,
+                                                                                                                                                        "y":  0.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  1.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "Game",
+                                                                                                                                         "narration":  "Game",
+                                                                                                                                         "nodeId":  "neo121-2:0.0",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                         "path":  [
+                                                                                                                                                      0.0,
+                                                                                                                                                      0.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  24.0,
+                                                                                                                                                        "width":  124.0,
+                                                                                                                                                        "x":  152.0,
+                                                                                                                                                        "y":  0.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  1.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "World",
+                                                                                                                                         "narration":  "World",
+                                                                                                                                         "nodeId":  "neo121-2:0.1",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                         "path":  [
+                                                                                                                                                      0.0,
+                                                                                                                                                      1.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  24.0,
+                                                                                                                                                        "width":  124.0,
+                                                                                                                                                        "x":  276.0,
+                                                                                                                                                        "y":  0.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  1.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "More",
+                                                                                                                                         "narration":  "More",
+                                                                                                                                         "nodeId":  "neo121-2:0.2",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                         "path":  [
+                                                                                                                                                      0.0,
+                                                                                                                                                      2.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  20.0,
+                                                                                                                                                        "width":  150.0,
+                                                                                                                                                        "x":  59.0,
+                                                                                                                                                        "y":  214.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "Create New World",
+                                                                                                                                         "narration":  "Create New World",
+                                                                                                                                         "nodeId":  "neo121-2:1",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      1.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  20.0,
+                                                                                                                                                        "width":  150.0,
+                                                                                                                                                        "x":  217.0,
+                                                                                                                                                        "y":  214.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "Cancel",
+                                                                                                                                         "narration":  "Cancel",
+                                                                                                                                         "nodeId":  "neo121-2:2",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      2.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+
+                                                                                                                                                     ],
+                                                                                                                                         "active":  false,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  9.0,
+                                                                                                                                                        "width":  55.0,
+                                                                                                                                                        "x":  109.0,
+                                                                                                                                                        "y":  35.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "World Name",
+                                                                                                                                         "narration":  "World Name",
+                                                                                                                                         "nodeId":  "neo121-2:3",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      3.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.StringWidget",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  20.0,
+                                                                                                                                                        "width":  208.0,
+                                                                                                                                                        "x":  109.0,
+                                                                                                                                                        "y":  48.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  true,
+                                                                                                                                         "label":  "World Name",
+                                                                                                                                         "narration":  "World Name",
+                                                                                                                                         "nodeId":  "neo121-2:4",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      4.0
+                                                                                                                                                  ],
+                                                                                                                                         "textLength":  9.0,
+                                                                                                                                         "textPresent":  true,
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.EditBox",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  20.0,
+                                                                                                                                                        "width":  210.0,
+                                                                                                                                                        "x":  108.0,
+                                                                                                                                                        "y":  76.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "Game Mode: Survival",
+                                                                                                                                         "narration":  "Game Mode: Survival",
+                                                                                                                                         "nodeId":  "neo121-2:5",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      5.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  20.0,
+                                                                                                                                                        "width":  210.0,
+                                                                                                                                                        "x":  108.0,
+                                                                                                                                                        "y":  104.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "Difficulty: Normal",
+                                                                                                                                         "narration":  "Difficulty: Normal",
+                                                                                                                                         "nodeId":  "neo121-2:6",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      6.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                         "visible":  true
+                                                                                                                                     },
+                                                                                                                                     {
+                                                                                                                                         "actions":  [
+                                                                                                                                                         "click"
+                                                                                                                                                     ],
+                                                                                                                                         "active":  true,
+                                                                                                                                         "bounds":  {
+                                                                                                                                                        "height":  20.0,
+                                                                                                                                                        "width":  210.0,
+                                                                                                                                                        "x":  108.0,
+                                                                                                                                                        "y":  132.0
+                                                                                                                                                    },
+                                                                                                                                         "depth":  0.0,
+                                                                                                                                         "focused":  false,
+                                                                                                                                         "label":  "Allow Commands: OFF",
+                                                                                                                                         "narration":  "Allow Commands: OFF",
+                                                                                                                                         "nodeId":  "neo121-2:7",
+                                                                                                                                         "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                         "path":  [
+                                                                                                                                                      7.0
+                                                                                                                                                  ],
+                                                                                                                                         "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                         "visible":  true
+                                                                                                                                     }
+                                                                                                                                 ],
+                                                                                                                     "screenToken":  "neo121-2",
+                                                                                                                     "screen":  "CreateWorldScreen",
+                                                                                                                     "inWorld":  false,
+                                                                                                                     "guiScale":  2.0,
+                                                                                                                     "height":  240.0,
+                                                                                                                     "snapshotRevision":  "a9afcbd9510059d9dbe36226c8bdf19615bc9d21694b86a2d9170c7494120782",
+                                                                                                                     "screenClass":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                     "open":  true
+                                                                                                                 },
+                                                                                           "open-create-world":  {
+                                                                                                                     "truncated":  true,
+                                                                                                                     "title":  "",
+                                                                                                                     "coverage":  "opaque",
+                                                                                                                     "width":  427.0,
+                                                                                                                     "capturedAtTick":  36.0,
+                                                                                                                     "truncationCauses":  [
+                                                                                                                                              "opaque-screen"
+                                                                                                                                          ],
+                                                                                                                     "widgets":  [
+
+                                                                                                                                 ],
+                                                                                                                     "screenToken":  "neo121-3",
+                                                                                                                     "screen":  "LevelLoadingScreen",
+                                                                                                                     "inWorld":  false,
+                                                                                                                     "guiScale":  2.0,
+                                                                                                                     "height":  240.0,
+                                                                                                                     "snapshotRevision":  "91caae7a24005bf94ebb3f9ff5d60919174a9928f171c696cc47f60f62b3029f",
+                                                                                                                     "screenClass":  "net.minecraft.client.gui.screens.LevelLoadingScreen",
+                                                                                                                     "open":  true
+                                                                                                                 }
+                                                                                       },
+                                                                       "open-create-world":  {
+                                                                                                 "after":  {
+                                                                                                               "capturedAtTick":  26.0,
+                                                                                                               "coverage":  "opaque",
+                                                                                                               "guiScale":  2.0,
+                                                                                                               "height":  240.0,
+                                                                                                               "inWorld":  false,
+                                                                                                               "open":  true,
+                                                                                                               "screen":  "LevelLoadingScreen",
+                                                                                                               "screenClass":  "net.minecraft.client.gui.screens.LevelLoadingScreen",
+                                                                                                               "screenToken":  "neo121-3",
+                                                                                                               "snapshotRevision":  "91caae7a24005bf94ebb3f9ff5d60919174a9928f171c696cc47f60f62b3029f",
+                                                                                                               "title":  "",
+                                                                                                               "truncated":  true,
+                                                                                                               "truncationCauses":  [
+                                                                                                                                        "opaque-screen"
+                                                                                                                                    ],
+                                                                                                               "widgets":  [
+
+                                                                                                                           ],
+                                                                                                               "width":  427.0
+                                                                                                           },
+                                                                                                 "match":  "exact",
+                                                                                                 "before":  {
+                                                                                                                "capturedAtTick":  25.0,
+                                                                                                                "coverage":  "complete",
+                                                                                                                "guiScale":  2.0,
+                                                                                                                "height":  240.0,
+                                                                                                                "inWorld":  false,
+                                                                                                                "open":  true,
+                                                                                                                "screen":  "CreateWorldScreen",
+                                                                                                                "screenClass":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                "screenToken":  "neo121-2",
+                                                                                                                "snapshotRevision":  "a9afcbd9510059d9dbe36226c8bdf19615bc9d21694b86a2d9170c7494120782",
+                                                                                                                "title":  "Create New World",
+                                                                                                                "truncated":  false,
+                                                                                                                "truncationCauses":  [
+
+                                                                                                                                     ],
+                                                                                                                "widgets":  [
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+
+                                                                                                                                                ],
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "nodeId":  "neo121-2:0",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 0.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.tabs.TabNavigationBar"
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  24.0,
+                                                                                                                                                   "width":  124.0,
+                                                                                                                                                   "x":  28.0,
+                                                                                                                                                   "y":  0.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  1.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Game",
+                                                                                                                                    "narration":  "Game",
+                                                                                                                                    "nodeId":  "neo121-2:0.0",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                    "path":  [
+                                                                                                                                                 0.0,
+                                                                                                                                                 0.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  24.0,
+                                                                                                                                                   "width":  124.0,
+                                                                                                                                                   "x":  152.0,
+                                                                                                                                                   "y":  0.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  1.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "World",
+                                                                                                                                    "narration":  "World",
+                                                                                                                                    "nodeId":  "neo121-2:0.1",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                    "path":  [
+                                                                                                                                                 0.0,
+                                                                                                                                                 1.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  24.0,
+                                                                                                                                                   "width":  124.0,
+                                                                                                                                                   "x":  276.0,
+                                                                                                                                                   "y":  0.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  1.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "More",
+                                                                                                                                    "narration":  "More",
+                                                                                                                                    "nodeId":  "neo121-2:0.2",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.components.tabs.TabNavigationBar",
+                                                                                                                                    "path":  [
+                                                                                                                                                 0.0,
+                                                                                                                                                 2.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.TabButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  150.0,
+                                                                                                                                                   "x":  59.0,
+                                                                                                                                                   "y":  214.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Create New World",
+                                                                                                                                    "narration":  "Create New World",
+                                                                                                                                    "nodeId":  "neo121-2:1",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 1.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  150.0,
+                                                                                                                                                   "x":  217.0,
+                                                                                                                                                   "y":  214.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Cancel",
+                                                                                                                                    "narration":  "Cancel",
+                                                                                                                                    "nodeId":  "neo121-2:2",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 2.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.Button",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+
+                                                                                                                                                ],
+                                                                                                                                    "active":  false,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  9.0,
+                                                                                                                                                   "width":  55.0,
+                                                                                                                                                   "x":  109.0,
+                                                                                                                                                   "y":  35.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "World Name",
+                                                                                                                                    "narration":  "World Name",
+                                                                                                                                    "nodeId":  "neo121-2:3",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 3.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.StringWidget",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  208.0,
+                                                                                                                                                   "x":  109.0,
+                                                                                                                                                   "y":  48.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  true,
+                                                                                                                                    "label":  "World Name",
+                                                                                                                                    "narration":  "World Name",
+                                                                                                                                    "nodeId":  "neo121-2:4",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 4.0
+                                                                                                                                             ],
+                                                                                                                                    "textLength":  9.0,
+                                                                                                                                    "textPresent":  true,
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.EditBox",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  210.0,
+                                                                                                                                                   "x":  108.0,
+                                                                                                                                                   "y":  76.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Game Mode: Survival",
+                                                                                                                                    "narration":  "Game Mode: Survival",
+                                                                                                                                    "nodeId":  "neo121-2:5",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 5.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  210.0,
+                                                                                                                                                   "x":  108.0,
+                                                                                                                                                   "y":  104.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Difficulty: Normal",
+                                                                                                                                    "narration":  "Difficulty: Normal",
+                                                                                                                                    "nodeId":  "neo121-2:6",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 6.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                    "actions":  [
+                                                                                                                                                    "click"
+                                                                                                                                                ],
+                                                                                                                                    "active":  true,
+                                                                                                                                    "bounds":  {
+                                                                                                                                                   "height":  20.0,
+                                                                                                                                                   "width":  210.0,
+                                                                                                                                                   "x":  108.0,
+                                                                                                                                                   "y":  132.0
+                                                                                                                                               },
+                                                                                                                                    "depth":  0.0,
+                                                                                                                                    "focused":  false,
+                                                                                                                                    "label":  "Allow Commands: OFF",
+                                                                                                                                    "narration":  "Allow Commands: OFF",
+                                                                                                                                    "nodeId":  "neo121-2:7",
+                                                                                                                                    "parentType":  "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen",
+                                                                                                                                    "path":  [
+                                                                                                                                                 7.0
+                                                                                                                                             ],
+                                                                                                                                    "type":  "net.minecraft.client.gui.components.CycleButton",
+                                                                                                                                    "visible":  true
+                                                                                                                                }
+                                                                                                                            ],
+                                                                                                                "width":  427.0
+                                                                                                            },
+                                                                                                 "target":  "create_new_world",
+                                                                                                 "label":  "Create New World",
+                                                                                                 "click":  {
+                                                                                                               "handled":  true,
+                                                                                                               "nodeId":  "neo121-2:1",
+                                                                                                               "screenToken":  "neo121-2",
+                                                                                                               "snapshotRevision":  "a9afcbd9510059d9dbe36226c8bdf19615bc9d21694b86a2d9170c7494120782",
+                                                                                                               "x":  134.0,
+                                                                                                               "y":  224.0
+                                                                                                           },
+                                                                                                 "handled":  true
+                                                                                             }
+                                                                   },
+                                                         "combatPolicy":  "defensive",
+                                                         "modelMeasuredP95Ms":  0,
+                                                         "obstructionRecovery":  true,
+                                                         "lastCompletedSegment":  "open-create-world",
+                                                         "reasoningEffort":  "low",
+                                                         "lastActionContract":  {
+                                                                                    "allowed":  true,
+                                                                                    "reason":  "typed survival action",
+                                                                                    "kind":  "UI",
+                                                                                    "step":  "open-world-options"
+                                                                                },
+                                                         "modelRequired":  false,
+                                                         "allowBlockBreaking":  true,
+                                                         "stepPreconditionFiltering":  true,
+                                                         "threatPreemption":  true,
+                                                         "goal":  "load into survival, get a wooden axe and mine a full tree with it",
+                                                         "intelligence":  "guarded-v1",
+                                                         "activeSegment":  "open-world-options"
+                                                     }
+                                       },
+                        "infra":  null
+                    }
+                ]
+}

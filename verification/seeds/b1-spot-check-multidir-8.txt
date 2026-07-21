@@ -1,0 +1,12 @@
+# B1 spot-check: 8 of the 16 seeds that still failed (target:unreachable, entire east-side box
+# unreachable) in verification/evidence/b1-official-rescoring-20260718-20260718T181834Z, used to
+# check the multi-directional (4-cardinal) computeWaypoint generalization before a full 20-seed
+# re-run.
+1
+2
+3
+100
+99999
+314159265
+-8675309
+918273645

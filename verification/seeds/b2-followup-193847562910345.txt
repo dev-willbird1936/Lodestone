@@ -1,0 +1,11 @@
+# B2 follow-up single-seed re-check: seed -193847562910345, which showed target:obstructed
+# (hand-mining route cannot see resource log ... after 4 vantage relocation attempts) in
+# verification/evidence/b2-postfix-rescoring-v2-20260718-20260718T225659Z at current HEAD (9a3cfaf).
+# 9a3cfaf's own commit message documents this exact seed's *earlier* baseline failure as an
+# uncharacterized stall:mining in MINE_RESOURCE, investigated but not fixed - the rescoring after
+# that commit shows target:obstructed instead, so the failure signature may have shifted. Re-running
+# live to see the current failure directly and check whether it matches the aim-flicker/held-attack
+# hypothesis surfaced while investigating B3 seed -7's stall:mining (both mineResource()/mineTarget()
+# in NeoForgeSurvivalTreeGoal and mineVerified() in NeoForgeStoneToolsetGoal call stopAttack() on
+# every single-tick aim miss, then resume via clickAndHoldAttack() on the next hit).
+-193847562910345

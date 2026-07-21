@@ -1,0 +1,105 @@
+﻿{
+    "formatVersion":  1,
+    "benchmarkName":  "b2-diagonal-step1-smoke",
+    "taskId":  "b2-diagonal-step1-smoke",
+    "mode":  "script",
+    "intelligence":  "guarded-v1",
+    "safety":  "balanced",
+    "sourceCommit":  "5910f7d1a878ad11a0e3587206b9c3fa6d8dda5a",
+    "startedAtUtc":  "20260717T200609Z",
+    "completedAtUtc":  "2026-07-17T20:10:44.8773765Z",
+    "seedCount":  3,
+    "excludedInfraFailures":  0,
+    "scoredCount":  3,
+    "succeededCount":  0,
+    "successRate":  0,
+    "deathCount":  0,
+    "stallCount":  0,
+    "overBudgetCount":  0,
+    "elapsedMsMedianSucceeded":  null,
+    "elapsedMsMinSucceeded":  null,
+    "elapsedMsMaxSucceeded":  null,
+    "failureCauseHistogram":  {
+                                  "error:unclassified":  3
+                              },
+    "perSeed":  [
+                    {
+                        "seed":  "302304127329527063",
+                        "status":  "UNSUPPORTED",
+                        "failureCause":  "error:unclassified",
+                        "elapsedMs":  17,
+                        "goalStatus":  "UNSUPPORTED",
+                        "goalOutput":  {
+                                           "runId":  "e1443588-a273-48de-875e-bad69b5ded67",
+                                           "planId":  "none",
+                                           "goal":  "load into survival, get a wooden axe and mine a full tree with it",
+                                           "mode":  "SCRIPT",
+                                           "status":  "UNSUPPORTED",
+                                           "message":  "no bounded plan matches goal; provide taskId or a declarative plan",
+                                           "elapsedMs":  5,
+                                           "completedSteps":  0,
+                                           "completedSegments":  0,
+                                           "selectedModel":  "script-interpreter",
+                                           "trace":  [
+
+                                                     ],
+                                           "state":  {
+
+                                                     }
+                                       },
+                        "infra":  null
+                    },
+                    {
+                        "seed":  "-8172974586314107235",
+                        "status":  "UNSUPPORTED",
+                        "failureCause":  "error:unclassified",
+                        "elapsedMs":  13,
+                        "goalStatus":  "UNSUPPORTED",
+                        "goalOutput":  {
+                                           "runId":  "f14d1cab-d911-4d68-8be8-80d50c652203",
+                                           "planId":  "none",
+                                           "goal":  "load into survival, get a wooden axe and mine a full tree with it",
+                                           "mode":  "SCRIPT",
+                                           "status":  "UNSUPPORTED",
+                                           "message":  "no bounded plan matches goal; provide taskId or a declarative plan",
+                                           "elapsedMs":  3,
+                                           "completedSteps":  0,
+                                           "completedSegments":  0,
+                                           "selectedModel":  "script-interpreter",
+                                           "trace":  [
+
+                                                     ],
+                                           "state":  {
+
+                                                     }
+                                       },
+                        "infra":  null
+                    },
+                    {
+                        "seed":  "44210",
+                        "status":  "UNSUPPORTED",
+                        "failureCause":  "error:unclassified",
+                        "elapsedMs":  14,
+                        "goalStatus":  "UNSUPPORTED",
+                        "goalOutput":  {
+                                           "runId":  "d31ab7e3-0112-40f9-add3-1b5b40961cc5",
+                                           "planId":  "none",
+                                           "goal":  "load into survival, get a wooden axe and mine a full tree with it",
+                                           "mode":  "SCRIPT",
+                                           "status":  "UNSUPPORTED",
+                                           "message":  "no bounded plan matches goal; provide taskId or a declarative plan",
+                                           "elapsedMs":  4,
+                                           "completedSteps":  0,
+                                           "completedSegments":  0,
+                                           "selectedModel":  "script-interpreter",
+                                           "trace":  [
+
+                                                     ],
+                                           "state":  {
+
+                                                     }
+                                       },
+                        "infra":  null
+                    }
+                ]
+}

@@ -1,0 +1,9 @@
+# B1 spot-check seed list: the 6 previously-failing seeds from
+# verification/evidence/b1-official-scoring-20260718-retry-20260718T030312Z, used to verify the
+# findToAny-based computeWaypoint fix before committing and running the full 20-seed official pass.
+2
+3
+4
+100
+918273645
+-1122334455
