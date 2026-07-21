@@ -1446,6 +1446,38 @@ def verify_b4_reach_nether(
     return {"passed": passed, "checks": {"dimension": dimension, "inNether": passed}, "finalState": output}
 
 
+def _entity_attack_landed(trace: TraceWriter) -> bool:
+    """Reads back the trace file written so far (every write is flushed immediately - see
+    TraceWriter._write) to check whether any minecraft.player.interact "attack" call during this
+    run actually reported targetKind == "entity" - i.e. a real swing landed on a mob, not just
+    empty air or a block.
+
+    Needed because "the baseline hostile is no longer present" alone is NOT reliable evidence of a
+    player kill - live-evidenced (verification/evidence/adhoc-benchmark-b5-run2): a run where the
+    model never called player.interact even once still ended with 12 of 13 baseline hostiles gone,
+    because daytime sun exposure (time is set back to day right after a target is confirmed - see
+    adhoc-ensure-hostile-nearby.py) burns zombies/skeletons to death, and mobs simply wander out of
+    the entity.nearby.read scan radius over a multi-minute, 40-turn run - neither of which means
+    the model actually fought anything. Requiring at least one real entity-targeted attack closes
+    that false-positive gap.
+    """
+    try:
+        lines = trace.path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") != "tool_call" or event.get("toolName") != "minecraft_player_interact":
+            continue
+        output = (event.get("result") or {}).get("output") or {}
+        if output.get("targetKind") == "entity":
+            return True
+    return False
+
+
 def verify_b5_attack_nearest(
     mcp_client: LodestoneMcpClient, trace: TraceWriter, baseline: dict[str, Any]
 ) -> dict[str, Any]:
@@ -1460,13 +1492,14 @@ def verify_b5_attack_nearest(
     current_uuids = {e.get("uuid") for e in (result.get("output") or {}).get("entities") or []}
     baseline_hostiles = baseline.get("hostiles") or []
     killed = [h for h in baseline_hostiles if h.get("uuid") not in current_uuids]
+    attacked_an_entity = _entity_attack_landed(trace)
 
     return {
-        "passed": alive and len(killed) > 0,
+        "passed": alive and len(killed) > 0 and attacked_an_entity,
         "checks": {
             "alive": alive, "health": health,
             "baselineHostileCount": len(baseline_hostiles), "hostileNoLongerPresent": killed,
-            "observedHostileDeath": len(killed) > 0,
+            "observedHostileDeath": len(killed) > 0, "attackedAnEntity": attacked_an_entity,
         },
         "finalState": output,
     }
@@ -1529,7 +1562,15 @@ BENCHMARKS: dict[str, BenchmarkSpec] = {
     ),
     "b5": BenchmarkSpec(
         task_id="combat.attack-nearest",
-        goal="Find the nearest hostile mob and defeat it with ordinary movement and attacks.",
+        goal=(
+            "Find the nearest hostile mob and defeat it with ordinary movement and attacks. To "
+            "approach it, prefer direct minecraft_player_move/minecraft_player_look steps over the "
+            "safe-waypoint navigation tool, which has a known bug right now where it can report "
+            "reaching a target while your position hasn't actually changed - if you do use it, "
+            "confirm your real position changed afterward rather than trusting reachedTarget "
+            "alone. When you attack, check the result's targetKind field: it should read \"entity\" "
+            "(not \"none\") to confirm you are actually swinging at the mob, not empty air."
+        ),
         max_turns=40,
         capture_baseline=capture_b5_baseline,
         verify=verify_b5_attack_nearest,

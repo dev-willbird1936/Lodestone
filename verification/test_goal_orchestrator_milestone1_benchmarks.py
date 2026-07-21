@@ -291,21 +291,44 @@ class VerifyB5Test(unittest.TestCase):
     def _baseline(self):
         return {"hostiles": [{"uuid": "u-zombie", "type": "minecraft:zombie"}]}
 
-    def test_passes_when_baseline_hostile_is_gone_and_player_alive(self):
+    def _trace_with_entity_attack(self) -> "orchestrator.TraceWriter":
+        trace = _temp_trace()
+        trace.record_tool_call(1, "minecraft_player_interact", {"action": "attack"}, {
+            "status": "ok", "error": None,
+            "output": {"action": "attack", "queued": True, "held": True, "targetKind": "entity"},
+        })
+        return trace
+
+    def test_passes_when_baseline_hostile_is_gone_player_alive_and_an_attack_landed(self):
         client = ScriptedMcpClient({
             orchestrator.HEALTH_READ_CAPABILITY: player_state({"x": 0, "y": 64, "z": 0}, health=18.0),
             "minecraft.entity.nearby.read": {"status": "ok", "output": {"entities": []}},
         })
-        result = orchestrator.verify_b5_attack_nearest(client, _temp_trace(), self._baseline())
+        result = orchestrator.verify_b5_attack_nearest(client, self._trace_with_entity_attack(), self._baseline())
         self.assertTrue(result["passed"])
         self.assertEqual(1, len(result["checks"]["hostileNoLongerPresent"]))
+        self.assertTrue(result["checks"]["attackedAnEntity"])
+
+    def test_fails_when_hostile_gone_but_no_entity_attack_ever_landed(self):
+        # The exact false positive live-evidenced in adhoc-benchmark-b5-run2: the model never
+        # called player.interact at all, yet most baseline hostiles had vanished anyway (daytime
+        # sun burning zombies/skeletons, or mobs simply wandering out of scan range over a
+        # multi-minute run) - "hostile gone" alone must NOT be accepted as a real kill.
+        client = ScriptedMcpClient({
+            orchestrator.HEALTH_READ_CAPABILITY: player_state({"x": 0, "y": 64, "z": 0}, health=20.0),
+            "minecraft.entity.nearby.read": {"status": "ok", "output": {"entities": []}},
+        })
+        result = orchestrator.verify_b5_attack_nearest(client, _temp_trace(), self._baseline())
+        self.assertFalse(result["passed"])
+        self.assertTrue(result["checks"]["observedHostileDeath"])  # the hostile really is gone...
+        self.assertFalse(result["checks"]["attackedAnEntity"])  # ...but nothing ever attacked it
 
     def test_fails_when_all_baseline_hostiles_still_present(self):
         client = ScriptedMcpClient({
             orchestrator.HEALTH_READ_CAPABILITY: player_state({"x": 0, "y": 64, "z": 0}, health=18.0),
             "minecraft.entity.nearby.read": {"status": "ok", "output": {"entities": [{"uuid": "u-zombie"}]}},
         })
-        result = orchestrator.verify_b5_attack_nearest(client, _temp_trace(), self._baseline())
+        result = orchestrator.verify_b5_attack_nearest(client, self._trace_with_entity_attack(), self._baseline())
         self.assertFalse(result["passed"])
         self.assertFalse(result["checks"]["observedHostileDeath"])
 
@@ -314,7 +337,7 @@ class VerifyB5Test(unittest.TestCase):
             orchestrator.HEALTH_READ_CAPABILITY: player_state({"x": 0, "y": 64, "z": 0}, health=0.0),
             "minecraft.entity.nearby.read": {"status": "ok", "output": {"entities": []}},
         })
-        result = orchestrator.verify_b5_attack_nearest(client, _temp_trace(), self._baseline())
+        result = orchestrator.verify_b5_attack_nearest(client, self._trace_with_entity_attack(), self._baseline())
         self.assertFalse(result["passed"])
         self.assertFalse(result["checks"]["alive"])
 
