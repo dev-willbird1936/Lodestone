@@ -82,6 +82,7 @@ final class GoalSubactionService {
         if (action == null || action.capability() == null || action.capability().isBlank()) {
             throw new IllegalArgumentException("every subaction requires a capability");
         }
+        GoalCapabilityPolicy.requireModelPrimitive(action.capability());
         if (action.capability().startsWith("minecraft.event.")) {
             throw new IllegalArgumentException("event capabilities must use the session-owned MCP event tools");
         }

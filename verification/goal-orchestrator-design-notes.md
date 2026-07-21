@@ -1,5 +1,11 @@
 # Goal orchestrator v2 design notes: script mode, safety tiers, modularization
 
+> **Historical and superseded.** The public MCP gateway no longer exposes `minecraft_goal`, native
+> task catalogs, benchmarks, or native high-level goal capabilities. The `lodestone-goal` skill now
+> keeps planning in the calling model or its native low-latency subagent and uses only primitive
+> MCP actions, bounded script batches, observations, and hooks. This file remains as design history
+> for internal regression infrastructure.
+
 Status: **draft design report, not integrated.** Nothing in this document or its companion
 sketch package (`verification/goal_orchestrator_draft/`) modifies
 `verification/goal-orchestrator-milestone1.py` or any other existing file. That file is currently
@@ -614,4 +620,3 @@ case for `BLOCKED`; see the implementer's own report for the exact rationale.)
    separate design.
 
 </details>
-

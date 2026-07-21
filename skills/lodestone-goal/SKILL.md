@@ -14,7 +14,8 @@ Use `realtime`, `medium` intelligence, and `medium` safety when the user omits t
 
 ## Delegate
 
-Use the current agent host's native subagent facility when it exists. Start one goal worker with
+The model in the session where this skill was called owns the goal and all high-level thinking. It
+may use the current host's native subagent facility. When it delegates, start one goal worker with
 the lowest-latency tool-capable model the host currently exposes. Prefer a latency-optimized small,
 mini, flash, or haiku-like model. Do not pin a vendor or model name. Match reasoning effort to the
 intelligence tier.
@@ -23,11 +24,25 @@ Give the worker the goal, mode, policies, controls, limits, live Lodestone MCP c
 workflow. The parent monitors recovery and verifies completion. If native subagents are not
 available, run this workflow in the current agent. Never let workers control one player concurrently.
 
+## No native task shortcuts
+
+Never call `minecraft_goal`, `minecraft_goal_tasks`, or `minecraft_goal_benchmark`. Never discover,
+get, invoke, or batch a capability under `minecraft.goal.*`, except
+`minecraft.goal.navigation.safe-waypoint`, which is a bounded pathing primitive. In particular, do
+not call survival, crafting, tree, combat, creative, or Nether task routines. They are internal
+regression fixtures, not agent tools.
+
+The current model must decompose every requested goal into observed state and primitive subactions.
+Loading or creating a world, dismissing menus, moving, mining, collecting drops, opening inventory,
+crafting, equipping, and final verification are all part of that model-owned plan. Do not assume a
+world is loaded and do not delegate those steps to a native routine.
+
 ## Discover
 
-Call `lodestone_capabilities_list`. Read the player, inventory, nearby blocks and entities, and UI
-state needed for the next decision. Treat errors, stale revisions, unreachable paths, missing drops,
-and changed inventory as evidence that requires replanning.
+Call `lodestone_capabilities_list`. First read the current UI. If no world and player exist, use UI
+subactions to load or create a world, then verify both. Read the player, inventory, nearby blocks and
+entities, and UI state needed for the next decision. Treat errors, stale revisions, unreachable
+paths, missing drops, and changed inventory as evidence that requires replanning.
 
 ## Execute
 

@@ -7,11 +7,6 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
-import dev.lodestone.goal.GoalMode;
-import dev.lodestone.goal.GoalIntelligence;
-import dev.lodestone.goal.GoalSafety;
-import dev.lodestone.goal.GoalControls;
-import dev.lodestone.goal.GoalSpec;
 import dev.lodestone.protocol.JsonSupport;
 import dev.lodestone.protocol.ProtocolVersion;
 import dev.lodestone.protocol.RequestEnvelope;
@@ -68,7 +63,6 @@ public final class McpGateway {
             new CapabilityAlias("place_building_pattern", "lodestone.building.pattern.place", "1.0"),
             new CapabilityAlias("capture_screenshot", "minecraft.client.screenshot.capture", "1.0"));
     private final LodestoneRuntime runtime;
-    private final GoalService goalService;
     private final GoalSubactionService goalSubactions;
     private final GoalConditionHooks goalHooks;
     private final StaticCatalogTools staticCatalogTools;
@@ -86,7 +80,6 @@ public final class McpGateway {
     /** Compatibility constructor. Caller grants are ignored; every local session is unrestricted. */
     public McpGateway(LodestoneRuntime runtime, CallerGrantResolver callerGrantResolver) {
         this.runtime = runtime;
-        this.goalService = new GoalService(runtime);
         this.goalSubactions = new GoalSubactionService(runtime);
         this.goalHooks = new GoalConditionHooks(runtime);
         this.staticCatalogTools = new StaticCatalogTools(runtime);
@@ -253,8 +246,8 @@ public final class McpGateway {
                     "tools", object(Map.of("listChanged", false)),
                     "resources", object(Map.of("subscribe", false, "listChanged", false)))));
             result.add("serverInfo", object(Map.of("name", "lodestone", "version", "1.0.0")));
-            result.addProperty("instructions", supportsNeoForgeGoals()
-                    ? "Prefer the lodestone-goal skill for host-native subagent goals. Use minecraft_goal as the model-agnostic fallback, minecraft_subactions_execute for bounded script segments, and minecraft_goal_tasks to inspect contracts. Use lodestone_capability_invoke for individual typed access and inspect availability before mutation."
+            result.addProperty("instructions", supportsNeoForgeGoalHelpers()
+                    ? "Use the lodestone-goal skill in the current agent session. The current model or its lowest-latency tool-capable native subagent owns goal planning. Use minecraft_subactions_execute only for bounded script segments, re-observe at uncertainty boundaries, and use hooks for conditions. Native task routines are not exposed."
                     : "Use lodestone_capability_invoke for individual typed access and inspect availability before mutation.");
             return result;
         }
@@ -294,42 +287,7 @@ public final class McpGateway {
                 "deadlineEpochMs", Map.of("type", "integer"),
                 "idempotencyKey", Map.of("type", "string"),
                 "dryRun", Map.of("type", "boolean"))), List.of("capability", "input")));
-        if (supportsNeoForgeGoals()) {
-            tools.add(tool("minecraft_goal", "Run a bounded Minecraft goal through the model-agnostic orchestrator fallback. mode=script batches stable subactions only through the next uncertainty boundary; mode=realtime observes after each logical subaction. intelligence and safety are independent low/medium/high axes. Agent hosts should prefer the lodestone-goal skill so the current workflow can launch its lowest-latency tool-capable native subagent. Only one goal controls the player at a time.", schema(Map.ofEntries(
-                    Map.entry("goal", Map.of("type", "string", "minLength", 1, "maxLength", 4096)),
-                    Map.entry("mode", Map.of("type", "string", "enum", List.of("script", "realtime"))),
-                    Map.entry("taskId", Map.of("type", "string", "minLength", 1, "maxLength", 128,
-                            "description", "Rejected: built-in task IDs are not supported by the model-agnostic fallback.")),
-                    Map.entry("maxSteps", Map.of("type", "integer", "minimum", 1, "maximum", 1000)),
-                    Map.entry("maxDurationMs", Map.of("type", "integer", "minimum", 100, "maximum", 600000)),
-                    Map.entry("dryRun", Map.of("type", "boolean", "description",
-                            "Rejected when true: dry runs are not supported by the model-agnostic fallback.")),
-                    Map.entry("suppressInGameMessages", Map.of("type", "boolean")),
-                    Map.entry("intelligence", Map.of("type", "string", "enum", List.of("low", "medium", "high"))),
-                    Map.entry("safety", Map.of("type", "string", "enum", List.of("low", "medium", "high"))),
-                    Map.entry("observation", Map.of("type", "string", "enum", List.of("loaded-chunks"))),
-                    Map.entry("combatPolicy", Map.of("type", "string", "enum", List.of("defensive", "avoid", "none"))),
-                    Map.entry("allowBlockBreaking", Map.of("type", "boolean")),
-                    Map.entry("allowBlockPlacing", Map.of("type", "boolean")),
-                    Map.entry("allowCommands", Map.of("type", "boolean")),
-                    Map.entry("worldSeed", Map.of("type", "string", "minLength", 1, "maxLength", 20,
-                            "description", "Rejected: a world seed entered through the create-world UI is not supported by the realtime goal orchestrator.")),
-                    Map.entry("priority", Map.of("type", "boolean", "description",
-                            "When true, positions this call ahead of other not-yet-started, already-queued minecraft_goal calls. Never interrupts a goal that is already running. Defaults to false.")),
-                    Map.entry("plan", Map.of("type", "object", "description",
-                            "Rejected: a custom declarative plan is not supported by the realtime goal orchestrator.")))), List.of("goal")));
-            tools.add(tool("minecraft_goal_tasks", "List built-in Minecraft goal tasks, required capabilities, fixtures, and honest success contracts.", schema(Map.of(
-                    "category", Map.of("type", "string", "minLength", 1, "maxLength", 64)))));
-            tools.add(tool("minecraft_goal_benchmark", "Run matched script and realtime task cases and compare correctness before elapsed time. Use dryRun only where the capability documents dry-run support; otherwise use an isolated fixture.", schema(Map.of(
-                    "taskIds", Map.of("type", "array", "maxItems", 32, "items", Map.of("type", "string", "minLength", 1, "maxLength", 128)),
-                    "dryRun", Map.of("type", "boolean"),
-                    "intelligence", Map.of("type", "string", "enum", List.of("low", "medium", "high")),
-                    "safety", Map.of("type", "string", "enum", List.of("low", "medium", "high")),
-                    "observation", Map.of("type", "string", "enum", List.of("loaded-chunks")),
-                    "combatPolicy", Map.of("type", "string", "enum", List.of("defensive", "avoid", "none")),
-                    "allowBlockBreaking", Map.of("type", "boolean"),
-                    "allowBlockPlacing", Map.of("type", "boolean"),
-                    "allowCommands", Map.of("type", "boolean")))));
+        if (supportsNeoForgeGoalHelpers()) {
             tools.add(tool("minecraft_subactions_execute", "Execute one bounded script-mode segment as ordered Lodestone capability subactions. Stops at the first non-ok result by default. Only batch actions whose arguments do not depend on an unknown earlier result; re-observe at uncertainty boundaries.", schema(Map.of(
                     "actions", Map.of("type", "array", "minItems", 1,
                             "maxItems", GoalSubactionService.MAX_ACTIONS,
@@ -629,19 +587,14 @@ public final class McpGateway {
             case "lodestone_status" -> toolResult(runtime.health());
             case "lodestone_instances_list" -> toolResult(instancesList());
             case "lodestone_capabilities_list" -> toolResult(Map.of(
-                    "capabilities", runtime.capabilities(text(args, "query", ""))));
-            case "lodestone_capability_get" -> systemCapability("lodestone.system.capabilities.get",
-                    Map.of("id", requiredText(args, "capability")));
-            case "lodestone_capability_search" -> systemCapability("lodestone.system.capabilities.search",
-                    Map.of("query", requiredText(args, "query")));
+                    "capabilities", modelCapabilities(text(args, "query", ""))));
+            case "lodestone_capability_get" -> capabilityGet(args);
+            case "lodestone_capability_search" -> capabilitySearch(args);
             case "lodestone_capability_invoke" -> invoke(args);
-            case "minecraft_goal" -> { requireNeoForgeGoals(); yield goalRun(args); }
-            case "minecraft_goal_tasks" -> { requireNeoForgeGoals(); yield goalTasks(args); }
-            case "minecraft_goal_benchmark" -> { requireNeoForgeGoals(); yield goalBenchmark(args); }
-            case "minecraft_subactions_execute" -> { requireNeoForgeGoals(); yield subactionsExecute(args); }
-            case "minecraft_hook_create" -> { requireNeoForgeGoals(); yield goalHookCreate(args); }
-            case "minecraft_hook_poll" -> { requireNeoForgeGoals(); yield goalHookPoll(args); }
-            case "minecraft_hook_remove" -> { requireNeoForgeGoals(); yield goalHookRemove(args); }
+            case "minecraft_subactions_execute" -> { requireNeoForgeGoalHelpers(); yield subactionsExecute(args); }
+            case "minecraft_hook_create" -> { requireNeoForgeGoalHelpers(); yield goalHookCreate(args); }
+            case "minecraft_hook_poll" -> { requireNeoForgeGoalHelpers(); yield goalHookPoll(args); }
+            case "minecraft_hook_remove" -> { requireNeoForgeGoalHelpers(); yield goalHookRemove(args); }
             case "lodestone_events_subscribe" -> subscribe(args);
             case "lodestone_events_poll" -> poll(args);
             case "lodestone_events_unsubscribe" -> unsubscribe(args);
@@ -967,8 +920,37 @@ public final class McpGateway {
                 .findFirst();
     }
 
+    private List<CapabilityDescriptor> modelCapabilities(String query) {
+        return runtime.capabilities(query).stream()
+                .filter(capability -> !GoalCapabilityPolicy.isNativeGoalRoutine(capability.id()))
+                .toList();
+    }
+
+    private JsonElement capabilityGet(JsonObject args) {
+        var capability = requiredText(args, "capability");
+        try {
+            GoalCapabilityPolicy.requireModelPrimitive(capability);
+        } catch (IllegalArgumentException invalid) {
+            throw new GatewayException(-32602, invalid.getMessage());
+        }
+        return systemCapability("lodestone.system.capabilities.get", Map.of("id", capability));
+    }
+
+    private JsonElement capabilitySearch(JsonObject args) {
+        var query = requiredText(args, "query");
+        var result = invokeSystemCapability("lodestone.system.capabilities.search", Map.of("query", query));
+        return result.status() == ResultEnvelope.Status.OK
+                ? toolResult(Map.of("capabilities", modelCapabilities(query)))
+                : toolResult(result);
+    }
+
     private JsonElement invoke(JsonObject args) {
         var capability = requiredText(args, "capability");
+        try {
+            GoalCapabilityPolicy.requireModelPrimitive(capability);
+        } catch (IllegalArgumentException invalid) {
+            throw new GatewayException(-32602, invalid.getMessage());
+        }
         if (capability.startsWith("minecraft.event.")) {
             throw new GatewayException(-32602,
                     "event capabilities must use the session-owned MCP event tools");
@@ -1067,104 +1049,16 @@ public final class McpGateway {
         return toolResult(goalHooks.remove(session().id, requiredText(args, "hookId")));
     }
 
-    private JsonElement goalRun(JsonObject args) {
-        var goal = requiredText(args, "goal");
-        var modeName = text(args, "mode", "realtime").replace('-', '_').toUpperCase(java.util.Locale.ROOT);
-        final GoalMode mode;
-        try {
-            mode = GoalMode.valueOf(modeName);
-        } catch (IllegalArgumentException invalid) {
-            throw new GatewayException(-32602, "mode must be script or realtime");
-        }
-        var taskId = text(args, "taskId", null);
-        var maxSteps = boundedArgument(args, "maxSteps", 256, 1, 1000);
-        var maxDurationMs = boundedLongArgument(args, "maxDurationMs",
-                GoalSpec.defaultMaxDurationMs(goal, taskId), 100L, 600_000L);
-        try {
-            var customPlan = GoalService.parsePlan(args.get("plan"));
-            var intelligence = GoalIntelligence.parse(text(args, "intelligence", "medium"));
-            var safety = GoalSafety.parse(text(args, "safety", "medium"));
-            var controls = new GoalControls(text(args, "observation", "loaded-chunks"),
-                    text(args, "combatPolicy", "defensive"),
-                    bool(args, "allowBlockBreaking", true), bool(args, "allowBlockPlacing", true),
-                    bool(args, "allowCommands", false));
-            var report = goalService.run(goal, mode, taskId, maxSteps, maxDurationMs,
-                    bool(args, "dryRun", false), customPlan,
-                    bool(args, "suppressInGameMessages", false), intelligence, safety,
-                    controls, text(args, "worldSeed", null), bool(args, "priority", false),
-                    session().id, session().authorization);
-            return toolResult(report);
-        } catch (IllegalArgumentException invalid) {
-            throw new GatewayException(-32602, invalid.getMessage());
-        }
-    }
-
-    private JsonElement goalTasks(JsonObject args) {
-        var descriptor = runtime.handshake().adapter();
-        return toolResult(Map.of("tasks", goalService.tasks(text(args, "category", "")),
-                "modelSelection", "lowest-latency-tool-capable-model-available-to-current-agent-host",
-                "fallbackBackends", List.of("auto", "codex-cli", "claude-cli", "api"),
-                "adaptivePlanSynthesis", Map.of("enabled", true,
-                        "requiresConfiguredProvider", true,
-                        "appliesWhen", "no built-in task or custom declarative plan matches"),
-                "intelligenceLevels", List.of(
-                        Map.of("id", "low", "behavior", "shortest viable plan with required observations"),
-                        Map.of("id", "medium", "behavior", "prerequisite, tool, reachability, and recovery planning"),
-                        Map.of("id", "high", "behavior", "deeper prerequisite planning, alternate paths, and additional verification")),
-                "safetyPolicies", List.of(
-                        Map.of("id", "low", "behavior", "goal progress with minimal intervention"),
-                        Map.of("id", "medium", "behavior", "avoid fluids and damaging routes; recover visible hazards"),
-                        Map.of("id", "high", "behavior", "player safety preempts progress; avoid unsafe drops and hostile threats")),
-                "minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader()));
-    }
-
-    private JsonElement goalBenchmark(JsonObject args) {
-        var taskIds = new ArrayList<String>();
-        var taskIdNode = args.get("taskIds");
-        if (taskIdNode != null && !taskIdNode.isJsonNull()) {
-            if (!taskIdNode.isJsonArray() || taskIdNode.getAsJsonArray().size() > 32) {
-                throw new GatewayException(-32602, "taskIds must be an array with at most 32 entries");
-            }
-            taskIdNode.getAsJsonArray().forEach(value -> taskIds.add(value.getAsString()));
-        }
-        final GoalIntelligence intelligence;
-        final GoalSafety safety;
-        try {
-            intelligence = GoalIntelligence.parse(text(args, "intelligence", "medium"));
-            safety = GoalSafety.parse(text(args, "safety", "medium"));
-        } catch (IllegalArgumentException invalid) {
-            throw new GatewayException(-32602, invalid.getMessage());
-        }
-        var controls = new GoalControls(text(args, "observation", "loaded-chunks"),
-                text(args, "combatPolicy", "defensive"), bool(args, "allowBlockBreaking", true),
-                bool(args, "allowBlockPlacing", true), bool(args, "allowCommands", false));
-        var descriptor = runtime.handshake().adapter();
-        return toolResult(Map.of("minecraftVersion", descriptor.gameVersion(), "loader", descriptor.loader(), "results",
-                goalService.benchmark(taskIds, bool(args, "dryRun", false), intelligence, safety, controls,
-                        session().id, session().authorization),
-                "intelligence", intelligence.id(), "safety", safety.id()));
-    }
-
-    private boolean supportsNeoForgeGoals() {
+    private boolean supportsNeoForgeGoalHelpers() {
         var descriptor = runtime.handshake().adapter();
         return "neoforge".equalsIgnoreCase(descriptor.loader()) && "1.21.1".equals(descriptor.gameVersion());
     }
 
-    private void requireNeoForgeGoals() {
-        if (!supportsNeoForgeGoals()) {
-            throw new GatewayException(-32601, "minecraft goals are enabled only for NeoForge 1.21.1");
+    private void requireNeoForgeGoalHelpers() {
+        if (!supportsNeoForgeGoalHelpers()) {
+            throw new GatewayException(-32601,
+                    "Minecraft subaction batches and condition hooks are enabled only for NeoForge 1.21.1");
         }
-    }
-
-    private static int boundedArgument(JsonObject args, String name, int defaultValue, int minimum, int maximum) {
-        if (!args.has(name) || args.get(name).isJsonNull()) return defaultValue;
-        if (!args.get(name).isJsonPrimitive() || !args.get(name).getAsJsonPrimitive().isNumber()) {
-            throw new GatewayException(-32602, name + " must be an integer");
-        }
-        var value = args.get(name).getAsInt();
-        if (value < minimum || value > maximum) throw new GatewayException(-32602,
-                name + " must be between " + minimum + " and " + maximum);
-        return value;
     }
 
     private static long boundedLongArgument(JsonObject args, String name, long defaultValue, long minimum, long maximum) {
@@ -1233,10 +1127,14 @@ public final class McpGateway {
     }
 
     private JsonElement systemCapability(String capability, Map<String, Object> input) {
+        return toolResult(invokeSystemCapability(capability, input));
+    }
+
+    private ResultEnvelope invokeSystemCapability(String capability, Map<String, Object> input) {
         var request = new RequestEnvelope(ProtocolVersion.CURRENT, UUID.randomUUID().toString(),
                 runtime.sessionId(), capability, "1.0", input, null, null, false);
         var session = session();
-        return toolResult(runtime.invoke(request, session.id, session.authorization).join());
+        return runtime.invoke(request, session.id, session.authorization).join();
     }
 
     private JsonElement resourcesList() {
@@ -1247,7 +1145,12 @@ public final class McpGateway {
         var uri = requiredText(params, "uri");
         final ResourceContent resource;
         try {
-            resource = runtime.readResourceContent(uri, session().id);
+            resource = "lodestone://capabilities/manifest".equals(uri)
+                    ? ResourceContent.text("application/json", JsonSupport.MAPPER.toJson(Map.of(
+                            "protocolVersion", ProtocolVersion.CURRENT,
+                            "sessionId", runtime.sessionId(),
+                            "capabilities", modelCapabilities(""))))
+                    : runtime.readResourceContent(uri, session().id);
         } catch (IllegalArgumentException missing) {
             throw new GatewayException(-32002, "resource not found");
         }

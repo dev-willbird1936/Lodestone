@@ -9,6 +9,7 @@ import dev.lodestone.runtime.LodestoneRuntime;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,7 +25,7 @@ final class McpGatewayEventSecurityTest {
 
             assertFalse(result.get("isError").getAsBoolean());
             assertTrue(runtime.audit().stream().anyMatch(record ->
-                    "minecraft.event.subscribe".equals(record.capability()) && "success".equals(record.outcome())));
+                    "minecraft.event.subscribe".equals(record.capability()) && "ok".equals(record.outcome())));
         }
     }
 

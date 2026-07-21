@@ -46,10 +46,12 @@ player, inventory, UI, event, or structured-world semantics.
 
 ## Minecraft goals
 
-NeoForge 1.21.1 also exposes bounded `minecraft_goal`, `minecraft_goal_tasks`, and
-`minecraft_goal_benchmark` MCP tools. Script mode executes segmented capability plans with
-structured state handoff; realtime mode selects one action at a time, observes fresh state, and
-continues with the same verification kernel. See [Minecraft goals](docs/minecraft-goals.md).
+On NeoForge 1.21.1, the `lodestone-goal` skill makes the model in the current agent session own the
+goal. It can use the host's lowest-latency tool-capable native subagent. Script mode batches only
+primitive subactions through the next uncertainty boundary; realtime mode observes after each
+logical subaction. Native survival, crafting, combat, creative, and Nether task routines are hidden
+internal regression fixtures and cannot be discovered or invoked through MCP. See
+[Minecraft goals](docs/minecraft-goals.md).
 
 ## Safety model
 

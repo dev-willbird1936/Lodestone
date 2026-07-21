@@ -14,13 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * {@code minecraft_goal} now delegates to {@link GoalOrchestratorLauncher} (a real, subprocess-
- * spawning script/realtime orchestrator). Every test here
- * that exercises that call path uses another rejected request so it stays a fast, offline,
- * non-live unit test - a call {@link GoalOrchestratorLauncher} would actually accept spawns a real
- * Python subprocess, which is exactly what these tests must not trigger.
- */
+/** Verifies that Minecraft goals stay model-owned at the public MCP boundary. */
 class McpGatewayGoalTest {
     private static LodestoneRuntime neoForgeRuntime() {
         var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly());
@@ -35,76 +29,69 @@ class McpGatewayGoalTest {
     }
 
     @Test
-    void publishesGoalToolsAndBothExecutionModes() {
-        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
-            var descriptor = new AdapterDescriptor("goal.test.neoforge", "1.0.0", "minecraft-java", "1.21.1",
-                    "neoforge", Environment.CLIENT);
-            runtime.registerAdapter(new LodestoneAdapter() {
-                @Override public AdapterDescriptor descriptor() { return descriptor; }
-                @Override public CapabilityManifest manifest() { return new CapabilityManifest(descriptor, java.util.List.of()); }
-                @Override public java.util.Map<String, dev.lodestone.adapter.CapabilityHandler> handlers() { return java.util.Map.of(); }
-            });
+    void publishesOnlyModelComposedGoalHelpers() {
+        try (var runtime = neoForgeRuntime()) {
             var gateway = new McpGateway(runtime);
-            gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+            var initialized = gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
             var listed = gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}");
-            assertTrue(listed.contains("minecraft_goal"));
-            assertTrue(listed.contains("minecraft_goal_benchmark"));
+            assertFalse(listed.contains("\"name\":\"minecraft_goal\""));
+            assertFalse(listed.contains("\"name\":\"minecraft_goal_tasks\""));
+            assertFalse(listed.contains("\"name\":\"minecraft_goal_benchmark\""));
             assertTrue(listed.contains("minecraft_subactions_execute"));
             assertTrue(listed.contains("minecraft_hook_create"));
             assertTrue(listed.contains("minecraft_hook_poll"));
             assertTrue(listed.contains("minecraft_hook_remove"));
-            assertTrue(listed.contains("suppressInGameMessages"));
-            assertTrue(listed.contains("intelligence"));
-            assertTrue(listed.contains("safety"));
-            assertTrue(listed.contains("observation"));
-            assertTrue(listed.contains("combatPolicy"));
-            assertTrue(listed.contains("priority"));
-            assertTrue(listed.contains("script"));
-            assertTrue(listed.contains("realtime"));
-            assertTrue(listed.contains("[\"low\",\"medium\",\"high\"]"));
+            assertTrue(initialized.contains("current model"));
+            assertTrue(initialized.contains("Native task routines are not exposed"));
         }
     }
 
     @Test
-    void scriptModeStillRejectsUnsupportedDryRunBeforeLaunching() {
-        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
-            var descriptor = new AdapterDescriptor("goal.test.neoforge", "1.0.0", "minecraft-java", "1.21.1",
-                    "neoforge", Environment.CLIENT);
-            runtime.registerAdapter(new LodestoneAdapter() {
-                @Override public AdapterDescriptor descriptor() { return descriptor; }
-                @Override public CapabilityManifest manifest() { return new CapabilityManifest(descriptor, java.util.List.of()); }
-                @Override public java.util.Map<String, dev.lodestone.adapter.CapabilityHandler> handlers() { return java.util.Map.of(); }
-            });
+    void hidesNativeGoalRoutinesFromDiscovery() {
+        try (var runtime = neoForgeRuntime()) {
             var gateway = new McpGateway(runtime);
             gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
-
-            var response = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"minecraft_goal\",\"arguments\":{\"goal\":\"get a wooden axe and mine an entire tree\",\"mode\":\"script\",\"dryRun\":true}}}"))
-                    .getAsJsonObject();
-            assertFalse(response.has("result"));
-            var error = response.getAsJsonObject("error");
-            assertEquals(-32602, error.get("code").getAsInt());
-            assertTrue(error.get("message").getAsString().contains("dryRun"), error.get("message").getAsString());
+            var listed = gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"lodestone_capabilities_list\",\"arguments\":{\"query\":\"minecraft.goal\"}}}");
+            var searched = gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"lodestone_capability_search\",\"arguments\":{\"query\":\"wooden axe\"}}}");
+            assertFalse(listed.contains("minecraft.goal.survival.wooden-axe-tree"));
+            assertFalse(searched.contains("minecraft.goal.survival.wooden-axe-tree"));
+            assertTrue(listed.contains(GoalCapabilityPolicy.SAFE_WAYPOINT));
         }
     }
 
     @Test
-    void priorityFlagDoesNotBypassUnsupportedParameterValidation() {
-        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
-            var descriptor = new AdapterDescriptor("goal.test.neoforge", "1.0.0", "minecraft-java", "1.21.1",
-                    "neoforge", Environment.CLIENT);
-            runtime.registerAdapter(new LodestoneAdapter() {
-                @Override public AdapterDescriptor descriptor() { return descriptor; }
-                @Override public CapabilityManifest manifest() { return new CapabilityManifest(descriptor, java.util.List.of()); }
-                @Override public java.util.Map<String, dev.lodestone.adapter.CapabilityHandler> handlers() { return java.util.Map.of(); }
-            });
+    void hidesNativeGoalRoutinesFromCapabilityManifestResource() {
+        try (var runtime = neoForgeRuntime()) {
             var gateway = new McpGateway(runtime);
             gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+            var manifest = gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"resources/read\",\"params\":{\"uri\":\"lodestone://capabilities/manifest\"}}");
+            assertFalse(manifest.contains("minecraft.goal.survival.wooden-axe-tree"));
+            assertTrue(manifest.contains(GoalCapabilityPolicy.SAFE_WAYPOINT));
+        }
+    }
 
-            var response = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"minecraft_goal\",\"arguments\":{\"goal\":\"get a wooden axe and mine an entire tree\",\"mode\":\"script\",\"dryRun\":true,\"priority\":true}}}"))
+    @Test
+    void rejectsNativeGoalRoutineGetAndInvoke() {
+        try (var runtime = neoForgeRuntime()) {
+            var gateway = new McpGateway(runtime);
+            gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+            var get = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"lodestone_capability_get\",\"arguments\":{\"capability\":\"minecraft.goal.survival.wooden-axe-tree\"}}}")).getAsJsonObject();
+            var invoke = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"lodestone_capability_invoke\",\"arguments\":{\"capability\":\"minecraft.goal.survival.wooden-axe-tree\",\"input\":{}}}}"))
                     .getAsJsonObject();
-            assertFalse(response.has("result"));
-            var error = response.getAsJsonObject("error");
-            assertEquals(-32602, error.get("code").getAsInt());
+            assertEquals(-32602, get.getAsJsonObject("error").get("code").getAsInt());
+            assertEquals(-32602, invoke.getAsJsonObject("error").get("code").getAsInt());
+            assertTrue(invoke.getAsJsonObject("error").get("message").getAsString().contains("current agent"));
+        }
+    }
+
+    @Test
+    void rejectsNativeGoalRoutineInsideScriptBatch() {
+        try (var runtime = neoForgeRuntime()) {
+            var gateway = new McpGateway(runtime);
+            gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+            var response = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"minecraft_subactions_execute\",\"arguments\":{\"actions\":[{\"capability\":\"minecraft.goal.survival.wooden-axe-tree\"}]}}}"))
+                    .getAsJsonObject();
+            assertEquals(-32602, response.getAsJsonObject("error").get("code").getAsInt());
         }
     }
 

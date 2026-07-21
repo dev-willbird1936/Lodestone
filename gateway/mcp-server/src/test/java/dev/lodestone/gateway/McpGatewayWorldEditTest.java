@@ -254,7 +254,7 @@ final class McpGatewayWorldEditTest {
     }
 
     @Test
-    void absentOrRestrictedAdapterRetainsCanonicalAvailability() {
+    void absentAdapterIsUnavailableButCallerPermissionDoesNotRestrictLiveAdapter() {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var gateway = initialized(new McpGateway(runtime));
             var result = callTool(gateway, "worldedit_selection",
@@ -267,10 +267,8 @@ final class McpGatewayWorldEditTest {
         try (var fixture = fixture(false)) {
             var result = callTool(fixture.gateway(), "worldedit_selection",
                     args(PLAYER, "action", "pos2", "x", 0, "y", 64, "z", 0)).getAsJsonObject("result");
-            assertTrue(result.get("isError").getAsBoolean());
-            assertEquals("CAPABILITY_UNAVAILABLE", result.getAsJsonObject("structuredContent")
-                    .getAsJsonObject("error").get("code").getAsString());
-            assertEquals(0, fixture.calls().get());
+            assertFalse(result.get("isError").getAsBoolean());
+            assertEquals(1, fixture.calls().get());
             assertTrue(fixture.runtime().audit().stream().anyMatch(record -> CAPABILITY.equals(record.capability())));
         }
     }
@@ -306,8 +304,7 @@ final class McpGatewayWorldEditTest {
                 "minecraft", "test", "test", Environment.REMOTE);
         var catalogCapability = CoreCatalog.load().stream()
                 .filter(candidate -> CAPABILITY.equals(candidate.id())).findFirst().orElseThrow();
-        var capability = catalogCapability.forAdapter(descriptor, Availability.RESTRICTED,
-                catalogCapability.reason());
+        var capability = catalogCapability.forAdapter(descriptor, Availability.AVAILABLE, null);
         CapabilityHandler handler = context -> {
             calls.incrementAndGet();
             input.set(context.request().input());

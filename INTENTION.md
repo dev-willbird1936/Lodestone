@@ -19,8 +19,11 @@ every Minecraft environment.
 - NeoForge 1.21.1 now exposes model-planned goal execution with public low/medium/high
   intelligence and safety tiers, bounded script subaction batches, realtime single-action control,
   polling-backed inventory condition hooks, and generic terminal MCP observations. The shared
-  `lodestone-goal` skill delegates through the current host's fastest available tool-capable native
-  subagent without pinning a vendor or model.
+  `lodestone-goal` skill keeps high-level thinking in the calling session and may delegate through
+  the current host's fastest available tool-capable native subagent without pinning a vendor or
+  model. Native task routines and the server-side `minecraft_goal`, task-catalog, and benchmark
+  entry points are absent from public MCP discovery. Direct get, invoke, and script batching also
+  reject every `minecraft.goal.*` routine except the bounded safe-waypoint pathing primitive.
 - Standalone Lodestone branding, package names, protocol models, runtime, gateway, tests, docs, and
   provenance rules.
 - Protocol-first module boundaries with no native Minecraft imports in the MCP gateway.
@@ -46,9 +49,9 @@ every Minecraft environment.
   three packaged rows.
 - Bounded no-chunk-load overworld region scans implemented with loaded/unloaded cell counts and
   block-frequency output across all three packaged rows.
-- Loader-neutral bounded Minecraft goal engine added with declarative segmented script execution,
-  realtime observe-after-action execution, strict terminal predicates, model-provider selection,
-  task catalog, matched benchmark reporting, and MCP gateway tools for NeoForge 1.21.1.
+- The loader-neutral deterministic Minecraft goal engine remains only as internal regression and
+  benchmark infrastructure. It is not a public MCP goal surface and is not used by the
+  `lodestone-goal` skill.
 - Goal execution now keeps intelligence and safety as separate, inspectable policy axes: adaptive
   script checkpoints are supported, realtime providers are selected by measured latency with low
   reasoning effort by default, intelligent actors veto tool-required bare-hand mining, and command
