@@ -40,6 +40,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -209,17 +210,46 @@ public final class NeoForgeClientController {
     }
 
     /**
-     * Builds the {@code minecraft.player.interact} output map. The catalog declares this
-     * capability's {@code outputSchema} as exactly {@code action}/{@code queued} with
-     * {@code additionalProperties:false} - any other key fails output schema validation and,
-     * because interact always commits its mutation before returning, surfaces to callers as
-     * {@code OUTCOME_INDETERMINATE} rather than a clean error. Kept as its own package-private
-     * method (instead of inlined in {@link ClientBridgeImpl#interactKeyAsync} or
+     * Builds the {@code minecraft.player.interact} output map for "use"/"pick" and for any
+     * "attack" the caller does not have target information for. The catalog declares this
+     * capability's {@code outputSchema} with {@code additionalProperties:false} - any key it does
+     * not declare fails output schema validation and, because interact always commits its
+     * mutation before returning, surfaces to callers as {@code OUTCOME_INDETERMINATE} rather than
+     * a clean error (see the leaked "intelligence" output field this guarded against, regression
+     * tested by {@code NeoForgeInteractOutputTest}). Kept as its own package-private method
+     * (instead of inlined in {@link ClientBridgeImpl#interactKeyAsync} or
      * {@link NeoForgeAttackHold}) so it can be exercised directly by a regression test without
      * requiring a live Minecraft client.
      */
     static Map<String, Object> interactOutput(String action) {
         return Map.of("action", action, "queued", true);
+    }
+
+    /**
+     * Builds interact's output for an "attack" that resolved against an entity or hit nothing -
+     * {@code held} is always {@code false} here since neither case ever starts a
+     * {@link NeoForgeAttackHold}, and there is no block position to report as {@code target}.
+     */
+    static Map<String, Object> interactOutput(String action, boolean held, String targetKind) {
+        return Map.of("action", action, "queued", true, "held", held, "targetKind", targetKind);
+    }
+
+    /**
+     * Builds interact's output for an "attack" that resolved against a block - {@code held}
+     * distinguishes a genuine multi-tick {@link NeoForgeAttackHold} break from a momentary click
+     * that happened to hit an instant-break block, an unbreakable block, or any block in a game
+     * mode (e.g. creative) where {@link ClientBridgeImpl#heldAttackTarget} never starts a hold.
+     * {@code target} is always {@code block} for this overload, so it always carries the position
+     * and block id the caller aimed at.
+     */
+    static Map<String, Object> interactOutput(String action, boolean held, BlockPos target, String blockId) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("action", action);
+        output.put("queued", true);
+        output.put("held", held);
+        output.put("targetKind", "block");
+        output.put("target", Map.of("x", target.getX(), "y", target.getY(), "z", target.getZ(), "block", blockId));
+        return Map.copyOf(output);
     }
 
     private static final class ClientBridgeImpl implements NeoForgeAdapter.ClientBridge {
@@ -268,7 +298,7 @@ public final class NeoForgeClientController {
             }
         }
 
-        private record HeldAttackTarget(BlockPos position, double progressPerTick) { }
+        private record HeldAttackTarget(BlockPos position, double progressPerTick, String blockId) { }
 
         @Override
         public boolean available(String capability) {
@@ -1201,7 +1231,7 @@ public final class NeoForgeClientController {
                             }
                             invocation.cancellation().commitMutation();
                             attackHold = new NeoForgeAttackHold(invocation, result,
-                                    heldTarget.position(), heldTarget.progressPerTick());
+                                    heldTarget.position(), heldTarget.progressPerTick(), heldTarget.blockId());
                             return;
                         }
                     }
@@ -1214,12 +1244,14 @@ public final class NeoForgeClientController {
                     invocation.cancellation().commitMutation();
                     KeyMapping.click(mapping.getKey());
                     // NOTE: the "intelligence" hint read above is intentionally not echoed into the
-                    // output. minecraft.player.interact's catalog outputSchema is exactly
-                    // {action, queued} with additionalProperties:false; it does not declare (nor does
-                    // this capability's inputSchema accept) an "intelligence" field. Returning it here
-                    // used to fail every single interact call's output validation - see
-                    // NeoForgeClientController.interactOutput.
-                    result.complete(interactOutput(action));
+                    // output - minecraft.player.interact's catalog outputSchema does not declare (nor
+                    // does this capability's inputSchema accept) an "intelligence" field. Returning it
+                    // here used to fail every single interact call's output validation - see
+                    // NeoForgeClientController.interactOutput. "use" and "pick" stay the plain
+                    // {action, queued} shape below; only "attack" additionally reports what it hit, so
+                    // a caller can tell a genuine block-breaking swing apart from a no-op one (see
+                    // momentaryAttackOutput).
+                    result.complete("attack".equals(action) ? momentaryAttackOutput(client) : interactOutput(action));
                 } catch (Throwable failure) {
                     result.completeExceptionally(failure);
                 }
@@ -1247,7 +1279,33 @@ public final class NeoForgeClientController {
             if (state.isAir() || !state.getFluidState().isEmpty()) return null;
             var progressPerTick = state.getDestroyProgress(player, client.level, pos);
             if (progressPerTick <= 0.0 || progressPerTick >= 1.0) return null;
-            return new HeldAttackTarget(pos.immutable(), progressPerTick);
+            var blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+            return new HeldAttackTarget(pos.immutable(), progressPerTick, blockId);
+        }
+
+        /**
+         * Builds the output for an "attack" that {@link #heldAttackTarget} declined to hold -
+         * either it never resolved to a block at all (a miss or an entity), or it did but the
+         * block does not need holding (creative mode, an instant-break block, or an unbreakable
+         * one), so the plain {@link KeyMapping#click} above already ran. Reads
+         * {@link Minecraft#hitResult}, the exact field vanilla's own left-click handling
+         * ({@code Minecraft#startAttack}) switches on to choose between
+         * {@code gameMode.attack(entity)} and {@code gameMode.startDestroyBlock(block)} - it is
+         * recomputed every client frame regardless of what this method does, so reading it here is
+         * cheap and authoritative instead of running a second, possibly-inconsistent raycast.
+         */
+        private Map<String, Object> momentaryAttackOutput(Minecraft client) {
+            var hit = client.hitResult;
+            if (hit instanceof EntityHitResult) {
+                return interactOutput("attack", false, "entity");
+            }
+            if (hit instanceof BlockHitResult blockHit && blockHit.getType() == HitResult.Type.BLOCK
+                    && client.level != null) {
+                var pos = blockHit.getBlockPos();
+                var blockId = BuiltInRegistries.BLOCK.getKey(client.level.getBlockState(pos).getBlock()).toString();
+                return interactOutput("attack", false, pos, blockId);
+            }
+            return interactOutput("attack", false, "none");
         }
 
         private Map<String, Object> selectSlot(dev.lodestone.adapter.InvocationContext invocation) {

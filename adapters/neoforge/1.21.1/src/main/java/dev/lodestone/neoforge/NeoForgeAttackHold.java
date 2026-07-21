@@ -58,14 +58,16 @@ final class NeoForgeAttackHold {
     private final InvocationContext invocation;
     private final CompletableFuture<Map<String, Object>> result;
     private final BlockPos target;
+    private final String blockId;
     private final int timeoutTicks;
     private int ticks;
 
     NeoForgeAttackHold(InvocationContext invocation, CompletableFuture<Map<String, Object>> result,
-                       BlockPos target, double progressPerTick) {
+                       BlockPos target, double progressPerTick, String blockId) {
         this.invocation = invocation;
         this.result = result;
         this.target = target.immutable();
+        this.blockId = blockId;
         this.timeoutTicks = Math.min(NeoForgeNavigationGoal.mineTimeoutTicks(progressPerTick), MAX_HOLD_TICKS);
     }
 
@@ -96,12 +98,12 @@ final class NeoForgeAttackHold {
             switch (outcome) {
                 case BROKEN -> {
                     client.options.keyAttack.setDown(false);
-                    result.complete(NeoForgeClientController.interactOutput("attack"));
+                    result.complete(NeoForgeClientController.interactOutput("attack", true, target, blockId));
                 }
                 case TIMED_OUT -> {
                     client.options.keyAttack.setDown(false);
                     result.completeExceptionally(new IllegalStateException(
-                            "held attack timed out before breaking " + target));
+                            "held attack timed out before breaking " + blockId + " at " + target));
                 }
                 case HOLDING -> {
                     if (ticks % 10 == 1) KeyMapping.click(client.options.keyAttack.getKey());
