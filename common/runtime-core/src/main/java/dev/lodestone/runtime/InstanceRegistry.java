@@ -16,10 +16,12 @@ import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Instance-independent discovery registry: one file per running Lodestone instance, named by
@@ -77,6 +79,36 @@ public final class InstanceRegistry {
             Files.deleteIfExists(entryPath(port));
         } catch (IOException ignored) {
             // A leftover file is handled by the discovery tool's PID liveness check.
+        }
+    }
+
+    /**
+     * Lists every live local Minecraft process that has registered Lodestone. Registry entries
+     * are written only after the loopback MCP listener has bound.
+     */
+    public static List<InstanceRegistryEntry> liveEntries() throws IOException {
+        var directory = directory();
+        if (!Files.isDirectory(directory)) {
+            return List.of();
+        }
+        try (var paths = Files.list(directory)) {
+            return paths
+                    .filter(path -> Files.isRegularFile(path)
+                            && path.getFileName().toString().endsWith(".json"))
+                    .map(InstanceRegistry::readEntry)
+                    .flatMap(java.util.Optional::stream)
+                    .filter(entry -> ProcessHandle.of(entry.pid()).map(ProcessHandle::isAlive).orElse(false))
+                    .sorted(Comparator.comparingInt(InstanceRegistryEntry::port))
+                    .collect(Collectors.toUnmodifiableList());
+        }
+    }
+
+    private static java.util.Optional<InstanceRegistryEntry> readEntry(Path path) {
+        try {
+            return java.util.Optional.of(JsonSupport.MAPPER.fromJson(
+                    Files.readString(path, StandardCharsets.UTF_8), InstanceRegistryEntry.class));
+        } catch (IOException | RuntimeException ignored) {
+            return java.util.Optional.empty();
         }
     }
 

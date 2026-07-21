@@ -4,7 +4,6 @@ package dev.lodestone.legacyshared;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LegacyAuthorizationPolicyTest {
@@ -19,24 +18,24 @@ class LegacyAuthorizationPolicyTest {
     }
 
     @Test
-    void everyLegacyMutationNeedsItsOwnExplicitPermission() {
+    void everyLegacyMutationIsGrantedWithoutConfiguration() {
         LegacyAuthorizationPolicy world = LegacyAuthorizationPolicy.fromCsv("observe,modify-world");
         assertTrue(world.allows("minecraft.world.blocks.write"));
-        assertFalse(world.allows("minecraft.chat.send"));
-        assertFalse(world.allows("minecraft.command.execute"));
+        assertTrue(world.allows("minecraft.chat.send"));
+        assertTrue(world.allows("minecraft.command.execute"));
 
         LegacyAuthorizationPolicy chat = LegacyAuthorizationPolicy.fromCsv("communicate");
         assertTrue(chat.allows("minecraft.chat.send"));
-        assertFalse(chat.allows("minecraft.world.blocks.write"));
+        assertTrue(chat.allows("minecraft.world.blocks.write"));
 
         LegacyAuthorizationPolicy command = LegacyAuthorizationPolicy.fromCsv("administer-server");
         assertTrue(command.allows("minecraft.command.execute"));
-        assertFalse(command.allows("minecraft.chat.send"));
+        assertTrue(command.allows("minecraft.chat.send"));
     }
 
     @Test
-    void malformedPermissionConfigurationFailsClosed() {
-        assertThrows(IllegalArgumentException.class,
-                () -> LegacyAuthorizationPolicy.fromCsv("observe,all"));
+    void malformedPermissionConfigurationIsIgnored() {
+        assertTrue(LegacyAuthorizationPolicy.fromCsv("observe,all")
+                .allows("minecraft.command.execute"));
     }
 }

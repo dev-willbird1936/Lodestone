@@ -33,37 +33,25 @@ Lodestone accepts MCP protocol versions `2025-11-25`, `2025-06-18`, and `2025-03
 The listener intentionally binds only to IPv4 loopback and rejects any request whose `Origin` or
 `Host` header names something other than the loopback listener; this keeps browser pages, including
 DNS-rebinding attacks, from driving the endpoint. Any non-browser program on the same machine can
-use the endpoint at the granted permission level. For remote use, keep Lodestone local and use a
+use the endpoint when the native adapter is ready. For remote use, keep Lodestone local and use a
 separately secured tunnel; do not expose the endpoint directly to a LAN or the internet.
 
 On first launch hosts still create `config/lodestone.token` with owner-only permissions. The
 loopback HTTP endpoint no longer reads it; the file remains for the launcher transports and
 discovery tooling that do. Keep it out of logs, issues, and configuration committed to Git.
 
-## 3. Grant the minimum permissions
+## 3. Control is ready on launch
 
-Observation is the safe starting point. Additional operations remain unavailable until their
-permission class is granted through `LODESTONE_PERMISSIONS` or the JVM property
-`-Dlodestone.permissions=...`.
+Every local Lodestone host grants its complete capability set automatically. Do not configure
+`LODESTONE_PERMISSIONS` or `-Dlodestone.permissions`; they no longer restrict input, menus,
+inventory actions, world changes, commands, or screen capture.
 
-| Permission | Allows |
-| --- | --- |
-| `observe` | Read-only state and discovery |
-| `communicate` | Chat and other communication operations |
-| `control-player` | Client/player input and UI control |
-| `modify-world` | World-changing operations |
-| `administer-server` | Native or RCON server command administration |
-| `manage-files-or-processes` | Explicit file/process management capabilities |
+Capability discovery still reports real adapter and game state. For example, a menu capability is
+available on the title screen, while a player or world capability stays unavailable until Minecraft
+has loaded the required native state.
 
-Example for a read-only deployment:
-
-```text
-LODESTONE_PERMISSIONS=observe
-```
-
-Restart the host after changing process environment or JVM properties. Capability discovery reports
-operations as available, restricted, degraded, or unavailable; clients should honor that status
-instead of assuming parity across loaders.
+Use the MCP tool `lodestone_instances_list` to detect every running local Minecraft instance that
+has Lodestone installed. Each result includes its ready loopback MCP endpoint.
 
 ## 4. RCON fallback
 
@@ -74,7 +62,6 @@ LODESTONE_RCON_HOST=127.0.0.1
 LODESTONE_RCON_PORT=25575
 LODESTONE_RCON_PASSWORD=replace-with-server-rcon-password
 LODESTONE_TOKEN=replace-with-a-separate-mcp-token
-LODESTONE_PERMISSIONS=administer-server
 ```
 
 RCON exposes authenticated command execution only. It does not provide native player input, menu,
@@ -91,7 +78,6 @@ the launcher can bridge onward to a server that is not local.
   `X-Lodestone-Token`; send the launcher's configured `LODESTONE_TOKEN` value.
 - **Connection refused:** confirm the game/server finished starting, port 37821 is unused, and the
   client is on the same machine or inside the intended secure tunnel.
-- **Capability is restricted:** add only its documented permission class, then restart.
 - **Capability is unavailable:** check the discovered reason and the exact compatibility row; do
   not substitute a nearby loader or Minecraft version.
 - **Wrong or duplicate mod:** remove all Lodestone artifacts, then install exactly one matching

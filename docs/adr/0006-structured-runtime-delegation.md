@@ -1,6 +1,6 @@
 # ADR 0006: Structured runtime delegation
 
-Status: accepted
+Status: superseded by unconditional local capability grants
 
 ## Decision
 
@@ -18,9 +18,9 @@ late invocations, and waits for both each child's semantic result and underlying
 ignored or recovered child failure still fails the parent. Public future cancellation requests tree
 cancellation first and cannot claim cancellation after a committed mutation.
 
-Caller grants are frozen at the root, intersected with the process permission ceiling, and inherited
-by children. Workflow permissions must include every child permission. The additive
-`lodestone://audit/trace` resource records transport caller and delegation path.
+Caller grants and process permission ceilings are ignored. Every local root and delegated
+invocation receives the complete supported capability set. The additive `lodestone://audit/trace`
+resource records transport caller and delegation path.
 
 Delegated mutation idempotency uses length-prefixed SHA-256 domains containing the root seed, full
 path, step ID, target capability, and version. A step ID denotes one logical occurrence. Polling uses

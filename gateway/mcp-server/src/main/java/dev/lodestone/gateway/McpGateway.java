@@ -13,16 +13,15 @@ import dev.lodestone.goal.GoalSafety;
 import dev.lodestone.goal.GoalControls;
 import dev.lodestone.goal.GoalSpec;
 import dev.lodestone.protocol.JsonSupport;
-import dev.lodestone.protocol.PermissionClass;
 import dev.lodestone.protocol.ProtocolVersion;
 import dev.lodestone.protocol.RequestEnvelope;
 import dev.lodestone.protocol.ResultEnvelope;
 import dev.lodestone.protocol.CapabilityDescriptor;
 import dev.lodestone.runtime.AuthorizationPolicy;
+import dev.lodestone.runtime.InstanceRegistry;
 import dev.lodestone.runtime.LodestoneRuntime;
 import dev.lodestone.runtime.ResourceContent;
 
-import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
@@ -54,8 +53,6 @@ public final class McpGateway {
     private static final Pattern BLOCK_STATE_TOKEN = Pattern.compile(BLOCK_STATE_PATTERN);
     private static final Set<String> WORLD_EDIT_DIRECTIONS =
             Set.of("up", "down", "north", "south", "east", "west");
-    private static final AuthorizationPolicy FULL_PROCESS_CEILING =
-            new AuthorizationPolicy(EnumSet.allOf(PermissionClass.class));
     private static final List<CapabilityAlias> COMPATIBILITY_ALIASES = List.of(
             new CapabilityAlias("ui_wait", "lodestone.ui.wait", "1.0"),
             new CapabilityAlias("ui_navigate", "lodestone.ui.navigate", "1.0"),
@@ -75,29 +72,24 @@ public final class McpGateway {
     private final GoalSubactionService goalSubactions;
     private final GoalConditionHooks goalHooks;
     private final StaticCatalogTools staticCatalogTools;
-    private final CallerGrantResolver callerGrantResolver;
     private final Map<String, GatewaySession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, String> subscriptionOwners = new ConcurrentHashMap<>();
     private final Object sessionAdmissionLock = new Object();
     private final ThreadLocal<GatewaySession> currentSession = new ThreadLocal<>();
     private final ThreadLocal<String> responseSessionId = new ThreadLocal<>();
 
-    /**
-     * Single-principal compatibility mode. Each session receives the full process permission
-     * ceiling; {@link LodestoneRuntime} still intersects it with its configured process policy.
-     */
+    /** Local compatibility mode. Every local MCP session has full Lodestone control. */
     public McpGateway(LodestoneRuntime runtime) {
-        this(runtime, ignored -> FULL_PROCESS_CEILING);
+        this(runtime, ignored -> AuthorizationPolicy.allPermissions());
     }
 
-    /** Create a gateway whose immutable session grants are resolved once at session admission. */
+    /** Compatibility constructor. Caller grants are ignored; every local session is unrestricted. */
     public McpGateway(LodestoneRuntime runtime, CallerGrantResolver callerGrantResolver) {
         this.runtime = runtime;
         this.goalService = new GoalService(runtime);
         this.goalSubactions = new GoalSubactionService(runtime);
         this.goalHooks = new GoalConditionHooks(runtime);
         this.staticCatalogTools = new StaticCatalogTools(runtime);
-        this.callerGrantResolver = callerGrantResolver;
     }
 
     @FunctionalInterface
@@ -227,24 +219,9 @@ public final class McpGateway {
                     throw new GatewayException(-32003, "MCP session capacity reached");
                 }
             }
-            var authorization = resolveCallerAuthorization(sessionKey);
-            var created = new GatewaySession(sessionKey, authorization);
+            var created = new GatewaySession(sessionKey, AuthorizationPolicy.allPermissions());
             sessions.put(sessionKey, created);
             return created;
-        }
-    }
-
-    private AuthorizationPolicy resolveCallerAuthorization(String sessionKey) {
-        try {
-            var resolved = callerGrantResolver == null ? null : callerGrantResolver.resolve(sessionKey);
-            if (resolved == null) {
-                throw new GatewayException(-32004, "caller authorization could not be resolved");
-            }
-            return new AuthorizationPolicy(resolved.allowed());
-        } catch (GatewayException failure) {
-            throw failure;
-        } catch (RuntimeException failure) {
-            throw new GatewayException(-32004, "caller authorization could not be resolved");
         }
     }
 
@@ -301,6 +278,9 @@ public final class McpGateway {
     private JsonElement toolsList() {
         var tools = new JsonArray();
         tools.add(tool("lodestone_status", "Read runtime and adapter health.", schema(Map.of())));
+        tools.add(tool("lodestone_instances_list",
+                "Detect every local Minecraft instance with Lodestone loaded and its ready MCP endpoint.",
+                schema(Map.of())));
         tools.add(tool("lodestone_capabilities_list", "List or search negotiated capabilities.", schema(Map.of(
                 "query", Map.of("type", "string")))));
         tools.add(tool("lodestone_capability_get", "Get one negotiated capability by stable ID.", schema(Map.of(
@@ -647,6 +627,7 @@ public final class McpGateway {
         var args = asObject(params.get("arguments"));
         return switch (name) {
             case "lodestone_status" -> toolResult(runtime.health());
+            case "lodestone_instances_list" -> toolResult(instancesList());
             case "lodestone_capabilities_list" -> toolResult(Map.of(
                     "capabilities", runtime.capabilities(text(args, "query", ""))));
             case "lodestone_capability_get" -> systemCapability("lodestone.system.capabilities.get",
@@ -1004,6 +985,21 @@ public final class McpGateway {
         requireStagedArtifacts(capability);
         var session = session();
         return toolResult(runtime.invoke(request, session.id, session.authorization).join());
+    }
+
+    private Map<String, Object> instancesList() {
+        try {
+            var instances = InstanceRegistry.liveEntries().stream().map(entry -> Map.<String, Object>of(
+                    "port", entry.port(),
+                    "endpoint", "http://127.0.0.1:" + entry.port() + "/mcp",
+                    "pid", entry.pid(),
+                    "workingDir", entry.workingDir(),
+                    "modVersion", entry.modVersion(),
+                    "startedAtUtc", entry.startedAtUtc().toString())).toList();
+            return Map.of("instances", instances);
+        } catch (java.io.IOException failure) {
+            return Map.of("instances", List.of());
+        }
     }
 
     private JsonElement subactionsExecute(JsonObject args) {

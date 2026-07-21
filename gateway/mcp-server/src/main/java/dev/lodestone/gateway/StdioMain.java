@@ -13,7 +13,7 @@ public final class StdioMain {
     }
 
     public static void main(String[] args) throws Exception {
-        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly());
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.allPermissions());
              var reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             var gateway = new McpGateway(runtime);
             String line;

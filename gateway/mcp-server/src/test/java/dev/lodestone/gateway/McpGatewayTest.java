@@ -62,6 +62,7 @@ class McpGatewayTest {
             var tools = JsonParser.parseString(gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}"));
             assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("lodestone_capability_invoke"));
             assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("lodestone_capability_get"));
+            assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("lodestone_instances_list"));
             assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("capabilityVersion"));
             assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("ui_wait"));
             assertTrue(tools.getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools").toString().contains("ui_navigate"));

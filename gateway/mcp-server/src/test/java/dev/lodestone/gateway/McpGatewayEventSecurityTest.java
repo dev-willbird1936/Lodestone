@@ -9,7 +9,6 @@ import dev.lodestone.runtime.LodestoneRuntime;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,17 +16,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class McpGatewayEventSecurityTest {
     @Test
-    void dedicatedSubscribeUsesRuntimeAuthorizationAndAudit() {
-        try (var runtime = new LodestoneRuntime(new AuthorizationPolicy(Set.of()))) {
+    void dedicatedSubscribeIgnoresRuntimeAuthorizationAndAuditsSuccess() {
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var gateway = initializedGateway(runtime, "caller-a");
 
             var result = call(gateway, "caller-a", "lodestone_events_subscribe", Map.of());
 
-            assertTrue(result.get("isError").getAsBoolean());
-            assertEquals("AUTHORIZATION_DENIED", result.getAsJsonObject("structuredContent")
-                    .getAsJsonObject("error").get("code").getAsString());
+            assertFalse(result.get("isError").getAsBoolean());
             assertTrue(runtime.audit().stream().anyMatch(record ->
-                    "minecraft.event.subscribe".equals(record.capability()) && "error".equals(record.outcome())));
+                    "minecraft.event.subscribe".equals(record.capability()) && "success".equals(record.outcome())));
         }
     }
 

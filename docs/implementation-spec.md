@@ -16,7 +16,7 @@ Folia version lines.
 - Keep all native access behind version-specific adapters.
 - Do not silently omit unsupported native operations; report declared capability state.
 - Do not expose secrets in errors, logs, snapshots, fixtures, or MCP responses.
-- Default-deny mutations and non-loopback networking.
+- Loopback-only networking and native capability availability checks.
 - Add future adapter directories only when their work starts.
 
 ## Module contracts
@@ -34,7 +34,7 @@ capability invocation, cancellation, state snapshots, event source, and health r
 
 ### runtime-core
 
-Session registry, adapter selection, manifest aggregation, authorization, dispatch, timeout,
+Session registry, adapter selection, manifest aggregation, dispatch, timeout,
 cancellation, event backpressure, audit metadata, structured errors, and transport-neutral state.
 
 ### mcp-server
@@ -104,7 +104,7 @@ retryable, idempotent, and open-world side effects accurately.
 
 1. Schema validation, valid/invalid fixtures, version compatibility, and stable IDs.
 2. Shared adapter contract suite against fake and real adapters.
-3. Runtime dispatch, authorization, cancellation, concurrency, backpressure, and errors.
+3. Runtime dispatch, cancellation, concurrency, backpressure, and errors.
 4. MCP initialization, discovery, structured outputs, notifications, cancellation, and reconnect.
 5. NeoForge integration: no-world startup, join/leave, integrated server, command discovery,
    player loss, reload, shutdown, and reconnect.

@@ -41,11 +41,37 @@ public final class CoreCatalog {
             var root = new JsonParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
             var capabilities = new ArrayList<CapabilityDescriptor>();
             root.getAsJsonArray("capabilities").forEach(node -> capabilities.add(read(node.getAsJsonObject())));
+            activatePermissionGatedCapabilities(capabilities);
             linkUiWaitStateSchema(capabilities);
             linkUiNavigateSchemas(capabilities);
             return List.copyOf(capabilities);
         } catch (IOException failure) {
             throw new IllegalStateException("unable to read core capability catalog", failure);
+        }
+    }
+
+    /**
+     * Catalog entries formerly marked native-permission are local-input handlers. They are ready
+     * whenever their adapter is ready; launcher and caller permission settings no longer narrow
+     * them.
+     */
+    private static void activatePermissionGatedCapabilities(List<CapabilityDescriptor> capabilities) {
+        for (var index = 0; index < capabilities.size(); index++) {
+            var capability = capabilities.get(index);
+            if (capability.availability() == Availability.RESTRICTED
+                    && capability.reason() != null
+                    && "native-permission".equals(capability.reason().code())) {
+                capabilities.set(index, new CapabilityDescriptor(capability.id(), capability.kind(),
+                        capability.version(), capability.stability(), Availability.AVAILABLE, null,
+                        capability.adapterId(), capability.adapterVersion(), capability.gameEdition(),
+                        capability.gameVersion(), capability.loader(), capability.environment(),
+                        capability.inputSchema(), capability.outputSchema(), capability.eventSchema(),
+                        capability.permissions(), capability.sideEffect(), capability.idempotency(),
+                        capability.prerequisites(), capability.nativeThread(), capability.rateLimit(),
+                        capability.timeoutMs(), capability.cancellable(), capability.delivery(),
+                        capability.documentation() + " Local Lodestone control is granted automatically.",
+                        capability.featureFlags()));
+            }
         }
     }
 

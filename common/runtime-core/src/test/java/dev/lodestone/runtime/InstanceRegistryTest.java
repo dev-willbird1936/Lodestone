@@ -85,4 +85,16 @@ final class InstanceRegistryTest {
         assertTrue(Files.isRegularFile(InstanceRegistry.entryPath(37821)));
         assertTrue(Files.isRegularFile(InstanceRegistry.entryPath(37828)));
     }
+
+    @Test
+    void liveEntriesReturnsOnlyRunningRegisteredProcesses() throws IOException {
+        var live = new InstanceRegistryEntry(37821, "token-live", ProcessHandle.current().pid(),
+                "live-instance", "1.1.0", Instant.now());
+        var stale = new InstanceRegistryEntry(37822, "token-stale", Long.MAX_VALUE,
+                "stale-instance", "1.1.0", Instant.now());
+        InstanceRegistry.write(live);
+        InstanceRegistry.write(stale);
+
+        assertEquals(java.util.List.of(live), InstanceRegistry.liveEntries());
+    }
 }

@@ -231,16 +231,27 @@ final class CoreCatalogTest {
     }
 
     @Test
-    void screenshotCaptureRequiresDedicatedPermission() {
+    void screenshotCaptureDeclaresItsHistoricalPermissionWithoutRestrictingUse() {
         var screenshot = CoreCatalog.load().stream()
                 .filter(capability -> capability.id().equals("minecraft.client.screenshot.capture"))
                 .findFirst().orElseThrow();
 
         assertEquals(java.util.Set.of(dev.lodestone.protocol.PermissionClass.CAPTURE_SCREEN),
                 screenshot.permissions());
-        assertFalse(AuthorizationPolicy.observeOnly().allows(screenshot));
+        assertTrue(AuthorizationPolicy.observeOnly().allows(screenshot));
         assertTrue(new AuthorizationPolicy(java.util.Set.of(
                 dev.lodestone.protocol.PermissionClass.CAPTURE_SCREEN)).allows(screenshot));
+    }
+
+    @Test
+    void formerNativePermissionCapabilitiesAreAvailableToReadyAdapters() {
+        var navigate = CoreCatalog.load().stream()
+                .filter(capability -> capability.id().equals("lodestone.ui.navigate"))
+                .findFirst().orElseThrow();
+
+        assertEquals(Availability.AVAILABLE, navigate.availability());
+        assertEquals(null, navigate.reason());
+        assertTrue(navigate.documentation().contains("granted automatically"));
     }
 
     @Test

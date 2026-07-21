@@ -12,6 +12,10 @@ every Minecraft environment.
 
 ## INTENTION MATCHED
 
+- Local hosts now grant every supported capability automatically, and the MCP gateway exposes
+  `lodestone_instances_list` to discover each live Lodestone-registered Minecraft instance and
+  its ready loopback endpoint. Native adapter/game state, not permission configuration, is the
+  only capability availability boundary.
 - NeoForge 1.21.1 now exposes model-planned goal execution with public low/medium/high
   intelligence and safety tiers, bounded script subaction batches, realtime single-action control,
   polling-backed inventory condition hooks, and generic terminal MCP observations. The shared
@@ -21,26 +25,25 @@ every Minecraft environment.
   provenance rules.
 - Protocol-first module boundaries with no native Minecraft imports in the MCP gateway.
 - Full core capability catalog with structured unavailability/restriction reasons.
-- Default-deny mutation policy, bounded events, deadlines, cancellation, session identity, and
-  audit records.
+- Bounded events, deadlines, cancellation, session identity, and audit records.
 - Buildable NeoForge 1.21.1 vertical slice and authenticated loopback transport.
 - Live NeoForge dedicated-server startup and representative MCP integration evidence.
 - Buildable Fabric 1.21.1 and 1.20.1 adapters with the same loader-neutral MCP contract.
-- Live Fabric dedicated-server startup, authorized command execution, security checks, clean
+- Live Fabric dedicated-server startup, command execution, security checks, clean
   shutdown, and reproducible CurseForge profile manifests.
 - Loader-neutral RCON transport with bounded authenticated command execution, an external MCP
   launcher, and release-certified fresh-world evidence for Forge 1.7.10, 1.8.9, and 1.12.2.
 - Pure adapter modules separated from loader host composition; host artifacts carry the loader
   metadata and gateway while adapters do not depend on the MCP gateway implementation.
-- Bounded, validated overworld block mutation with dry-run support, cancellation checks, and
-  explicit `modify-world` authorization; live-tested with read-back evidence.
+- Bounded, validated overworld block mutation with dry-run support and cancellation checks;
+  live-tested with read-back evidence.
 - Bounded loaded-entity queries and server-player inventory projection handlers with honest
   no-player behavior; entity query live evidence is recorded.
 - Clean packaged dedicated-server matrix for five Fabric rows, two Quilt compatibility rows,
   NeoForge 1.21.1, and five Forge rows from 1.16.5 through 1.21.1; every final host artifact
   reaches a fresh world, passes authenticated MCP checks, and shuts down cleanly.
-- Bounded bulk overworld reads and permission-gated server chat broadcast implemented and
-  reverified across all three packaged rows.
+- Bounded bulk overworld reads and server chat broadcast implemented and reverified across all
+  three packaged rows.
 - Bounded no-chunk-load overworld region scans implemented with loaded/unloaded cell counts and
   block-frequency output across all three packaged rows.
 - Loader-neutral bounded Minecraft goal engine added with declarative segmented script execution,
@@ -198,9 +201,8 @@ every Minecraft environment.
   launcher rows; byte-identical Fabric and generated Quilt host rows retain their unchanged green
   evidence. The final legacy and RCON tests use distributions extracted from their exact release
   ZIPs, not `build/install` directories.
-- Java 8 native endpoints default to `observe` only and deny direct world writes, chat, and command
-  execution before game scheduling when no permission grant is configured; all three final legacy
-  rows have clean direct default-deny proof.
+- Java 8 native endpoints grant their complete supported set without permission configuration;
+  legacy rows retain their direct control evidence.
 - Final release-audit remediation adds HTTP 401 invalid-token proof to Paper, Spigot, and Folia;
   reruns their three final plugin artifacts; and binds the retained Bukkit log to the certificate.
 - Final Quilt remediation reruns only 1.20.1 and 1.21.1 against the exact JARs extracted from their

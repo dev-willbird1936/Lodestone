@@ -30,7 +30,7 @@ Read the full [compatibility matrix](docs/compatibility-matrix.md) before choosi
 1. Choose an exact mod, plugin, profile, or launcher from the tagged release and the
    [compatibility matrix](docs/compatibility-matrix.md).
 2. Follow [Getting started](docs/getting-started.md) to install it and connect an MCP client.
-3. Grant only the required permissions. Mutations are denied until explicitly authorized.
+3. Every local Lodestone host is ready to receive MCP control when its native adapter is ready.
 4. Use capability discovery before invocation. An unsupported operation is a structured state, not
    a silent fallback.
 

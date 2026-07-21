@@ -44,15 +44,14 @@ used to certify v1.0.0 bytes.
 The NeoForge, Fabric, and Forge adapters' current implemented native slice is covered by Fabric 1.18.2/1.19.2/1.20.1/1.21.1/26.2 and Forge 1.16.5/1.18.2/1.19.2/1.20.1/1.21.1. The slice is
 `minecraft.command.discover`, `minecraft.command.execute`, `minecraft.player.state.read`,
 `minecraft.world.block.read`, bounded `minecraft.world.blocks.read`, bounded
-`minecraft.world.region.scan`, the permission-gated bounded `minecraft.world.blocks.write`,
-`minecraft.entity.list`, server-player `minecraft.inventory.read`, and permission-gated
+`minecraft.world.region.scan`, bounded `minecraft.world.blocks.write`,
+`minecraft.entity.list`, server-player `minecraft.inventory.read`, and
 `minecraft.chat.send`. Bulk reads, region scans, writes, chat, and loaded-entity queries are
 live-tested on the native rows that advertise them; Folia and RCON explicitly omit entity listing.
 The inventory path is compile-tested and reports
 a structured adapter failure when no player is present. The native implementations compile across
 the tested native rows, including Fabric 26.2's non-remapping Java 25 toolchain. Each live manifest still includes every catalog capability, marking
-unimplemented operations as `unavailable` with a reason and permission-gated operations as
-`restricted`. The Paper 1.21.1 and Spigot 1.21.1 adapters implement the server-side subset
+unimplemented operations as `unavailable` with a reason. The Paper 1.21.1 and Spigot 1.21.1 adapters implement the server-side subset
 exercised by their live matrices: command execution, player state/inventory queries, block reads,
 bounded bulk reads and region scans, bounded writes, entity listing, and chat broadcast; command
 discovery remains unavailable there. Spigot delegates to the shared Bukkit-compatible operation

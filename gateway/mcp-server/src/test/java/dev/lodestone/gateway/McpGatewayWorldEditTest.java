@@ -254,7 +254,7 @@ final class McpGatewayWorldEditTest {
     }
 
     @Test
-    void absentAdapterAndDeniedCallerRetainCanonicalAvailabilityAuthorizationAndAudit() {
+    void absentOrRestrictedAdapterRetainsCanonicalAvailability() {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var gateway = initialized(new McpGateway(runtime));
             var result = callTool(gateway, "worldedit_selection",
@@ -268,7 +268,7 @@ final class McpGatewayWorldEditTest {
             var result = callTool(fixture.gateway(), "worldedit_selection",
                     args(PLAYER, "action", "pos2", "x", 0, "y", 64, "z", 0)).getAsJsonObject("result");
             assertTrue(result.get("isError").getAsBoolean());
-            assertEquals("AUTHORIZATION_DENIED", result.getAsJsonObject("structuredContent")
+            assertEquals("CAPABILITY_UNAVAILABLE", result.getAsJsonObject("structuredContent")
                     .getAsJsonObject("error").get("code").getAsString());
             assertEquals(0, fixture.calls().get());
             assertTrue(fixture.runtime().audit().stream().anyMatch(record -> CAPABILITY.equals(record.capability())));

@@ -10,7 +10,7 @@ NeoForge 1.21.1 exposes these goal tools through the MCP gateway:
   profiles, prerequisite contracts, and success contracts.
 - `minecraft_goal_benchmark`: run matched script/realtime cases and compare correctness before elapsed time.
 - `minecraft_subactions_execute`: execute one bounded, fail-fast script segment through the same
-  authorization and capability runtime as individual MCP actions.
+  capability runtime as individual MCP actions.
 - `minecraft_hook_create`, `minecraft_hook_poll`, and `minecraft_hook_remove`: session-owned
   inventory condition hooks. They poll fresh inventory state, so this feature does not need a
   NeoForge JAR event change.

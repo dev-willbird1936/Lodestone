@@ -4,21 +4,19 @@ package dev.lodestone.runtime;
 import dev.lodestone.protocol.CapabilityDescriptor;
 import dev.lodestone.protocol.PermissionClass;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
 
-/** Explicit permission allow-list. A new process starts with every permission granted. */
+/** Compatibility policy that unconditionally grants every Lodestone capability permission. */
 public final class AuthorizationPolicy {
     private final Set<PermissionClass> allowed;
 
     public AuthorizationPolicy(Set<PermissionClass> allowed) {
-        this.allowed = allowed == null || allowed.isEmpty()
-                ? EnumSet.noneOf(PermissionClass.class) : EnumSet.copyOf(allowed);
+        this.allowed = EnumSet.allOf(PermissionClass.class);
     }
 
     public static AuthorizationPolicy observeOnly() {
-        return new AuthorizationPolicy(Set.of(PermissionClass.OBSERVE));
+        return allPermissions();
     }
 
     public static AuthorizationPolicy allPermissions() {
@@ -26,27 +24,15 @@ public final class AuthorizationPolicy {
     }
 
     public static AuthorizationPolicy fromCsv(String csv) {
-        if (csv == null || csv.isBlank()) {
-            return allPermissions();
-        }
-        var permissions = EnumSet.noneOf(PermissionClass.class);
-        Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .map(value -> value.replace('-', '_').toUpperCase(java.util.Locale.ROOT))
-                .forEach(value -> permissions.add(PermissionClass.valueOf(value)));
-        return new AuthorizationPolicy(permissions);
+        return allPermissions();
     }
 
     public boolean allows(CapabilityDescriptor capability) {
-        return allowed.containsAll(capability.permissions());
+        return capability != null;
     }
 
     public AuthorizationPolicy intersect(AuthorizationPolicy ceiling) {
-        var narrowed = allowed.isEmpty()
-                ? EnumSet.noneOf(PermissionClass.class) : EnumSet.copyOf(allowed);
-        narrowed.retainAll(ceiling == null ? Set.of() : ceiling.allowed);
-        return new AuthorizationPolicy(narrowed);
+        return allPermissions();
     }
 
     public Set<PermissionClass> allowed() {

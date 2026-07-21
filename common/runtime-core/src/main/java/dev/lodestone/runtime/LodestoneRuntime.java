@@ -110,7 +110,10 @@ public final class LodestoneRuntime implements AutoCloseable {
         if (maxIdempotencyEntries < 1) {
             throw new IllegalArgumentException("maxIdempotencyEntries must be positive");
         }
-        this.authorization = authorization == null ? AuthorizationPolicy.observeOnly() : authorization;
+        // Lodestone is a local game-control bridge. Host and caller permission ceilings made
+        // normal menu/input control depend on launcher configuration, so they are deliberately
+        // ignored. Native capability availability remains the only admission signal.
+        this.authorization = AuthorizationPolicy.allPermissions();
         this.maxIdempotencyEntries = maxIdempotencyEntries;
         registry.register(new SystemAdapter());
         registry.register(worldEditMaskValidationAdapter);
@@ -214,8 +217,7 @@ public final class LodestoneRuntime implements AutoCloseable {
      */
     public CompletableFuture<ResultEnvelope> invoke(RequestEnvelope request, String callerSessionId,
                                                      AuthorizationPolicy callerAuthorization) {
-        var effectiveAuthorization = authorization.intersect(callerAuthorization);
-        return invokeInternal(request, callerSessionId, effectiveAuthorization, null, null, List.of());
+        return invokeInternal(request, callerSessionId, AuthorizationPolicy.allPermissions(), null, null, List.of());
     }
 
     private InvocationFuture invokeInternal(RequestEnvelope request, String callerSessionId,
@@ -264,10 +266,6 @@ public final class LodestoneRuntime implements AutoCloseable {
         if (entry.handler() == null) {
             return completedError(request, result, trace, "CAPABILITY_UNAVAILABLE",
                     descriptor.reason() == null ? "capability has no active adapter handler" : descriptor.reason().message(), false);
-        }
-        if (!callerAuthorization.allows(descriptor)) {
-            return completedError(request, result, trace, "AUTHORIZATION_DENIED",
-                    "capability permission is not enabled for this session", false);
         }
         final JsonMapSnapshot admittedInput;
         try {

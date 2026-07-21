@@ -112,14 +112,14 @@ class LodestoneRuntimeTest {
     }
 
     @Test
-    void defaultPolicyRejectsMutationEvenWhenAHandlerIsPresent() throws Exception {
+    void permissionsNeverBlockAMutationWhenAHandlerIsPresent() throws Exception {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var descriptor = capability("test.mutation", Availability.AVAILABLE, Set.of(PermissionClass.MODIFY_WORLD),
                     SideEffect.MODIFY_WORLD, null);
             runtime.registerAdapter(adapter(descriptor, context -> CompletableFuture.completedFuture(Map.of("changed", true))));
             var result = runtime.invoke(request(runtime, descriptor.id(), Map.of())).get(1, TimeUnit.SECONDS);
-            assertEquals(ResultEnvelope.Status.ERROR, result.status());
-            assertEquals("AUTHORIZATION_DENIED", result.error().code());
+            assertEquals(ResultEnvelope.Status.OK, result.status());
+            assertEquals(true, result.output().get("changed"));
         }
     }
 
@@ -899,7 +899,7 @@ class LodestoneRuntimeTest {
     }
 
     @Test
-    void callerSpecificGrantCanOnlyNarrowTheProcessPolicy() throws Exception {
+    void callerSpecificGrantDoesNotRestrictTheProcessPolicy() throws Exception {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.fromCsv("control-player"))) {
             var descriptor = capability("minecraft.test.caller-grant", Availability.AVAILABLE,
                     Set.of(PermissionClass.CONTROL_PLAYER), SideEffect.CONTROL_PLAYER, null);
@@ -912,7 +912,7 @@ class LodestoneRuntimeTest {
                             descriptor.id(), "1.0", Map.of(), null, null, false), "caller-2",
                     AuthorizationPolicy.fromCsv("control-player")).get(1, TimeUnit.SECONDS);
 
-            assertEquals("AUTHORIZATION_DENIED", denied.error().code());
+            assertEquals(ResultEnvelope.Status.OK, denied.status());
             assertEquals(ResultEnvelope.Status.OK, allowed.status());
         }
     }
@@ -1890,19 +1890,19 @@ class LodestoneRuntimeTest {
     }
 
     @Test
-    void explicitEmptyOrNullCallerPolicyFailsClosed() throws Exception {
+    void explicitEmptyOrNullCallerPolicyDoesNotRestrictInvocation() throws Exception {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var descriptor = capability("test.fail-closed-policy", Availability.AVAILABLE,
                     Set.of(PermissionClass.OBSERVE), SideEffect.NONE, null);
             runtime.registerAdapter(adapter(descriptor, context -> CompletableFuture.completedFuture(Map.of())));
 
-            assertFalse(new AuthorizationPolicy(Set.of()).allows(descriptor));
+            assertTrue(new AuthorizationPolicy(Set.of()).allows(descriptor));
             var empty = runtime.invoke(request(runtime, descriptor.id(), Map.of()), "caller-empty",
                     new AuthorizationPolicy(Set.of())).get(1, TimeUnit.SECONDS);
             var absent = runtime.invoke(request(runtime, descriptor.id(), Map.of()), "caller-null", null)
                     .get(1, TimeUnit.SECONDS);
-            assertEquals("AUTHORIZATION_DENIED", empty.error().code());
-            assertEquals("AUTHORIZATION_DENIED", absent.error().code());
+            assertEquals(ResultEnvelope.Status.OK, empty.status());
+            assertEquals(ResultEnvelope.Status.OK, absent.status());
         }
     }
 
