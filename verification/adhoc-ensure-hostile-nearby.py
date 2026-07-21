@@ -7,9 +7,17 @@ spawn, so a brand-new world's immediate surroundings are very unlikely to alread
 script sets time to night via minecraft.command.execute (harness-side world prep, never the
 model's own action - the model still has to find and fight whatever spawns, same as GoalTaskCatalog's
 combat.attack-nearest expects), waits in real time for natural spawns to populate nearby, then scans
-minecraft.entity.nearby.read for anything in HOSTILE_MOB_TYPES. If nothing shows up after waiting,
-it quits to the title screen (same proven "Save and Quit to Title" pause-menu click flow as
-adhoc-ensure-treed-world.py) and tries a fresh world, up to MAX_ATTEMPTS times.
+minecraft.entity.nearby.read for a hostile that is both close AND out in the open (its Y is within
+MAX_SURFACE_GAP of the terrain surface at its own (x,z) column, per minecraft.world.heightmap.read -
+not buried in a cave). If nothing qualifying shows up after waiting, it quits to the title screen
+(same proven "Save and Quit to Title" pause-menu click flow as adhoc-ensure-treed-world.py) and
+tries a fresh world, up to MAX_ATTEMPTS times.
+
+The surface-reachability filter exists because accepting the first hostile found regardless of
+depth can hand the model a cave-dwelling target: live-evidenced (adhoc-benchmark-b5-run3) a run
+where the nearest hostile was 39 blocks away down in a cave, safe-waypoint kept reporting no safe
+route down to it, and 52 of that run's 55 turns went to approach rather than combat - the model got
+exactly one real attack attempt in before the turn budget ran out.
 
 Run with: python verification/adhoc-ensure-hostile-nearby.py --port 37821 --token <token>
 """
@@ -29,10 +37,12 @@ orchestrator = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = orchestrator  # see test_goal_orchestrator_milestone1_history.py for why
 _SPEC.loader.exec_module(orchestrator)
 
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 4
 WAIT_ROUNDS_PER_ATTEMPT = 4
 WAIT_SECONDS_PER_ROUND = 20.0
 SCAN_RADIUS = 64
+MAX_SURFACE_GAP = 6  # hostile's Y must be within this many blocks of the terrain surface at its
+                     # own (x,z) column to count as "out in the open", not buried in a cave
 
 
 def quit_to_title(client: "orchestrator.LodestoneMcpClient") -> dict:
@@ -78,6 +88,36 @@ def find_hostiles(client: "orchestrator.LodestoneMcpClient") -> list[dict]:
     return [e for e in entities if str(e.get("type", "")) in orchestrator.HOSTILE_MOB_TYPES]
 
 
+def surface_height_at(client: "orchestrator.LodestoneMcpClient", x: float, z: float) -> float | None:
+    result = client.invoke_capability(
+        "minecraft.world.heightmap.read", {"x": int(x), "z": int(z), "sizeX": 1, "sizeZ": 1}, "1.0"
+    )
+    if result.get("status") != "ok":
+        return None
+    columns = (result.get("output") or {}).get("columns") or []
+    if not columns or not columns[0].get("loaded"):
+        return None
+    return columns[0].get("height")
+
+
+def find_surface_reachable_hostile(client: "orchestrator.LodestoneMcpClient") -> tuple[dict | None, list[dict]]:
+    """Returns (chosen, all_hostiles) - chosen is the CLOSEST hostile whose Y is within
+    MAX_SURFACE_GAP of the terrain surface at its own column, or None if no hostile currently
+    found qualifies (still worth reporting all_hostiles for visibility even on a miss).
+    """
+    hostiles = sorted(find_hostiles(client), key=lambda h: h.get("distance", 1e9))
+    for hostile in hostiles:
+        position = hostile.get("position") or {}
+        surface = surface_height_at(client, position.get("x", 0), position.get("z", 0))
+        if surface is None:
+            continue
+        gap = surface - position.get("y", 0)
+        hostile["_surfaceGap"] = gap
+        if gap <= MAX_SURFACE_GAP:
+            return hostile, hostiles
+    return None, hostiles
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, required=True)
@@ -93,7 +133,7 @@ def main() -> int:
     for attempt in range(1, MAX_ATTEMPTS + 1):
         print(f"=== attempt {attempt}/{MAX_ATTEMPTS} ===", flush=True)
         if attempt > 1:
-            print("no hostile found - quitting to title to regenerate a fresh world...", flush=True)
+            print("no surface-reachable hostile found - quitting to title to regenerate a fresh world...", flush=True)
             quit_to_title(client)
 
         world_state = orchestrator.ensure_fresh_world(client, trace)
@@ -104,9 +144,13 @@ def main() -> int:
 
         for round_num in range(1, WAIT_ROUNDS_PER_ATTEMPT + 1):
             time.sleep(WAIT_SECONDS_PER_ROUND)
-            hostiles = find_hostiles(client)
-            print(f"  wait round {round_num}/{WAIT_ROUNDS_PER_ATTEMPT}: {len(hostiles)} hostile(s) found", flush=True)
-            if hostiles:
+            chosen, all_hostiles = find_surface_reachable_hostile(client)
+            print(
+                f"  wait round {round_num}/{WAIT_ROUNDS_PER_ATTEMPT}: {len(all_hostiles)} hostile(s) found, "
+                f"surface-reachable pick: {chosen}",
+                flush=True,
+            )
+            if chosen:
                 # Set time back to day IMMEDIATELY on finding a target, before returning control -
                 # confirmed live (adhoc-benchmark-b5-run1) that leaving time at night for the whole
                 # pre-flight+run duration turns the world-spawn point into a respawn-camping trap:
@@ -120,10 +164,10 @@ def main() -> int:
                 health_state = client.invoke_capability(orchestrator.HEALTH_READ_CAPABILITY, {})
                 health = (health_state.get("output") or {}).get("health")
                 print(f"player health at handoff: {health}", flush=True)
-                print(f"WORLD_OK: hostiles nearby: {hostiles}", flush=True)
+                print(f"WORLD_OK: chosen surface-reachable hostile: {chosen}", flush=True)
                 return 0
 
-    print(f"WORLD_STILL_NO_HOSTILE_AFTER_{MAX_ATTEMPTS}_ATTEMPTS", flush=True)
+    print(f"WORLD_STILL_NO_SURFACE_REACHABLE_HOSTILE_AFTER_{MAX_ATTEMPTS}_ATTEMPTS", flush=True)
     return 1
 
 

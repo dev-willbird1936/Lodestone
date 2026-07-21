@@ -1519,7 +1519,11 @@ BENCHMARKS: dict[str, BenchmarkSpec] = {
         task_id="survival.spawn-gauntlet",
         goal=(
             "Survive the opening 90 seconds without dying, then reach a point at least 32 blocks "
-            "away horizontally from your current (spawn) position."
+            "away horizontally from your current (spawn) position. If safe-waypoint navigation "
+            "keeps failing with no safe route and you seem to be wedged in dense foliage (leaves, "
+            "logs), it's fine to mine yourself free by hand: attack the leaf/log block directly in "
+            "front of you - leaves break fast bare-handed - then move through the gap and resume "
+            "navigating."
         ),
         max_turns=40,  # mostly survive+navigate - safe-waypoint navigation is already proven
         capture_baseline=capture_b1_baseline,
