@@ -75,7 +75,8 @@ public final class FabricAdapter implements LodestoneAdapter {
             "minecraft.ui.state.read",
             "minecraft.ui.click",
             "minecraft.ui.key",
-            "minecraft.ui.text.insert");
+            "minecraft.ui.text.insert",
+            "minecraft.goal.navigation.safe-waypoint");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search", "minecraft.server.info.read",
             "minecraft.client.screenshot.capture",
@@ -85,7 +86,8 @@ public final class FabricAdapter implements LodestoneAdapter {
             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact",
             "minecraft.inventory.slot.select", "minecraft.inventory.container.read", "minecraft.inventory.container.click",
             "minecraft.entity.interact", "minecraft.ui.state.read", "minecraft.ui.click",
-            "minecraft.ui.key", "minecraft.ui.text.insert");
+            "minecraft.ui.key", "minecraft.ui.text.insert",
+            "minecraft.goal.navigation.safe-waypoint");
     private static volatile FabricAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -153,6 +155,7 @@ public final class FabricAdapter implements LodestoneAdapter {
         handlers.put("minecraft.ui.click", this::clientCall);
         handlers.put("minecraft.ui.key", this::clientCall);
         handlers.put("minecraft.ui.text.insert", this::clientCall);
+        handlers.put("minecraft.goal.navigation.safe-waypoint", this::clientCall);
         return Map.copyOf(handlers);
     }
 

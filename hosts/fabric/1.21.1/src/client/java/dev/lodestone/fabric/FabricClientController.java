@@ -105,6 +105,8 @@ public final class FabricClientController implements ClientModInitializer {
         private boolean worldInitialized;
         private String screenToken = UUID.randomUUID().toString();
 
+        private FabricNavigationGoal navigationGoal;
+
         private boolean tick(Minecraft client) {
             updateScreenToken(client.screen);
             var wasInWorld = availability.playerCapabilityAvailable();
@@ -115,7 +117,15 @@ public final class FabricClientController implements ClientModInitializer {
             }
             worldInitialized = true;
             releaseLeased(inputLease.releaseExpired(monotonicMillis()));
+            tickNavigationGoal(client);
             return availabilityChanged;
+        }
+
+        private void tickNavigationGoal(Minecraft client) {
+            var current = navigationGoal;
+            if (current == null) return;
+            current.tick(client);
+            if (current.done()) navigationGoal = null;
         }
 
         @Override
@@ -125,7 +135,8 @@ public final class FabricClientController implements ClientModInitializer {
                         "minecraft.input.release-all", "minecraft.ui.state.read",
                         "minecraft.registry.item.search", "minecraft.server.info.read",
                         "minecraft.client.screenshot.capture" -> true;
-                case "minecraft.player.context.read", "minecraft.entity.nearby.read" ->
+                case "minecraft.player.context.read", "minecraft.entity.nearby.read",
+                        "minecraft.goal.navigation.safe-waypoint" ->
                         availability.playerCapabilityAvailable();
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" ->
                         availability.levelCapabilityAvailable();
@@ -142,6 +153,9 @@ public final class FabricClientController implements ClientModInitializer {
 
         @Override
         public CompletionStage<Map<String, Object>> invoke(String capability, InvocationContext invocation) {
+            if ("minecraft.goal.navigation.safe-waypoint".equals(capability)) {
+                return startNavigationGoal(invocation);
+            }
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
                 return switch (capability) {
@@ -170,6 +184,22 @@ public final class FabricClientController implements ClientModInitializer {
                     default -> throw new IllegalArgumentException("unsupported client capability: " + capability);
                 };
             });
+        }
+
+        private CompletionStage<Map<String, Object>> startNavigationGoal(InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if (navigationGoal != null && !navigationGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    navigationGoal = new FabricNavigationGoal(invocation, result);
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
         }
 
         private static Map<String, Object> captureScreenshot(InvocationContext invocation) throws IOException {

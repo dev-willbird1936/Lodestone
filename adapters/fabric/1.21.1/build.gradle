@@ -23,6 +23,10 @@ dependencies {
 
     implementation project(':common:adapter-api')
     implementation project(':common:runtime-core')
+    // Test-only: lets a test assert this adapter's local intelligence parsing stays exhaustive
+    // over every dev.lodestone.goal.GoalIntelligence value without coupling production code
+    // across the loader/engine module boundary.
+    testImplementation project(':common:goal-engine')
 
 }
 
