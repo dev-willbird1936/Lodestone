@@ -252,6 +252,54 @@ public final class NeoForgeClientController {
         return Map.copyOf(output);
     }
 
+    /**
+     * Builds a single entry of {@code minecraft.inventory.container.read}'s {@code slots} array.
+     * Kept as a pure static helper (like {@link #interactOutput}) so container read's output
+     * shape can be exercised directly by a regression test without requiring a live
+     * {@code ClientLevel}/{@code Player} - see {@code NeoForgeContainerOutputTest}.
+     */
+    static Map<String, Object> containerSlotOutput(int slot, String itemId, int count, int maxCount, boolean empty) {
+        return Map.of("slot", slot, "item", itemId, "count", count, "maxCount", maxCount, "empty", empty);
+    }
+
+    /**
+     * Builds the additive-optional {@code carried} field of {@code minecraft.inventory.container.read}'s
+     * output - the cursor stack, read from {@code AbstractContainerMenu#getCarried()}. Mirrors
+     * {@link #containerSlotOutput}'s shape minus {@code slot}/{@code maxCount}, which do not apply
+     * to a stack that is not sitting in any slot. Always populated (including when the cursor is
+     * empty) rather than omitted, exactly like every slot entry already reports its own emptiness
+     * instead of being left out of the array.
+     */
+    static Map<String, Object> containerCarriedOutput(String itemId, int count, boolean empty) {
+        return Map.of("item", itemId, "count", count, "empty", empty);
+    }
+
+    /**
+     * Builds {@code minecraft.inventory.container.read}'s full output from already-projected
+     * slot/carried entries. Kept separate from {@link #containerSlotOutput}/
+     * {@link #containerCarriedOutput} so a test can assemble a whole output without needing a
+     * real {@code AbstractContainerMenu}.
+     */
+    static Map<String, Object> containerReadOutput(int containerId, int revision,
+                                                    List<Map<String, Object>> slots, Map<String, Object> carried) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("open", true);
+        output.put("containerId", containerId);
+        output.put("revision", revision);
+        output.put("slots", List.copyOf(slots));
+        output.put("carried", carried);
+        return Map.copyOf(output);
+    }
+
+    /**
+     * Builds {@code minecraft.inventory.container.click}'s output. Kept as a pure static helper
+     * (like {@link #interactOutput}) so it can be exercised directly by a regression test without
+     * requiring a live {@code ClientLevel}/{@code Player}.
+     */
+    static Map<String, Object> containerClickOutput(int containerId, int slot, int button, String clickType) {
+        return Map.of("containerId", containerId, "slot", slot, "button", button, "clickType", clickType);
+    }
+
     private static final class ClientBridgeImpl implements NeoForgeAdapter.ClientBridge {
         private final ArrayDeque<Map<String, Object>> chat = new ArrayDeque<>();
         private final InputLease movementLease = new InputLease();
@@ -1207,6 +1255,20 @@ public final class NeoForgeClientController {
                 try {
                     invocation.cancellation().throwIfCancelled();
                     var client = Minecraft.getInstance();
+                    // Vanilla suspends keybind handling while a screen is open, so a "queued":true
+                    // response here would be a lie: the queued click cannot actually fire until the
+                    // screen closes, and then fires dangerously late against whatever the player is
+                    // looking at at that later moment. Fail fast, before commitMutation() below, so
+                    // this surfaces as a clean error instead of an OUTCOME_INDETERMINATE quarantine -
+                    // see LodestoneRuntime's mutationCommitted() gating. Checked for all three actions
+                    // (use/attack/pick); minecraft.ui.* is the correct path while a screen is open.
+                    if (client.screen != null) {
+                        throw new IllegalStateException("minecraft.player.interact is unavailable "
+                                + "while a screen is open (" + client.screen.getClass().getName()
+                                + "); vanilla suspends keybind handling while a screen is open, so "
+                                + "the interaction cannot be queued safely - use minecraft.ui.* to "
+                                + "interact with the open screen instead");
+                    }
                     var player = requirePlayer();
                     var arguments = input(invocation);
                     var action = text(arguments, "action", "use");
@@ -1329,11 +1391,12 @@ public final class NeoForgeClientController {
             var slots = new ArrayList<Map<String, Object>>(menu.slots.size());
             for (var index = 0; index < menu.slots.size(); index++) {
                 var stack = menu.slots.get(index).getItem();
-                slots.add(Map.of("slot", index, "item", stack.isEmpty() ? "minecraft:air" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
-                        "count", stack.getCount(), "maxCount", stack.getMaxStackSize(), "empty", stack.isEmpty()));
+                slots.add(containerSlotOutput(index, itemId(stack), stack.getCount(),
+                        stack.getMaxStackSize(), stack.isEmpty()));
             }
-            return Map.of("open", true, "containerId", menu.containerId,
-                    "revision", menu.getStateId(), "slots", slots);
+            var carried = menu.getCarried();
+            return containerReadOutput(menu.containerId, menu.getStateId(), slots,
+                    containerCarriedOutput(itemId(carried), carried.getCount(), carried.isEmpty()));
         }
 
         private Map<String, Object> containerClick(dev.lodestone.adapter.InvocationContext invocation) {
@@ -1360,8 +1423,7 @@ public final class NeoForgeClientController {
             var clickType = ClickType.valueOf(text(input, "clickType", "PICKUP").toUpperCase(java.util.Locale.ROOT));
             invocation.cancellation().commitMutation();
             client.gameMode.handleInventoryMouseClick(screen.getMenu().containerId, slot, button, clickType, player);
-            return Map.of("containerId", screen.getMenu().containerId, "slot", slot,
-                    "button", button, "clickType", clickType.toString());
+            return containerClickOutput(screen.getMenu().containerId, slot, button, clickType.toString());
         }
 
         private Map<String, Object> entityInteract(dev.lodestone.adapter.InvocationContext invocation) {
