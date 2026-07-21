@@ -70,6 +70,15 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.input.key.set",
             "minecraft.input.mouse.set",
             "minecraft.input.release-all",
+            "minecraft.player.crosshair.read",
+            "minecraft.world.block.find",
+            "minecraft.player.block.look-at",
+            "minecraft.player.block.mine",
+            "minecraft.player.target-block.mine",
+            "minecraft.inventory.hotbar.select-item",
+            "minecraft.player.block.place",
+            "minecraft.player.target-block.place",
+            "minecraft.script.current.cancel",
             "minecraft.player.look",
             "minecraft.player.move",
             "minecraft.player.interact",
@@ -94,6 +103,11 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.player.context.read", "minecraft.entity.nearby.read",
             "minecraft.world.heightmap.read", "minecraft.world.light.analyze",
             "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
+            "minecraft.player.crosshair.read", "minecraft.world.block.find",
+            "minecraft.player.block.look-at", "minecraft.player.block.mine",
+            "minecraft.player.target-block.mine", "minecraft.inventory.hotbar.select-item",
+            "minecraft.player.block.place", "minecraft.player.target-block.place",
+            "minecraft.script.current.cancel",
             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact",
             "minecraft.inventory.slot.select", "minecraft.inventory.container.read", "minecraft.inventory.container.click",
             "minecraft.entity.interact", "minecraft.ui.state.read", "minecraft.ui.click",
@@ -161,6 +175,15 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.input.key.set", this::clientCall);
         handlers.put("minecraft.input.mouse.set", this::clientCall);
         handlers.put("minecraft.input.release-all", this::clientCall);
+        handlers.put("minecraft.player.crosshair.read", this::clientCall);
+        handlers.put("minecraft.world.block.find", this::clientCall);
+        handlers.put("minecraft.player.block.look-at", this::clientCall);
+        handlers.put("minecraft.player.block.mine", this::clientCall);
+        handlers.put("minecraft.player.target-block.mine", this::clientCall);
+        handlers.put("minecraft.inventory.hotbar.select-item", this::clientCall);
+        handlers.put("minecraft.player.block.place", this::clientCall);
+        handlers.put("minecraft.player.target-block.place", this::clientCall);
+        handlers.put("minecraft.script.current.cancel", this::clientCall);
         handlers.put("minecraft.player.look", this::clientCall);
         handlers.put("minecraft.player.move", this::clientCall);
         handlers.put("minecraft.player.interact", this::clientCall);

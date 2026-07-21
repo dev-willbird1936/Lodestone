@@ -25,6 +25,7 @@ import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -83,7 +84,7 @@ public final class NeoForgeClientController {
     }
 
     @SubscribeEvent
-    public static void onClientTick(ClientTickEvent.Post event) {
+    public static void onClientTick(ClientTickEvent.Pre event) {
         clientTick++;
         BRIDGE.releaseExpiredInput(monotonicMillis());
         BRIDGE.tickSurvivalTreeGoal();
@@ -93,6 +94,7 @@ public final class NeoForgeClientController {
         BRIDGE.tickCombatGoal();
         BRIDGE.tickSpawnGauntletGoal();
         BRIDGE.tickStoneToolsetGoal();
+        BRIDGE.tickHardScript();
         BRIDGE.tickAttackHold();
         var adapter = NeoForgeAdapter.active();
         if (adapter == null) {
@@ -143,6 +145,7 @@ public final class NeoForgeClientController {
 
     @SubscribeEvent
     public static void onClone(ClientPlayerNetworkEvent.Clone event) {
+        BRIDGE.cancelHardScript("player clone or respawn");
         var oldPlayer = event.getOldPlayer();
         var newPlayer = event.getNewPlayer();
         if (oldPlayer == null || newPlayer == null) {
@@ -172,6 +175,11 @@ public final class NeoForgeClientController {
         publish("minecraft.input.key.received", Map.of(
                 "key", event.getKey(), "scanCode", event.getScanCode(),
                 "action", event.getAction(), "modifiers", event.getModifiers()));
+    }
+
+    @SubscribeEvent
+    public static void onMouseButton(InputEvent.MouseButton.Post event) {
+        BRIDGE.recordPhysicalMouse(event.getButton(), event.getAction());
     }
 
     @SubscribeEvent
@@ -328,6 +336,8 @@ public final class NeoForgeClientController {
          * (LodestoneRuntime.SHARED_MUTATION_ORDER), so a goal-start invocation cannot even begin
          * running until this hold's own future has resolved. */
         private NeoForgeAttackHold attackHold;
+        /** Exactly one deterministic hard script may own attack/use input at a time. */
+        private NeoForgeHardScript hardScript;
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -355,6 +365,7 @@ public final class NeoForgeClientController {
                 case "minecraft.registry.item.search", "minecraft.server.info.read",
                         "minecraft.client.screenshot.capture",
                         "minecraft.input.key.set", "minecraft.input.mouse.set", "minecraft.input.release-all",
+                        "minecraft.script.current.cancel",
                         "minecraft.ui.state.read",
                         "minecraft.chat.read", "minecraft.goal.survival.wooden-axe-tree",
                         "minecraft.goal.creative.wool-tree-zombie-defense",
@@ -398,6 +409,10 @@ public final class NeoForgeClientController {
             if ("minecraft.player.interact".equals(capability)) {
                 return interactKeyAsync(invocation);
             }
+            if (capability.equals("minecraft.player.block.mine")) return startMineBlock(invocation);
+            if (capability.equals("minecraft.player.target-block.mine")) return startMineTargetBlock(invocation);
+            if (capability.equals("minecraft.player.block.place")) return startPlaceBlock(invocation);
+            if (capability.equals("minecraft.player.target-block.place")) return startPlaceTargetBlock(invocation);
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
                 return switch (capability) {
@@ -407,8 +422,13 @@ public final class NeoForgeClientController {
                 case "minecraft.input.key.set" -> setKey(invocation, false);
                 case "minecraft.input.mouse.set" -> setKey(invocation, true);
                 case "minecraft.input.release-all" -> releaseAllInput(invocation);
+                case "minecraft.script.current.cancel" -> cancelCurrentScript();
                 case "minecraft.player.state.read" -> playerState(invocation);
                 case "minecraft.player.context.read" -> playerContext(invocation);
+                case "minecraft.player.crosshair.read" -> queryCrosshair(invocation);
+                case "minecraft.world.block.find" -> findBlock(invocation);
+                case "minecraft.player.block.look-at" -> lookAtBlock(invocation);
+                case "minecraft.inventory.hotbar.select-item" -> selectItem(invocation);
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" ->
                         worldAnalysis(capability, invocation);
                 case "minecraft.player.look" -> look(invocation);
@@ -462,6 +482,10 @@ public final class NeoForgeClientController {
                 attackHold.fail(new IllegalStateException(
                         "held attack was stopped by a session reconcile"));
             }
+            if (hardScript != null && !hardScript.done()) {
+                stoppedGoalActors.add("hardScript:" + hardScript.id());
+                hardScript.cancel("hard script stopped by session reconcile");
+            }
             survivalTreeGoal = null;
             woolTreeZombieGoal = null;
             netherGoal = null;
@@ -470,6 +494,7 @@ public final class NeoForgeClientController {
             spawnGauntletGoal = null;
             stoneToolsetGoal = null;
             attackHold = null;
+            hardScript = null;
 
             var client = Minecraft.getInstance();
             // Goal actors (e.g. NeoForgeNavigationGoal) drive movement/interaction by setting these
@@ -774,6 +799,36 @@ public final class NeoForgeClientController {
             if (current.done()) attackHold = null;
         }
 
+        private void tickHardScript() {
+            var current = hardScript;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) hardScript = null;
+        }
+
+        private void cancelHardScript(String reason) {
+            if (hardScript != null && !hardScript.done()) {
+                hardScript.cancel(reason);
+                hardScript = null;
+            }
+        }
+
+        private Map<String, Object> cancelCurrentScript() {
+            var current = hardScript;
+            if (current == null || current.done()) {
+                return Map.of("cancelled", false, "mutationDispatched", false,
+                        "inputReleased", List.of(), "reconcileRequired", false);
+            }
+            var dispatched = current.mutationDispatched();
+            var id = current.id();
+            var kind = current.kind();
+            current.cancel("cancelled by minecraft.script.current.cancel");
+            hardScript = null;
+            return Map.of("cancelled", true, "mutationDispatched", dispatched,
+                    "inputReleased", List.of("key.attack", "key.use"),
+                    "reconcileRequired", dispatched, "scriptId", id, "scriptKind", kind);
+        }
+
         private boolean anyNativeGoalActorRunning() {
             return (survivalTreeGoal != null && !survivalTreeGoal.done())
                     || (woolTreeZombieGoal != null && !woolTreeZombieGoal.done())
@@ -867,6 +922,7 @@ public final class NeoForgeClientController {
         }
 
         private Map<String, Object> releaseAllInput() {
+            cancelHardScript("all controlled input released");
             var released = new ArrayList<String>();
             var preserved = new ArrayList<String>();
             for (var entry : ownedMappings.entrySet()) {
@@ -908,9 +964,24 @@ public final class NeoForgeClientController {
             var pressed = action != 0;
             var inputKey = InputConstants.getKey(key, scanCode);
             var mappings = Minecraft.getInstance().options.keyMappings;
+            if (pressed && hardScript != null && !hardScript.done()) {
+                cancelHardScript("user keyboard input");
+            }
             for (var mapping : mappings) {
                 if (!mapping.getKey().equals(inputKey)) continue;
                 if (pressed) physicallyHeldMappings.add(mapping.getName());
+                else physicallyHeldMappings.remove(mapping.getName());
+            }
+        }
+
+        private void recordPhysicalMouse(int button, int action) {
+            if (action != 0 && hardScript != null && !hardScript.done()) {
+                cancelHardScript("user mouse input");
+            }
+            var key = InputConstants.Type.MOUSE.getOrCreate(button);
+            for (var mapping : Minecraft.getInstance().options.keyMappings) {
+                if (!mapping.getKey().equals(key)) continue;
+                if (action != 0) physicallyHeldMappings.add(mapping.getName());
                 else physicallyHeldMappings.remove(mapping.getName());
             }
         }
@@ -1030,6 +1101,214 @@ public final class NeoForgeClientController {
             result.put("dimension", player.level().dimension().location().toString());
             result.put("target", raycastTarget(player, reach));
             return Map.copyOf(result);
+        }
+
+        private Map<String, Object> queryCrosshair(dev.lodestone.adapter.InvocationContext invocation) {
+            invocation.cancellation().throwIfCancelled();
+            var player = requirePlayer();
+            var target = raycastTarget(player, player.blockInteractionRange());
+            var output = new LinkedHashMap<String, Object>(target);
+            if ("block".equals(target.get("kind"))) {
+                var pos = new BlockPos(((Number) ((Map<?, ?>) target.get("blockPosition")).get("x")).intValue(),
+                        ((Number) ((Map<?, ?>) target.get("blockPosition")).get("y")).intValue(),
+                        ((Number) ((Map<?, ?>) target.get("blockPosition")).get("z")).intValue());
+                var state = requireLevel().getBlockState(pos);
+                output.put("blockFingerprint", NeoForgeHardScript.blockFingerprint(
+                        requireLevel().dimension().location().toString(), pos, state,
+                        String.valueOf(target.get("face"))));
+            }
+            return Map.copyOf(output);
+        }
+
+        private Map<String, Object> findBlock(dev.lodestone.adapter.InvocationContext invocation) {
+            var input = input(invocation);
+            var requested = text(input, "block", null).trim().toLowerCase(Locale.ROOT);
+            if (!requested.contains(":")) requested = "minecraft:" + requested;
+            var radius = numberOrDefault(input, "maxDistance", 16);
+            var maxVisited = numberOrDefault(input, "maxVisited", 32768);
+            if (radius < 1 || radius > 32 || maxVisited < 1 || maxVisited > 65536) {
+                throw new IllegalArgumentException("maxDistance must be 1..32 and maxVisited must be 1..65536");
+            }
+            var player = requirePlayer();
+            var center = player.blockPosition();
+            var level = requireLevel();
+            var matches = new ArrayList<BlockPos>();
+            var scanned = 0;
+            var truncated = false;
+            for (var y = center.getY() - radius; y <= center.getY() + radius && !truncated; y++) {
+                for (var x = center.getX() - radius; x <= center.getX() + radius && !truncated; x++) {
+                    for (var z = center.getZ() - radius; z <= center.getZ() + radius; z++) {
+                        if (++scanned > maxVisited) {
+                            truncated = true;
+                            break;
+                        }
+                        invocation.cancellation().throwIfCancelled();
+                        var pos = new BlockPos(x, y, z);
+                        if (!level.isInWorldBounds(pos) || !level.isLoaded(pos)) continue;
+                        var state = level.getBlockState(pos);
+                        if (requested.equals(NeoForgeHardScript.blockId(state))) matches.add(pos.immutable());
+                    }
+                }
+            }
+            matches.sort(Comparator.comparingDouble((BlockPos pos) -> pos.distSqr(center))
+                    .thenComparingInt(BlockPos::getY).thenComparingInt(BlockPos::getX)
+                    .thenComparingInt(BlockPos::getZ));
+            var output = new LinkedHashMap<String, Object>();
+            output.put("found", !matches.isEmpty());
+            output.put("scanned", Math.min(scanned, maxVisited));
+            output.put("truncated", truncated);
+            if (!matches.isEmpty()) output.put("target", NeoForgeHardScript.snapshot(
+                    level.dimension().location().toString(), matches.get(0), level.getBlockState(matches.get(0))));
+            return Map.copyOf(output);
+        }
+
+        private Map<String, Object> lookAtBlock(dev.lodestone.adapter.InvocationContext invocation) {
+            var input = input(invocation);
+            var target = new BlockPos(number(input, "x"), number(input, "y"), number(input, "z"));
+            var level = requireLevel();
+            if (!level.isInWorldBounds(target) || !level.isLoaded(target)) {
+                throw new IllegalArgumentException("target block is outside loaded client world");
+            }
+            var state = level.getBlockState(target);
+            var expected = input.get("blockFingerprint");
+            if (expected != null && !expected.equals(NeoForgeHardScript.blockFingerprint(
+                    level.dimension().location().toString(), target, state, null))) {
+                throw new IllegalStateException("TARGET_CHANGED before look-at dispatch");
+            }
+            var player = requirePlayer();
+            invocation.cancellation().commitMutation();
+            NeoForgeHardScript.aimAt(player, target);
+            return Map.of("rotation", Map.of("yaw", player.getYRot(), "pitch", player.getXRot()),
+                    "target", queryCrosshair(invocation));
+        }
+
+        private Map<String, Object> selectItem(dev.lodestone.adapter.InvocationContext invocation) {
+            var input = input(invocation);
+            var item = text(input, "item", null).trim().toLowerCase(Locale.ROOT);
+            if (!item.contains(":")) item = "minecraft:" + item;
+            var player = requirePlayer();
+            var preferred = input.get("preferredSlot") == null ? -1 : number(input, "preferredSlot");
+            if (preferred < -1 || preferred > 8) throw new IllegalArgumentException("preferredSlot must be 0..8");
+            var slot = chooseHotbarSlot(player, item, preferred);
+            if (slot < 0) throw new IllegalArgumentException("item is not present in the hotbar: " + item);
+            var changed = player.getInventory().selected != slot;
+            invocation.cancellation().commitMutation();
+            player.getInventory().selected = slot;
+            var stack = player.getInventory().getItem(slot);
+            return Map.of("selectedSlot", slot, "item", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
+                    "count", stack.getCount(), "changed", changed);
+        }
+
+        private CompletionStage<Map<String, Object>> startMineBlock(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    var player = requirePlayer();
+                    var hit = player.pick((float) player.blockInteractionRange(), 0.0F, false);
+                    if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) {
+                        throw new IllegalStateException("crosshair is not on a block within interaction range");
+                    }
+                    startMine(invocation, result, blockHit.getBlockPos());
+                } catch (Throwable failure) { result.completeExceptionally(failure); }
+            });
+            return result;
+        }
+
+        private CompletionStage<Map<String, Object>> startMineTargetBlock(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    var found = findBlock(invocation);
+                    if (!Boolean.TRUE.equals(found.get("found"))) throw new IllegalStateException("target block was not found");
+                    var targetMap = (Map<?, ?>) ((Map<?, ?>) found.get("target")).get("position");
+                    var pos = new BlockPos(((Number) targetMap.get("x")).intValue(), ((Number) targetMap.get("y")).intValue(),
+                            ((Number) targetMap.get("z")).intValue());
+                    startMine(invocation, result, pos);
+                } catch (Throwable failure) { result.completeExceptionally(failure); }
+            });
+            return result;
+        }
+
+        private void startMine(dev.lodestone.adapter.InvocationContext invocation,
+                               CompletableFuture<Map<String, Object>> result, BlockPos target) {
+            var client = Minecraft.getInstance();
+            if (client.screen != null) throw new IllegalStateException("hard scripts cannot run with a screen open");
+            if (hardScript != null && !hardScript.done() || attackHold != null && !attackHold.done()
+                    || anyNativeGoalActorRunning()) throw new IllegalStateException("another client actor is already running");
+            var state = requireLevel().getBlockState(target);
+            if (state.isAir()) throw new IllegalStateException("target block is empty");
+            var player = requirePlayer();
+            var reach = player.blockInteractionRange();
+            if (player.getEyePosition().distanceToSqr(Vec3.atCenterOf(target)) > reach * reach) {
+                throw new IllegalStateException("target block is outside the player's live interaction range");
+            }
+            hardScript = NeoForgeHardScript.mine("mine-" + clientTick, invocation, result, target,
+                    NeoForgeHardScript.blockFingerprint(requireLevel().dimension().location().toString(), target, state, null),
+                    requireLevel().dimension().location().toString(), NeoForgeHardScript.blockId(state), 300);
+        }
+
+        private CompletionStage<Map<String, Object>> startPlaceBlock(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    var player = requirePlayer();
+                    var hit = player.pick((float) player.blockInteractionRange(), 0.0F, false);
+                    if (!(hit instanceof BlockHitResult blockHit)) throw new IllegalStateException("crosshair is not on a support block");
+                    startPlace(invocation, result, blockHit.getBlockPos().relative(blockHit.getDirection()),
+                            blockHit.getBlockPos(), blockHit.getDirection());
+                } catch (Throwable failure) { result.completeExceptionally(failure); }
+            });
+            return result;
+        }
+
+        private CompletionStage<Map<String, Object>> startPlaceTargetBlock(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    var input = input(invocation);
+                    var target = new BlockPos(number(input, "x"), number(input, "y"), number(input, "z"));
+                    var face = input.get("face") == null ? Direction.UP : Direction.byName(text(input, "face", null));
+                    if (face == null) throw new IllegalArgumentException("face is invalid");
+                    startPlace(invocation, result, target, target.relative(face.getOpposite()), face);
+                } catch (Throwable failure) { result.completeExceptionally(failure); }
+            });
+            return result;
+        }
+
+        private void startPlace(dev.lodestone.adapter.InvocationContext invocation,
+                                CompletableFuture<Map<String, Object>> result, BlockPos target,
+                                BlockPos support, Direction face) {
+            var client = Minecraft.getInstance();
+            if (client.screen != null) throw new IllegalStateException("hard scripts cannot run with a screen open");
+            if (hardScript != null && !hardScript.done() || attackHold != null && !attackHold.done()
+                    || anyNativeGoalActorRunning()) throw new IllegalStateException("another client actor is already running");
+            var level = requireLevel();
+            if (!level.isInWorldBounds(target) || !level.isLoaded(target) || !level.isLoaded(support)) {
+                throw new IllegalStateException("placement target or support is not loaded");
+            }
+            var input = input(invocation);
+            var item = text(input, "item", null).trim().toLowerCase(Locale.ROOT);
+            if (!item.contains(":")) item = "minecraft:" + item;
+            var player = requirePlayer();
+            var slot = chooseHotbarSlot(player, item, -1);
+            if (slot < 0) throw new IllegalArgumentException("block item is not present in the hotbar: " + item);
+            var state = level.getBlockState(target);
+            if (!state.isAir() && !state.canBeReplaced()) throw new IllegalStateException("placement target is occupied");
+            player.getInventory().selected = slot;
+            hardScript = NeoForgeHardScript.place("place-" + clientTick, invocation, result, target, support, face,
+                    NeoForgeHardScript.blockFingerprint(level.dimension().location().toString(), target, state, null),
+                    level.dimension().location().toString(), item, slot, 160);
+        }
+
+        private static int chooseHotbarSlot(LocalPlayer player, String item, int preferred) {
+            if (matches(player.getInventory().getItem(player.getInventory().selected), item)) return player.getInventory().selected;
+            if (preferred >= 0 && matches(player.getInventory().getItem(preferred), item)) return preferred;
+            for (var slot = 0; slot < 9; slot++) if (matches(player.getInventory().getItem(slot), item)) return slot;
+            return -1;
+        }
+
+        private static boolean matches(ItemStack stack, String item) {
+            return !stack.isEmpty() && item.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         }
 
         private Map<String, Object> nearbyEntities(dev.lodestone.adapter.InvocationContext invocation) {
@@ -1334,11 +1613,11 @@ public final class NeoForgeClientController {
             if (client.level == null || client.gameMode == null) return null;
             var mode = client.gameMode.getPlayerMode();
             if (mode != GameType.SURVIVAL && mode != GameType.ADVENTURE) return null;
-            var hit = player.pick(5.0F, 0.0F, false);
+            var hit = player.pick((float) player.blockInteractionRange(), 0.0F, false);
             if (!(hit instanceof BlockHitResult blockHit)) return null;
             var pos = blockHit.getBlockPos();
             var state = client.level.getBlockState(pos);
-            if (state.isAir() || !state.getFluidState().isEmpty()) return null;
+            if (state.isAir()) return null;
             var progressPerTick = state.getDestroyProgress(player, client.level, pos);
             if (progressPerTick <= 0.0 || progressPerTick >= 1.0) return null;
             var blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();

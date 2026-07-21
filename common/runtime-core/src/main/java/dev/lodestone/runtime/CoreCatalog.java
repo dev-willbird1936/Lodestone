@@ -34,13 +34,20 @@ public final class CoreCatalog {
     }
 
     public static List<CapabilityDescriptor> load() {
-        try (InputStream input = CoreCatalog.class.getResourceAsStream("/core-capabilities.json")) {
+        try (InputStream input = CoreCatalog.class.getResourceAsStream("/core-capabilities.json");
+             InputStream hardScripts = CoreCatalog.class.getResourceAsStream("/hard-scripts.json")) {
             if (input == null) {
                 throw new IllegalStateException("core capability catalog is not packaged");
             }
             var root = new JsonParser().parse(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
             var capabilities = new ArrayList<CapabilityDescriptor>();
             root.getAsJsonArray("capabilities").forEach(node -> capabilities.add(read(node.getAsJsonObject())));
+            if (hardScripts == null) {
+                throw new IllegalStateException("hard-script capability catalog is not packaged");
+            }
+            var hardRoot = new JsonParser().parse(new InputStreamReader(hardScripts, StandardCharsets.UTF_8)).getAsJsonObject();
+            hardRoot.getAsJsonArray("capabilities")
+                    .forEach(node -> capabilities.add(read(node.getAsJsonObject())));
             activatePermissionGatedCapabilities(capabilities);
             linkUiWaitStateSchema(capabilities);
             linkUiNavigateSchemas(capabilities);

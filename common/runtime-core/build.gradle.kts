@@ -2,6 +2,7 @@ description = "Capability registry, dispatch, lifecycle, policy, and sessions."
 
 tasks.processResources {
     from(rootProject.file("protocol/catalog/core-capabilities.json"))
+    from(rootProject.file("protocol/catalog/hard-scripts.json"))
 }
 
 dependencies {

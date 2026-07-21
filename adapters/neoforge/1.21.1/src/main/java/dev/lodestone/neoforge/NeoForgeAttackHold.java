@@ -92,7 +92,9 @@ final class NeoForgeAttackHold {
             }
             var player = client.player;
             var state = client.level.getBlockState(target);
-            var cleared = state.isAir() || !state.getFluidState().isEmpty();
+            // A fluid may be part of a waterlogged or otherwise non-air block. Only the
+            // original block becoming air is a successful break observation.
+            var cleared = state.isAir();
             var aimed = !cleared && aimedAtTarget(player);
             var outcome = nextTick(cleared, aimed, ++ticks, timeoutTicks);
             switch (outcome) {
@@ -118,7 +120,7 @@ final class NeoForgeAttackHold {
     }
 
     private boolean aimedAtTarget(LocalPlayer player) {
-        var hit = player.pick(5.0F, 0.0F, false);
+        var hit = player.pick((float) player.blockInteractionRange(), 0.0F, false);
         return hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target);
     }
 

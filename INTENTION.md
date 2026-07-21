@@ -24,6 +24,11 @@ every Minecraft environment.
   model. Native task routines and the server-side `minecraft_goal`, task-catalog, and benchmark
   entry points are absent from public MCP discovery. Direct get, invoke, and script batching also
   reject every `minecraft.goal.*` routine except the bounded safe-waypoint pathing primitive.
+- NeoForge 1.21.1 now also exposes deterministic hard scripts as direct capability handlers:
+  crosshair query, loaded-block search, look-at, mine, target mine, hotbar item selection, place,
+  target place, and immediate current-script cancellation. These scripts run one bounded client
+  tick state machine with normal key mappings, live interaction reach, target fingerprints, input
+  cleanup, lifecycle cancellation, and no agent reasoning at trigger time.
 - Standalone Lodestone branding, package names, protocol models, runtime, gateway, tests, docs, and
   provenance rules.
 - Protocol-first module boundaries with no native Minecraft imports in the MCP gateway.
@@ -396,6 +401,12 @@ every Minecraft environment.
   `ec6761e07ef9ad564044d32c5cfdb421f4314cebd301242184d5ce40b869e972`.
 
 ## INTENTION NOT MATCHED
+
+- Hard-script implementations are currently native only for NeoForge 1.21.1. Fabric, Forge,
+  Paper, RCON, and other loader/version rows receive the negotiated catalog entries as unavailable
+  until they have their own input and client-state adapters.
+- Hard scripts do not yet include bulk block lines, path planning, inventory/container automation,
+  entity targeting, or a general script-composition DSL. Those remain separate follow-up surfaces.
 
 - Live end-to-end goal completion benchmarks now run repeatedly against fresh survival fixtures for
   all three native NeoForge 1.21.1 goals (see "Goal-engine benchmark evidence added 2026-07-19"),

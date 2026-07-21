@@ -2,6 +2,7 @@
 package dev.lodestone.runtime;
 
 import dev.lodestone.protocol.SchemaValidator;
+import dev.lodestone.protocol.Availability;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -15,9 +16,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 57 = 56 pre-existing capabilities + minecraft.session.reconcile (the
-        // CAPABILITY_QUARANTINED recovery capability added alongside this test update).
-        assertEquals(57, CoreCatalog.load().size());
+        // 66 = 56 pre-existing capabilities + minecraft.session.reconcile + 9 hard-script
+        // capabilities loaded from the NeoForge-ready deterministic script catalog.
+        assertEquals(66, CoreCatalog.load().size());
+    }
+
+    @Test
+    void deterministicHardScriptCatalogHasTypedBoundedContracts() {
+        var capabilities = CoreCatalog.load().stream()
+                .collect(Collectors.toMap(dev.lodestone.protocol.CapabilityDescriptor::id, Function.identity()));
+        for (var id : java.util.List.of("minecraft.player.crosshair.read", "minecraft.world.block.find",
+                "minecraft.player.block.look-at", "minecraft.player.block.mine",
+                "minecraft.player.target-block.mine", "minecraft.inventory.hotbar.select-item",
+                "minecraft.player.block.place", "minecraft.player.target-block.place",
+                "minecraft.script.current.cancel")) {
+            var capability = capabilities.get(id);
+            assertTrue(capability != null, "missing hard-script capability " + id);
+            assertEquals("1.0", capability.version());
+            assertEquals("client", capability.nativeThread());
+            assertTrue(SchemaValidator.validateSchema(capability.inputSchema()).isEmpty(),
+                    "hard-script input schema must be supported");
+            assertTrue(SchemaValidator.validateSchema(capability.outputSchema()).isEmpty(),
+                    "hard-script output schema must be supported");
+        }
+        var find = capabilities.get("minecraft.world.block.find");
+        assertTrue(SchemaValidator.validate(find.inputSchema(), Map.of("block", "stone")).isEmpty());
+        assertFalse(SchemaValidator.validate(find.inputSchema(), Map.of("block", "stone", "maxDistance", 33)).isEmpty());
+        var cancel = capabilities.get("minecraft.script.current.cancel");
+        assertTrue(SchemaValidator.validate(cancel.inputSchema(), Map.of()).isEmpty());
+        assertFalse(SchemaValidator.validate(cancel.inputSchema(), Map.of("unexpected", true)).isEmpty());
     }
 
     @Test
@@ -246,7 +273,7 @@ final class CoreCatalogTest {
     @Test
     void formerNativePermissionCapabilitiesAreAvailableToReadyAdapters() {
         var navigate = CoreCatalog.load().stream()
-                .filter(capability -> capability.id().equals("lodestone.ui.navigate"))
+                .filter(capability -> capability.id().equals("minecraft.player.look"))
                 .findFirst().orElseThrow();
 
         assertEquals(Availability.AVAILABLE, navigate.availability());
