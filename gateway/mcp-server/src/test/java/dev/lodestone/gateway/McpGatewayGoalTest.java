@@ -132,6 +132,30 @@ class McpGatewayGoalTest {
     }
 
     @Test
+    void rejectsUnfilteredSystemDiscoveryThroughGenericInvoke() {
+        try (var runtime = neoForgeRuntime()) {
+            var gateway = new McpGateway(runtime);
+            gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+            var capabilities = java.util.List.of(
+                    "lodestone.system.handshake",
+                    "lodestone.system.capabilities.list",
+                    "lodestone.system.capabilities.get",
+                    "lodestone.system.capabilities.search");
+
+            for (var capability : capabilities) {
+                var response = JsonParser.parseString(gateway.handle(
+                        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"lodestone_capability_invoke\",\"arguments\":{\"capability\":\""
+                                + capability + "\",\"input\":{}}}}"))
+                        .getAsJsonObject();
+                assertEquals(-32602, response.getAsJsonObject("error").get("code").getAsInt(), capability);
+                assertTrue(response.getAsJsonObject("error").get("message").getAsString().contains("filtered MCP"),
+                        capability);
+                assertFalse(response.toString().contains("minecraft.goal.survival.wooden-axe-tree"), capability);
+            }
+        }
+    }
+
+    @Test
     void rejectsNativeGoalRoutineInsideScriptBatch() {
         try (var runtime = neoForgeRuntime()) {
             var gateway = new McpGateway(runtime);

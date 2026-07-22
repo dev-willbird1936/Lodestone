@@ -976,7 +976,7 @@ public final class McpGateway {
     private JsonElement invoke(JsonObject args) {
         var capability = requiredText(args, "capability");
         try {
-            GoalCapabilityPolicy.requireModelPrimitive(capability);
+            GoalCapabilityPolicy.requireGenericInvokeAllowed(capability);
         } catch (IllegalArgumentException invalid) {
             throw new GatewayException(-32602, invalid.getMessage());
         }
