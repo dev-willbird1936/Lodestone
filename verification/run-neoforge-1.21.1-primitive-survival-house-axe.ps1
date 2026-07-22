@@ -98,9 +98,9 @@ function AdvanceIntoUnloadedTerrain($target,[double]$desired){
     if([double]$before.health -le 6 -or [bool]$safety.inLava -or [bool]$safety.onFire -or [bool]$safety.inWater -or -not [bool]$safety.onGround){throw 'unsafe state while loading unexplored terrain'}
     $dx=[double]$target.x-[double]$before.position.x;$dz=[double]$target.z-[double]$before.position.z;$distance=[math]::Sqrt($dx*$dx+$dz*$dz)
     if($distance -le $desired){return $before}
-    # This fallback only supplies a heading. Preserve the camera pitch from the observed state so
-    # a navigation recovery cannot overwrite the agent's active aim.
-    $yaw=[math]::Atan2(-$dx,$dz)*180/[math]::PI;$pitch=[double]$before.rotation.pitch;Cap 'minecraft.player.look' @{yaw=$yaw;pitch=$pitch}|Out-Null
+    # Walking uses a level view. Mining and placement set a precise aim only immediately before
+    # their action, so a completed mine cannot leave a downward camera pitch on the next movement lease.
+    $yaw=[math]::Atan2(-$dx,$dz)*180/[math]::PI;Cap 'minecraft.player.look' @{yaw=$yaw;pitch=0}|Out-Null
     Cap 'minecraft.player.move' @{forward=1.0;strafe=0.0;jump=$true;sprint=$true;sneak=$false;durationMs=750} '2.0'|Out-Null;Start-Sleep -Milliseconds 850
     $after=Cap 'minecraft.player.state.read';$adx=[double]$target.x-[double]$after.position.x;$adz=[double]$target.z-[double]$after.position.z;$afterDistance=[math]::Sqrt($adx*$adx+$adz*$adz)
     Log @{kind='unloaded-terrain-step';lease=$lease;target=$target;before=$before.position;after=$after.position;beforeDistance=$distance;afterDistance=$afterDistance}
@@ -122,7 +122,7 @@ function MoveNear($target,[double]$desired=3.0,[int]$attempts=18){
     RecordNavigation $nav $target $candidate $callIndex
     if([bool]$nav.commandsUsed -or [bool]$nav.directMutationUsed -or [int]$nav.blocksMined -ne 0 -or [int]$nav.blocksPlaced -ne 0){throw 'safe-waypoint violated no-command/no-mutation navigation policy'}
     if([bool]$nav.reachedTarget){$after=Cap 'minecraft.player.state.read';$adx=[double]$target.x-[double]$after.position.x;$adz=[double]$target.z-[double]$after.position.z;if([math]::Sqrt($adx*$adx+$adz*$adz)-le([math]::Max($desired,$radius+0.75))){return $after}}
-    if($nav.nearestReachablePoint){$n=$nav.nearestReachablePoint;$fallbackTarget=[pscustomobject]@{x=[double]$n.x;y=[double]$n.y;z=[double]$n.z};$key="$([int]$n.x),$([int]$n.y),$([int]$n.z)";if($seen.Add($key)){[void]$queue.Insert(0,[pscustomobject]@{x=[int]$n.x;y=[int]$n.y;z=[int]$n.z;fit=0})}}
+    if($nav.nearestReachablePoint){$n=$nav.nearestReachablePoint;$fallbackTarget=[pscustomobject]@{x=[double]$target.x;y=[double]$n.y;z=[double]$target.z};$key="$([int]$n.x),$([int]$n.y),$([int]$n.z)";if($seen.Add($key)){[void]$queue.Insert(0,[pscustomobject]@{x=[int]$n.x;y=[int]$n.y;z=[int]$n.z;fit=0})}}
     $callIndex++;Start-Sleep -Milliseconds 1100
   }
   $fallback=AdvanceIntoUnloadedTerrain $fallbackTarget $desired
@@ -137,6 +137,21 @@ function AimAtPoint($target,[double]$yOffset=0.5){
 function MinePosition($target,[string]$fingerprint=''){
   MoveNear $target 3.4|Out-Null;$look=@{x=[int]$target.x;y=[int]$target.y;z=[int]$target.z};if($fingerprint){$look.blockFingerprint=$fingerprint}
   Cap 'minecraft.player.block.look-at' $look|Out-Null;Cap 'minecraft.player.block.mine' @{}|Out-Null;Start-Sleep -Milliseconds 350
+}
+function CollectNearbyDrops([string]$item,[string]$stage){
+  # Item pickup is normal collision movement. Read the rendered item entities, then walk to each
+  # observed position; do not alter inventory or entities directly.
+  for($pass=0;$pass-lt 4;$pass++){
+    Start-Sleep -Milliseconds 650
+    $near=Cap 'minecraft.entity.nearby.read' @{radius=12;limit=64;includePlayers=$false;type='minecraft:item'}
+    $drops=@($near.entities)
+    Log @{kind='item-collection';stage=$stage;pass=$pass;item=$item;observedDrops=$drops.Count;beforeCount=(ItemCount $item)}
+    foreach($drop in $drops){
+      try{MoveNear ([pscustomobject]@{x=[double]$drop.position.x;y=[double]$drop.position.y;z=[double]$drop.position.z}) .3 12|Out-Null;Start-Sleep -Milliseconds 450}catch{Log @{kind='replan';stage='collect-drop';target=$drop.position;message=$_.Exception.Message}}
+      if((ItemCount $item) -ge 3){return}
+    }
+    if((ItemCount $item) -ge 3){return}
+  }
 }
 function FindReachableLog([string]$item){
   $p=Cap 'minecraft.player.state.read';$bx=[math]::Floor([double]$p.position.x);$by=[math]::Floor([double]$p.position.y);$bz=[math]::Floor([double]$p.position.z)
@@ -188,7 +203,7 @@ try {
     MoveNear $candidate.position 2.7 10|Out-Null;$live=Cap 'minecraft.player.state.read';$edx=([double]$candidate.position.x+.5)-[double]$live.position.x;$edy=([double]$candidate.position.y+.5)-([double]$live.position.y+1.62);$edz=([double]$candidate.position.z+.5)-[double]$live.position.z;$eyeDistance=[math]::Sqrt($edx*$edx+$edy*$edy+$edz*$edz);if($eyeDistance -gt 4.2){Log @{kind='replan';stage='tree-reach';eyeDistance=$eyeDistance;target=$candidate.position};continue}
     $aim=Cap 'minecraft.player.block.look-at' @{x=[int]$candidate.position.x;y=[int]$candidate.position.y;z=[int]$candidate.position.z};$aimPos=$aim.target.blockPosition;$aimMatches=($aim.target.block -eq $tree.block -and [int]$aimPos.x -eq [int]$candidate.position.x -and [int]$aimPos.y -eq [int]$candidate.position.y -and [int]$aimPos.z -eq [int]$candidate.position.z)
     if(!$aimMatches){if($aim.target.block -match '_leaves$' -and [double]$aim.target.distance -le 4.2){$mine=Cap 'minecraft.player.block.mine' @{};$obstructions++;Log @{kind='replan';stage='mine-tree-obstruction';wanted=$tree.block;aim=$aim.target;mined=$mine.beforeBlock}};continue}
-    $mine=Cap 'minecraft.player.block.mine' @{};if([string]$mine.beforeBlock -eq [string]$tree.block){$logs++;try{MoveNear $candidate.position .9 10|Out-Null}catch{};Start-Sleep -Milliseconds 900}
+    $mine=Cap 'minecraft.player.block.mine' @{};if([string]$mine.beforeBlock -eq [string]$tree.block){$logs++;try{MoveNear $candidate.position .9 10|Out-Null}catch{};CollectNearbyDrops $tree.block 'post-log-mine'}
   }catch{Log @{kind='replan';stage='mine-tree';message=$_.Exception.Message};Start-Sleep -Milliseconds 300}}
   if((ItemCount $tree.block) -lt 3){$pickupPoints=@([pscustomobject]@{x=[double]$tree.position.x;y=[double]$tree.position.y;z=[double]$tree.position.z},[pscustomobject]@{x=[double]$tree.position.x+1.4;y=[double]$tree.position.y;z=[double]$tree.position.z},[pscustomobject]@{x=[double]$tree.position.x-1.4;y=[double]$tree.position.y;z=[double]$tree.position.z},[pscustomobject]@{x=[double]$tree.position.x;y=[double]$tree.position.y;z=[double]$tree.position.z+1.4},[pscustomobject]@{x=[double]$tree.position.x;y=[double]$tree.position.y;z=[double]$tree.position.z-1.4});foreach($pickup in $pickupPoints){try{MoveNear $pickup .35 12|Out-Null;Start-Sleep -Milliseconds 900}catch{};if((ItemCount $tree.block) -ge 3){break}}}
   $r.predicates.treeMined=((ItemCount $tree.block) -ge 1);if((ItemCount $tree.block) -lt 3){throw "tree mining collected fewer than three recipe-resource logs after $logs confirmed log breaks and $obstructions obstruction clears"};$r.predicates.logsMined=$logs;$r.predicates.treeObstructionsCleared=$obstructions
