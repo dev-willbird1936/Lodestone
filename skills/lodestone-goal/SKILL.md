@@ -37,6 +37,27 @@ Loading or creating a world, dismissing menus, moving, mining, collecting drops,
 crafting, equipping, and final verification are all part of that model-owned plan. Do not assume a
 world is loaded and do not delegate those steps to a native routine.
 
+## Hard-script tools
+
+Hard scripts are deterministic MCP tools for the thinking model. They do not own goals, select
+subgoals, call a model, or recover without being asked. Discover them through `tools/list` and
+`lodestone_capabilities_list`. Every capability marked `hard-script` and `agent-tool` must also have
+a first-class MCP tool whose input schema comes from that same canonical capability contract.
+
+For realtime execution, call one hard-script tool and then re-observe. For script execution, place
+the canonical hard-script capability in `minecraft_subactions_execute` only when its inputs are
+already known and no later action depends on an unknown result. Stop the batch on failure, stale
+state, cancellation, an indeterminate result, or any other uncertainty boundary.
+
+Prefer execution in this order:
+
+1. A matching hard-script tool for one bounded verified action.
+2. A bounded ordered subaction batch composed by the current model.
+3. Raw input primitives only when no typed hard script covers the action.
+
+The model chooses targets, counts, ordering, retries, and the next goal step. Hard scripts only
+execute their declared bounds and return evidence.
+
 ## Discover
 
 Call `lodestone_capabilities_list`. First read the current UI. If no world and player exist, use UI

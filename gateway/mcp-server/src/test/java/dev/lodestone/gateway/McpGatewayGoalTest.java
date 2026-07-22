@@ -6,9 +6,16 @@ import dev.lodestone.adapter.LodestoneAdapter;
 import dev.lodestone.protocol.AdapterDescriptor;
 import dev.lodestone.protocol.CapabilityManifest;
 import dev.lodestone.protocol.Environment;
+import dev.lodestone.protocol.JsonSupport;
 import dev.lodestone.runtime.AuthorizationPolicy;
+import dev.lodestone.runtime.CoreCatalog;
 import dev.lodestone.runtime.LodestoneRuntime;
 import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,6 +50,46 @@ class McpGatewayGoalTest {
             assertTrue(listed.contains("minecraft_hook_remove"));
             assertTrue(initialized.contains("current model"));
             assertTrue(initialized.contains("Native task routines are not exposed"));
+        }
+    }
+
+    @Test
+    void publishesEveryHardScriptAsAFirstClassAgentToolUsingCanonicalSchemas() {
+        var capabilities = CoreCatalog.load().stream()
+                .collect(Collectors.toMap(dev.lodestone.protocol.CapabilityDescriptor::id, Function.identity()));
+        var catalogHardScripts = capabilities.values().stream()
+                .filter(capability -> capability.featureFlags().contains("hard-script"))
+                .map(dev.lodestone.protocol.CapabilityDescriptor::id)
+                .collect(Collectors.toSet());
+        assertEquals(catalogHardScripts, McpGateway.hardScriptToolCapabilities());
+
+        var toolCapabilities = Map.ofEntries(
+                Map.entry("query_crosshair", "minecraft.player.crosshair.read"),
+                Map.entry("find_block", "minecraft.world.block.find"),
+                Map.entry("look_at_block", "minecraft.player.block.look-at"),
+                Map.entry("mine_block", "minecraft.player.block.mine"),
+                Map.entry("mine_target_block", "minecraft.player.target-block.mine"),
+                Map.entry("select_item", "minecraft.inventory.hotbar.select-item"),
+                Map.entry("place_block", "minecraft.player.block.place"),
+                Map.entry("place_target_block", "minecraft.player.target-block.place"),
+                Map.entry("cancel_current_script", "minecraft.script.current.cancel"));
+
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
+            var gateway = new McpGateway(runtime);
+            gateway.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\"}}");
+            var tools = JsonParser.parseString(gateway.handle(
+                            "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}"))
+                    .getAsJsonObject().getAsJsonObject("result").getAsJsonArray("tools");
+            var schemas = new LinkedHashMap<String, com.google.gson.JsonElement>();
+            tools.forEach(tool -> schemas.put(tool.getAsJsonObject().get("name").getAsString(),
+                    tool.getAsJsonObject().get("inputSchema")));
+
+            toolCapabilities.forEach((toolName, capabilityId) -> {
+                assertTrue(schemas.containsKey(toolName), "missing first-class hard-script tool " + toolName);
+                assertEquals(JsonSupport.MAPPER.toJsonTree(capabilities.get(capabilityId).inputSchema()),
+                        schemas.get(toolName), "tool schema must come from canonical capability " + capabilityId);
+            });
+            assertTrue(schemas.containsKey("navigate_safe_waypoint"));
         }
     }
 

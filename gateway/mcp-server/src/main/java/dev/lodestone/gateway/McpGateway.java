@@ -48,14 +48,8 @@ public final class McpGateway {
     private static final Pattern BLOCK_STATE_TOKEN = Pattern.compile(BLOCK_STATE_PATTERN);
     private static final Set<String> WORLD_EDIT_DIRECTIONS =
             Set.of("up", "down", "north", "south", "east", "west");
-    private static final List<CapabilityAlias> COMPATIBILITY_ALIASES = List.of(
-            new CapabilityAlias("ui_wait", "lodestone.ui.wait", "1.0"),
-            new CapabilityAlias("ui_navigate", "lodestone.ui.navigate", "1.0"),
-            new CapabilityAlias("ui_state", "minecraft.ui.state.read", "2.0"),
-            new CapabilityAlias("get_player_position", "minecraft.player.state.read", "1.0"),
-            new CapabilityAlias("get_server_info", "minecraft.server.info.read", "1.0"),
-            new CapabilityAlias("search_minecraft_item", "minecraft.registry.item.search", "1.0"),
-            new CapabilityAlias("get_player_context", "minecraft.player.context.read", "1.0"),
+    /** Every deterministic hard script must remain a first-class tool for model-owned goals. */
+    private static final List<CapabilityAlias> HARD_SCRIPT_ALIASES = List.of(
             new CapabilityAlias("query_crosshair", "minecraft.player.crosshair.read", "1.0"),
             new CapabilityAlias("find_block", "minecraft.world.block.find", "1.0"),
             new CapabilityAlias("look_at_block", "minecraft.player.block.look-at", "1.0"),
@@ -64,7 +58,16 @@ public final class McpGateway {
             new CapabilityAlias("select_item", "minecraft.inventory.hotbar.select-item", "1.0"),
             new CapabilityAlias("place_block", "minecraft.player.block.place", "1.0"),
             new CapabilityAlias("place_target_block", "minecraft.player.target-block.place", "1.0"),
-            new CapabilityAlias("cancel_current_script", "minecraft.script.current.cancel", "1.0"),
+            new CapabilityAlias("cancel_current_script", "minecraft.script.current.cancel", "1.0"));
+    private static final List<CapabilityAlias> COMPATIBILITY_ALIASES = mergeAliases(List.of(
+            new CapabilityAlias("ui_wait", "lodestone.ui.wait", "1.0"),
+            new CapabilityAlias("ui_navigate", "lodestone.ui.navigate", "1.0"),
+            new CapabilityAlias("ui_state", "minecraft.ui.state.read", "2.0"),
+            new CapabilityAlias("get_player_position", "minecraft.player.state.read", "1.0"),
+            new CapabilityAlias("get_server_info", "minecraft.server.info.read", "1.0"),
+            new CapabilityAlias("search_minecraft_item", "minecraft.registry.item.search", "1.0"),
+            new CapabilityAlias("get_player_context", "minecraft.player.context.read", "1.0"),
+            new CapabilityAlias("navigate_safe_waypoint", "minecraft.goal.navigation.safe-waypoint", "1.0"),
             new CapabilityAlias("release_all_input", "minecraft.input.release-all", "1.0"),
             new CapabilityAlias("reconcile_session", "minecraft.session.reconcile", "1.0"),
             new CapabilityAlias("get_nearby_entities", "minecraft.entity.nearby.read", "1.0"),
@@ -72,7 +75,8 @@ public final class McpGateway {
             new CapabilityAlias("validate_mask", "lodestone.worldedit.mask.validate", "1.0"),
             new CapabilityAlias("place_furniture", "lodestone.furniture.place", "1.0"),
             new CapabilityAlias("place_building_pattern", "lodestone.building.pattern.place", "1.0"),
-            new CapabilityAlias("capture_screenshot", "minecraft.client.screenshot.capture", "1.0"));
+            new CapabilityAlias("capture_screenshot", "minecraft.client.screenshot.capture", "1.0")),
+            HARD_SCRIPT_ALIASES);
     private final LodestoneRuntime runtime;
     private final GoalSubactionService goalSubactions;
     private final GoalConditionHooks goalHooks;
@@ -82,6 +86,20 @@ public final class McpGateway {
     private final Object sessionAdmissionLock = new Object();
     private final ThreadLocal<GatewaySession> currentSession = new ThreadLocal<>();
     private final ThreadLocal<String> responseSessionId = new ThreadLocal<>();
+
+    private static List<CapabilityAlias> mergeAliases(List<CapabilityAlias> base,
+                                                       List<CapabilityAlias> hardScripts) {
+        var aliases = new ArrayList<CapabilityAlias>(base.size() + hardScripts.size());
+        aliases.addAll(base);
+        aliases.addAll(hardScripts);
+        return List.copyOf(aliases);
+    }
+
+    static Set<String> hardScriptToolCapabilities() {
+        var capabilities = new HashSet<String>();
+        HARD_SCRIPT_ALIASES.forEach(alias -> capabilities.add(alias.capability()));
+        return Set.copyOf(capabilities);
+    }
 
     /** Local compatibility mode. Every local MCP session has full Lodestone control. */
     public McpGateway(LodestoneRuntime runtime) {

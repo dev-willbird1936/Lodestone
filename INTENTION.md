@@ -29,6 +29,10 @@ every Minecraft environment.
   target place, and immediate current-script cancellation. These scripts run one bounded client
   tick state machine with normal key mappings, live interaction reach, target fingerprints, input
   cleanup, lifecycle cancellation, and no agent reasoning at trigger time.
+- Every catalogued hard script is now explicitly marked as an agent tool and guarded by a gateway
+  invariant that requires a first-class MCP tool backed by the canonical capability schema. The
+  `lodestone-goal` skill tells the thinking model to compose these tools with bounded subactions and
+  raw input, while retaining all target selection, sequencing, retry, and recovery decisions.
 - The NeoForge 1.21.1 all-in-one benchmark now runs from the main menu through world creation,
   Creative fixture setup, Survival wood progression, bounded observations, hard-script execution,
   cancellation/reconciliation, mob spawn/list/move/return checks, and cleanup. It launches through

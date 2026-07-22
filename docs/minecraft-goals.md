@@ -43,6 +43,25 @@ goal.
 
 Hooks provide observations. They do not perform actions or authorize unsafe behavior.
 
+## Hard scripts are agent tools
+
+The thinking model may call deterministic hard scripts directly from MCP `tools/list`, or include
+their canonical capability IDs in `minecraft_subactions_execute`. Both paths use the same capability
+registry schema and the same native handler. A hard script never calls a model and never chooses the
+next goal step.
+
+The current NeoForge 1.21.1 hard-script tools are `query_crosshair`, `find_block`, `look_at_block`,
+`mine_block`, `mine_target_block`, `select_item`, `place_block`, `place_target_block`, and
+`cancel_current_script`. `navigate_safe_waypoint` exposes the one permitted bounded pathing primitive.
+Raw input and generic capability invocation remain available for actions that do not yet have a
+typed hard script.
+
+The model must choose the target, count, ordering, retries, and recovery. After a stale precondition,
+failure, cancellation, indeterminate result, changed target, or other uncertainty boundary, it must
+re-observe before planning another segment. Native tools such as `build_house`, `harvest_tree`,
+`combat_win`, or any free-text objective executor are forbidden because they would hide goal
+ownership inside the bridge.
+
 ## Modes
 
 ### Script

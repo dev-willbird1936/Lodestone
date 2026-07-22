@@ -34,6 +34,7 @@ final class CoreCatalogTest {
             assertTrue(capability != null, "missing hard-script capability " + id);
             assertEquals("1.0", capability.version());
             assertEquals("client", capability.nativeThread());
+            assertTrue(capability.featureFlags().containsAll(java.util.Set.of("hard-script", "agent-tool")));
             assertTrue(SchemaValidator.validateSchema(capability.inputSchema()).isEmpty(),
                     "hard-script input schema must be supported");
             assertTrue(SchemaValidator.validateSchema(capability.outputSchema()).isEmpty(),

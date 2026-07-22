@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +47,8 @@ public final class CoreCatalog {
                 throw new IllegalStateException("hard-script capability catalog is not packaged");
             }
             var hardRoot = new JsonParser().parse(new InputStreamReader(hardScripts, StandardCharsets.UTF_8)).getAsJsonObject();
-            hardRoot.getAsJsonArray("capabilities")
-                    .forEach(node -> capabilities.add(read(node.getAsJsonObject())));
+            hardRoot.getAsJsonArray("capabilities").forEach(node -> capabilities.add(
+                    withFeatureFlags(read(node.getAsJsonObject()), Set.of("hard-script", "agent-tool"))));
             activatePermissionGatedCapabilities(capabilities);
             linkUiWaitStateSchema(capabilities);
             linkUiNavigateSchemas(capabilities);
@@ -145,6 +146,19 @@ public final class CoreCatalog {
                 capability.permissions(), capability.sideEffect(), capability.idempotency(), capability.prerequisites(),
                 capability.nativeThread(), capability.rateLimit(), capability.timeoutMs(), capability.cancellable(),
                 capability.delivery(), capability.documentation(), capability.featureFlags());
+    }
+
+    private static CapabilityDescriptor withFeatureFlags(CapabilityDescriptor capability,
+                                                          Set<String> additionalFlags) {
+        var featureFlags = new HashSet<>(capability.featureFlags());
+        featureFlags.addAll(additionalFlags);
+        return new CapabilityDescriptor(capability.id(), capability.kind(), capability.version(),
+                capability.stability(), capability.availability(), capability.reason(), capability.adapterId(),
+                capability.adapterVersion(), capability.gameEdition(), capability.gameVersion(), capability.loader(),
+                capability.environment(), capability.inputSchema(), capability.outputSchema(), capability.eventSchema(),
+                capability.permissions(), capability.sideEffect(), capability.idempotency(), capability.prerequisites(),
+                capability.nativeThread(), capability.rateLimit(), capability.timeoutMs(), capability.cancellable(),
+                capability.delivery(), capability.documentation(), Set.copyOf(featureFlags));
     }
 
     private static CapabilityDescriptor read(JsonObject node) {
