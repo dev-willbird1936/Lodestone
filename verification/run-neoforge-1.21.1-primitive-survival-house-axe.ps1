@@ -210,11 +210,12 @@ try {
   OpenInventoryBounded|Out-Null;$inv=Cap 'minecraft.inventory.container.read';$logSlot=@($inv.slots|?{$_.item -eq $tree.block}|Select -First 1).slot;if($null -eq $logSlot){$logSlot=@($inv.slots|?{$_.item -match '_log$'}|Select -First 1).slot};if($null -eq $logSlot){throw 'mined log not visible in inventory'}
   ClickFresh ([int]$logSlot) 0 'PICKUP' 'pick natural log for planks'|Out-Null
   ClickFresh 1 0 'PICKUP' 'place log in player crafting grid'|Out-Null
-  ClickFresh 0 0 'PICKUP' 'take visible plank output'|Out-Null;$r.predicates.visiblePlanksCrafted=$true
+  ClickFresh 0 0 'QUICK_MOVE' 'quick-move visible plank output'|Out-Null
+  if((ItemCount ($tree.block -replace '_log$','_planks')) -lt 4){throw 'visible log recipe did not produce planks in inventory'};$r.predicates.visiblePlanksCrafted=$true
   Start-Sleep -Milliseconds 250
 
   # Visible 2x2 crafting-table recipe: slots 1,2,3,4. Every click reads a fresh revision.
-  $inv=ReadContainer;$plankSlot=[int](@($inv.slots|?{$_.item -match '_planks$' -and [int]$_.slot -ge 9}|Select-Object -First 1)[0].slot);if($plankSlot -lt 0){throw 'planks missing before table recipe'}
+  $inv=ReadContainer;$plankRows=@($inv.slots|?{$_.item -match '_planks$' -and [int]$_.slot -ge 9}|Select-Object -First 1);if(!$plankRows){throw 'planks missing from player inventory before table recipe'};$plankSlot=[int]$plankRows[0].slot
   ClickFresh $plankSlot 0 'PICKUP' 'pick planks for table'|Out-Null
   foreach($grid in 1,2,3,4){ClickFresh $grid 1 'PICKUP' "table grid $grid"|Out-Null}
   ClickFresh $plankSlot 0 'PICKUP' 'return unused table planks'|Out-Null
@@ -222,7 +223,7 @@ try {
   if((ItemCount 'minecraft:crafting_table') -lt 1){throw 'visible table recipe did not produce crafting table'};$r.predicates.visibleCraftingTableCrafted=$true
 
   # Visible 2x2 stick recipe: slots 1 and 3.
-  $inv=ReadContainer;$plankSlot=[int](@($inv.slots|?{$_.item -match '_planks$' -and [int]$_.slot -ge 9}|Select-Object -First 1)[0].slot);if($plankSlot -lt 0){throw 'planks missing before stick recipe'}
+  $inv=ReadContainer;$plankRows=@($inv.slots|?{$_.item -match '_planks$' -and [int]$_.slot -ge 9}|Select-Object -First 1);if(!$plankRows){throw 'planks missing from player inventory before stick recipe'};$plankSlot=[int]$plankRows[0].slot
   ClickFresh $plankSlot 0 'PICKUP' 'pick planks for sticks'|Out-Null
   foreach($grid in 1,3){ClickFresh $grid 1 'PICKUP' "stick grid $grid"|Out-Null}
   ClickFresh $plankSlot 0 'PICKUP' 'return unused stick planks'|Out-Null
