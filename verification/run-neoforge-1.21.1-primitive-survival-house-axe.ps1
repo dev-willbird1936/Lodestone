@@ -98,7 +98,9 @@ function AdvanceIntoUnloadedTerrain($target,[double]$desired){
     if([double]$before.health -le 6 -or [bool]$safety.inLava -or [bool]$safety.onFire -or [bool]$safety.inWater -or -not [bool]$safety.onGround){throw 'unsafe state while loading unexplored terrain'}
     $dx=[double]$target.x-[double]$before.position.x;$dz=[double]$target.z-[double]$before.position.z;$distance=[math]::Sqrt($dx*$dx+$dz*$dz)
     if($distance -le $desired){return $before}
-    $yaw=[math]::Atan2(-$dx,$dz)*180/[math]::PI;Cap 'minecraft.player.look' @{yaw=$yaw;pitch=0}|Out-Null
+    # This fallback only supplies a heading. Preserve the camera pitch from the observed state so
+    # a navigation recovery cannot overwrite the agent's active aim.
+    $yaw=[math]::Atan2(-$dx,$dz)*180/[math]::PI;$pitch=[double]$before.rotation.pitch;Cap 'minecraft.player.look' @{yaw=$yaw;pitch=$pitch}|Out-Null
     Cap 'minecraft.player.move' @{forward=1.0;strafe=0.0;jump=$true;sprint=$true;sneak=$false;durationMs=750} '2.0'|Out-Null;Start-Sleep -Milliseconds 850
     $after=Cap 'minecraft.player.state.read';$adx=[double]$target.x-[double]$after.position.x;$adz=[double]$target.z-[double]$after.position.z;$afterDistance=[math]::Sqrt($adx*$adx+$adz*$adz)
     Log @{kind='unloaded-terrain-step';lease=$lease;target=$target;before=$before.position;after=$after.position;beforeDistance=$distance;afterDistance=$afterDistance}
@@ -113,18 +115,18 @@ function MoveNear($target,[double]$desired=3.0,[int]$attempts=18){
   $tx=[int][math]::Round([double]$target.x);$tz=[int][math]::Round([double]$target.z);$ty=[int][math]::Round([double]$target.y);$radius=[int][math]::Max(1,[math]::Min(3,[math]::Ceiling($desired)))
   $columns=@();try{$hm=Cap 'minecraft.world.heightmap.read' @{x=$tx-$radius;z=$tz-$radius;sizeX=2*$radius+1;sizeZ=2*$radius+1;includeSurfaceBlocks=$false};$columns=@($hm.columns|?{$_.loaded -and !$_.empty})}catch{}
   $candidateRows=@();foreach($offset in @(@(0,0),@($radius,0),@(-$radius,0),@(0,$radius),@(0,-$radius),@(1,0),@(-1,0),@(0,1),@(0,-1),@($radius,$radius),@(-$radius,$radius),@($radius,-$radius),@(-$radius,-$radius))){$cx=$tx+[int]$offset[0];$cz=$tz+[int]$offset[1];$column=@($columns|?{[int]$_.x-eq$cx-and[int]$_.z-eq$cz}|Select-Object -First 1);$cy=if($column){[int]$column[0].height}else{$ty};$candidateRows+=[pscustomobject]@{x=$cx;y=$cy;z=$cz;fit=[math]::Abs([math]::Sqrt(($cx-$tx)*($cx-$tx)+($cz-$tz)*($cz-$tz))-$desired)}}
-  $queue=[Collections.ArrayList]::new();$seen=[Collections.Generic.HashSet[string]]::new();foreach($c in @($candidateRows|Sort-Object fit)){if($seen.Add("$($c.x),$($c.y),$($c.z)")){[void]$queue.Add($c)}}
+  $queue=[Collections.ArrayList]::new();$seen=[Collections.Generic.HashSet[string]]::new();$fallbackTarget=$target;foreach($c in @($candidateRows|Sort-Object fit)){if($seen.Add("$($c.x),$($c.y),$($c.z)")){[void]$queue.Add($c)}}
   $maxCalls=[int][math]::Min(6,[math]::Max(2,[math]::Ceiling($attempts/6)));$callIndex=0
   while($callIndex-lt$maxCalls -and $queue.Count){$candidate=$queue[0];$queue.RemoveAt(0)
     $nav=Cap 'minecraft.goal.navigation.safe-waypoint' @{targetX=[int]$candidate.x;targetY=[int]$candidate.y;targetZ=[int]$candidate.z;intelligence='high';safety='high';observation='loaded-chunks';combatPolicy='avoid';allowBlockBreaking=$false;allowBlockPlacing=$false;allowCommands=$false}
     RecordNavigation $nav $target $candidate $callIndex
     if([bool]$nav.commandsUsed -or [bool]$nav.directMutationUsed -or [int]$nav.blocksMined -ne 0 -or [int]$nav.blocksPlaced -ne 0){throw 'safe-waypoint violated no-command/no-mutation navigation policy'}
     if([bool]$nav.reachedTarget){$after=Cap 'minecraft.player.state.read';$adx=[double]$target.x-[double]$after.position.x;$adz=[double]$target.z-[double]$after.position.z;if([math]::Sqrt($adx*$adx+$adz*$adz)-le([math]::Max($desired,$radius+0.75))){return $after}}
-    if($nav.nearestReachablePoint){$n=$nav.nearestReachablePoint;$key="$([int]$n.x),$([int]$n.y),$([int]$n.z)";if($seen.Add($key)){[void]$queue.Insert(0,[pscustomobject]@{x=[int]$n.x;y=[int]$n.y;z=[int]$n.z;fit=0})}}
+    if($nav.nearestReachablePoint){$n=$nav.nearestReachablePoint;$fallbackTarget=[pscustomobject]@{x=[double]$n.x;y=[double]$n.y;z=[double]$n.z};$key="$([int]$n.x),$([int]$n.y),$([int]$n.z)";if($seen.Add($key)){[void]$queue.Insert(0,[pscustomobject]@{x=[int]$n.x;y=[int]$n.y;z=[int]$n.z;fit=0})}}
     $callIndex++;Start-Sleep -Milliseconds 1100
   }
-  $fallback=AdvanceIntoUnloadedTerrain $target $desired
-  Log @{kind='replan';stage='unloaded-terrain-fallback';target=$target;plannerCalls=$callIndex;position=$fallback.position}
+  $fallback=AdvanceIntoUnloadedTerrain $fallbackTarget $desired
+  Log @{kind='replan';stage='unloaded-terrain-fallback';target=$target;groundTarget=$fallbackTarget;plannerCalls=$callIndex;position=$fallback.position}
   return $fallback
 }
 function AimAtPoint($target,[double]$yOffset=0.5){
