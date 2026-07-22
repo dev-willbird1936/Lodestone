@@ -99,7 +99,7 @@ function AdvanceIntoUnloadedTerrain($target,[double]$desired){
     $dx=[double]$target.x-[double]$before.position.x;$dz=[double]$target.z-[double]$before.position.z;$distance=[math]::Sqrt($dx*$dx+$dz*$dz)
     if($distance -le $desired){return $before}
     $yaw=[math]::Atan2(-$dx,$dz)*180/[math]::PI;Cap 'minecraft.player.look' @{yaw=$yaw;pitch=0}|Out-Null
-    Cap 'minecraft.player.move' @{forward=1.0;strafe=0.0;jump=$true;sprint=$true;sneak=$false;durationMs=750}|Out-Null;Start-Sleep -Milliseconds 850
+    Cap 'minecraft.player.move' @{forward=1.0;strafe=0.0;jump=$true;sprint=$true;sneak=$false;durationMs=750} '2.0'|Out-Null;Start-Sleep -Milliseconds 850
     $after=Cap 'minecraft.player.state.read';$adx=[double]$target.x-[double]$after.position.x;$adz=[double]$target.z-[double]$after.position.z;$afterDistance=[math]::Sqrt($adx*$adx+$adz*$adz)
     Log @{kind='unloaded-terrain-step';lease=$lease;target=$target;before=$before.position;after=$after.position;beforeDistance=$distance;afterDistance=$afterDistance}
     if($afterDistance -ge $distance-.25){if($moved){return $after};throw 'raw movement did not make safe progress into unloaded terrain'}
