@@ -101,7 +101,9 @@ final class NeoForgeHardScript {
                 fail("client world, player, or game mode disappeared");
                 return;
             }
-            if (client.screen != null || !client.isWindowActive() || !client.player.isAlive()) {
+            // Keep Focus deliberately permits authentic client input while the launcher window is not foregrounded.
+            // Focus is not a gameplay lifecycle signal; a screen, death, world loss, or cancellation is.
+            if (client.screen != null || !client.player.isAlive()) {
                 fail("hard script cancelled by client lifecycle state");
                 return;
             }
