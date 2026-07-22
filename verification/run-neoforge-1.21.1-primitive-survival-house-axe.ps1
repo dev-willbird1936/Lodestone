@@ -89,6 +89,24 @@ function RecordNavigation($nav,$requested,$candidate,[int]$attempt){
   $record=[ordered]@{attempt=$attempt;requested=$requested;candidate=$candidate;reachedTarget=[bool]$nav.reachedTarget;finalPosition=$nav.finalPosition;plannedPathLength=[int]$nav.plannedPathLength;pathNodesVisited=[int]$nav.pathNodesVisited;replans=[int]$nav.replans;safetyInterventions=@($nav.safetyInterventions);nearestReachablePoint=$nav.nearestReachablePoint}
   $r.navigation.attempts += $record;Log (@{kind='navigation-safe-waypoint'}+$record)
 }
+function AdvanceIntoUnloadedTerrain($target,[double]$desired){
+  # The safe-waypoint planner intentionally has no route through unloaded chunks. Use only short,
+  # observable input leases to load the next terrain band, then hand planning back to the planner.
+  $moved=$false
+  for($lease=0;$lease-lt 8;$lease++){
+    $before=Cap 'minecraft.player.state.read';$safety=$before.worldObservation.player
+    if([double]$before.health -le 6 -or [bool]$safety.inLava -or [bool]$safety.onFire -or [bool]$safety.inWater -or -not [bool]$safety.onGround){throw 'unsafe state while loading unexplored terrain'}
+    $dx=[double]$target.x-[double]$before.position.x;$dz=[double]$target.z-[double]$before.position.z;$distance=[math]::Sqrt($dx*$dx+$dz*$dz)
+    if($distance -le $desired){return $before}
+    $yaw=[math]::Atan2(-$dx,$dz)*180/[math]::PI;Cap 'minecraft.player.look' @{yaw=$yaw;pitch=0}|Out-Null
+    Cap 'minecraft.player.move' @{forward=1.0;strafe=0.0;jump=$true;sprint=$true;sneak=$false;durationMs=750}|Out-Null;Start-Sleep -Milliseconds 850
+    $after=Cap 'minecraft.player.state.read';$adx=[double]$target.x-[double]$after.position.x;$adz=[double]$target.z-[double]$after.position.z;$afterDistance=[math]::Sqrt($adx*$adx+$adz*$adz)
+    Log @{kind='unloaded-terrain-step';lease=$lease;target=$target;before=$before.position;after=$after.position;beforeDistance=$distance;afterDistance=$afterDistance}
+    if($afterDistance -ge $distance-.25){if($moved){return $after};throw 'raw movement did not make safe progress into unloaded terrain'}
+    $moved=$true
+  }
+  return Cap 'minecraft.player.state.read'
+}
 function MoveNear($target,[double]$desired=3.0,[int]$attempts=18){
   $p=Cap 'minecraft.player.state.read';if([double]$p.health -le 6){throw 'health safety floor reached during movement'}
   $dx=[double]$target.x-[double]$p.position.x;$dz=[double]$target.z-[double]$p.position.z;$d=[math]::Sqrt($dx*$dx+$dz*$dz);if($d -le $desired){return $p}
@@ -105,7 +123,9 @@ function MoveNear($target,[double]$desired=3.0,[int]$attempts=18){
     if($nav.nearestReachablePoint){$n=$nav.nearestReachablePoint;$key="$([int]$n.x),$([int]$n.y),$([int]$n.z)";if($seen.Add($key)){[void]$queue.Insert(0,[pscustomobject]@{x=[int]$n.x;y=[int]$n.y;z=[int]$n.z;fit=0})}}
     $callIndex++;Start-Sleep -Milliseconds 1100
   }
-  throw "safe-waypoint could not move within $desired blocks of target after $callIndex bounded planner calls"
+  $fallback=AdvanceIntoUnloadedTerrain $target $desired
+  Log @{kind='replan';stage='unloaded-terrain-fallback';target=$target;plannerCalls=$callIndex;position=$fallback.position}
+  return $fallback
 }
 function AimAtPoint($target,[double]$yOffset=0.5){
   $p=Cap 'minecraft.player.state.read';$dx=[double]$target.x-[double]$p.position.x;$dz=[double]$target.z-[double]$p.position.z;$dy=([double]$target.y+$yOffset)-([double]$p.position.y+1.62)
