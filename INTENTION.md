@@ -29,6 +29,13 @@ every Minecraft environment.
   target place, and immediate current-script cancellation. These scripts run one bounded client
   tick state machine with normal key mappings, live interaction reach, target fingerprints, input
   cleanup, lifecycle cancellation, and no agent reasoning at trigger time.
+- The NeoForge 1.21.1 all-in-one benchmark now runs from the main menu through world creation,
+  Creative fixture setup, Survival wood progression, bounded observations, hard-script execution,
+  cancellation/reconciliation, mob spawn/list/move/return checks, and cleanup. It launches through
+  the KeepFocus client task to avoid pause-state stalls and records append-only evidence, a mutation
+  preimage, capability skips, and a JSON report. The retained live pass on 2026-07-22 recorded
+  28/28 assertions, 9/9 phases, verified cleanup, and KeepFocus SHA-256
+  `7d579a1c1c4cf9a443aac3ca3f84ee60738de27d912fe37b0f6366df276b59aa`.
 - Standalone Lodestone branding, package names, protocol models, runtime, gateway, tests, docs, and
   provenance rules.
 - Protocol-first module boundaries with no native Minecraft imports in the MCP gateway.
