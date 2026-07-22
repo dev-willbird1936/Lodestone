@@ -242,16 +242,16 @@ try {
   Cap 'minecraft.ui.key' @{key=256;scanCode=0;modifiers=0}|Out-Null;WaitWorld|Out-Null
   $tableHotbar=EnsureHotbar 'minecraft:crafting_table';Cap 'minecraft.inventory.slot.select' @{slot=$tableHotbar}|Out-Null
   $p=Cap 'minecraft.player.state.read';$px=[math]::Floor([double]$p.position.x);$pz=[math]::Floor([double]$p.position.z)
-  $hm=Cap 'minecraft.world.heightmap.read' @{x=$px-4;z=$pz-4;sizeX=9;sizeZ=9;includeSurfaceBlocks=$false}
+  $hm=Cap 'minecraft.world.heightmap.read' @{x=$px-8;z=$pz-8;sizeX=17;sizeZ=17;includeSurfaceBlocks=$false}
   $tableTarget=$null
   foreach($col in @($hm.columns|?{$_.loaded -and !$_.empty}|Sort-Object @{Expression={[math]::Abs([int]$_.x-$px)+[math]::Abs([int]$_.z-$pz)}})){
-    $dd=[math]::Sqrt(([int]$col.x-$p.position.x)*([int]$col.x-$p.position.x)+([int]$col.z-$p.position.z)*([int]$col.z-$p.position.z));if($dd -lt 1.8 -or $dd -gt 3.8){continue}
+    $dd=[math]::Sqrt(([int]$col.x-$p.position.x)*([int]$col.x-$p.position.x)+([int]$col.z-$p.position.z)*([int]$col.z-$p.position.z));if($dd -lt 1.8 -or $dd -gt 7.8){continue}
     $y=[int]$col.height;$cells=Cap 'minecraft.world.blocks.read' @{x=[int]$col.x;y=$y-1;z=[int]$col.z;sizeX=1;sizeY=2;sizeZ=1}
     $lower=@($cells.blocks|?{[int]$_.position.y -eq $y-1})[0];$upper=@($cells.blocks|?{[int]$_.position.y -eq $y})[0]
     if($lower.loaded -and !$lower.air -and $upper.air){$tableTarget=[pscustomobject]@{x=[int]$col.x;y=$y;z=[int]$col.z};break}
   }
   if(!$tableTarget){throw 'no clear in-reach crafting-table placement cell'}
-  MoveNear $tableTarget 3.2|Out-Null;Cap 'minecraft.player.target-block.place' @{x=$tableTarget.x;y=$tableTarget.y;z=$tableTarget.z;face='up';item='minecraft:crafting_table'}|Out-Null
+  MoveNear $tableTarget 3.2 24|Out-Null;Cap 'minecraft.player.target-block.place' @{x=$tableTarget.x;y=$tableTarget.y;z=$tableTarget.z;face='up';item='minecraft:crafting_table'}|Out-Null
   $tableRead=Cap 'minecraft.world.block.read' @{x=$tableTarget.x;y=$tableTarget.y;z=$tableTarget.z};if($tableRead.block -ne 'minecraft:crafting_table'){throw 'crafting table placement readback failed'};$r.predicates.tablePlacedByPrimitive=$true
   $foundTable=Cap 'minecraft.world.block.find' @{block='minecraft:crafting_table';maxDistance=6;maxVisited=4096};if(!$foundTable.found){throw 'placed crafting table not found'}
   $tp=$foundTable.target.position;Cap 'minecraft.player.block.look-at' @{x=[int]$tp.x;y=[int]$tp.y;z=[int]$tp.z;blockFingerprint=[string]$foundTable.target.blockFingerprint}|Out-Null;Cap 'minecraft.player.interact' @{action='use'}|Out-Null;WaitScreen 'CraftingScreen'|Out-Null
