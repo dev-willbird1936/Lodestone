@@ -16,9 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 69 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
-        // + 11 hard-script capabilities loaded from the NeoForge-ready deterministic script catalog.
-        assertEquals(69, CoreCatalog.load().size());
+        // 70 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
+        // + minecraft.goal.gather.collect-drops + 11 hard-script capabilities loaded from the
+        // NeoForge-ready deterministic script catalog.
+        assertEquals(70, CoreCatalog.load().size());
     }
 
     @Test
@@ -115,6 +116,30 @@ final class CoreCatalogTest {
                 "nearestReachable", Map.of("x", 1, "y", 64, "z", 0),
                 "obstructionSample", java.util.List.of(Map.of("position", Map.of("x", 1, "y", 65, "z", 0),
                         "block", "minecraft:oak_leaves")))).isEmpty());
+    }
+
+    @Test
+    void collectDropsGoalAcceptsBoundedInputAndValidatesEveryReasonCode() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.gather.collect-drops"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", capability.version());
+        assertEquals("client", capability.nativeThread());
+
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("radius", 20, "timeoutTicks", 1200, "itemFilter", "oak_log")).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("radius", 33)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 10)).isEmpty());
+
+        for (var reason : java.util.List.of("collected-all", "timeout", "unreachable-remainder", "cancelled")) {
+            assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                    "collected", Map.of("minecraft:oak_log", 4), "itemsRemaining", 0,
+                    "ticksElapsed", 40, "reason", reason)).isEmpty(), "reason " + reason + " must validate");
+        }
+        assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "collected", Map.of(), "itemsRemaining", 0, "ticksElapsed", 40, "reason", "bogus")).isEmpty());
     }
 
     @Test

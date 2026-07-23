@@ -71,6 +71,7 @@ public final class McpGateway {
             new CapabilityAlias("get_player_context", "minecraft.player.context.read", "1.0"),
             new CapabilityAlias("navigate_safe_waypoint", "minecraft.goal.navigation.safe-waypoint", "1.0"),
             new CapabilityAlias("goto_position", "minecraft.goal.move.goto", "1.0"),
+            new CapabilityAlias("collect_drops", "minecraft.goal.gather.collect-drops", "1.0"),
             new CapabilityAlias("release_all_input", "minecraft.input.release-all", "1.0"),
             new CapabilityAlias("reconcile_session", "minecraft.session.reconcile", "1.0"),
             new CapabilityAlias("get_nearby_entities", "minecraft.entity.nearby.read", "1.0"),
