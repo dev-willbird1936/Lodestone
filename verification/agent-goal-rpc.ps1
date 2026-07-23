@@ -38,6 +38,14 @@ Invoke-Rpc 'notifications/initialized' @{} | Out-Null
 if ($ListTools) {
     $tools = Invoke-Rpc 'tools/list' @{}
     @{ tools = @($tools.json.result.tools | ForEach-Object { @{ name = $_.name; description = $_.description } }) } | ConvertTo-Json -Depth 8
+    if ($script:sessionId) {
+        try {
+            $bye = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Delete, $uri)
+            $bye.Headers.Add('Mcp-Session-Id', $script:sessionId)
+            $bye.Headers.Add('MCP-Protocol-Version', '2025-11-25')
+            $http.SendAsync($bye).Result | Out-Null
+        } catch { }
+    }
     return
 }
 
@@ -46,6 +54,18 @@ if (-not $ToolName) { throw 'ToolName is required unless -ListTools is used' }
 $rawArgs = if ($ArgsFile) { Get-Content -LiteralPath $ArgsFile -Raw } else { $ArgsJson }
 $toolArgs = if ($rawArgs -and $rawArgs.Trim() -ne '{}') { $rawArgs | ConvertFrom-Json } else { @{} }
 $result = Invoke-Rpc 'tools/call' @{ name = $ToolName; arguments = $toolArgs }
+
+# One-shot helper: close the session so back-to-back invocations cannot exhaust the
+# gateway's bounded session table (live-observed: "MCP session ID is required after
+# initialize" storms once too many un-closed sessions accumulated).
+if ($script:sessionId) {
+    try {
+        $bye = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Delete, $uri)
+        $bye.Headers.Add('Mcp-Session-Id', $script:sessionId)
+        $bye.Headers.Add('MCP-Protocol-Version', '2025-11-25')
+        $http.SendAsync($bye).Result | Out-Null
+    } catch { }
+}
 
 $out = [ordered]@{ http = $result.http }
 if ($result.json.error) { $out.rpcError = $result.json.error }
