@@ -4,6 +4,7 @@ package dev.lodestone.neoforge;
 import dev.lodestone.adapter.InvocationContext;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.MouseHandler;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -45,6 +46,7 @@ final class NeoForgeHardScript {
     private int ticks;
     private boolean dispatched;
     private boolean done;
+    private boolean forcedGrab;
 
     private NeoForgeHardScript(String id, String kind, InvocationContext invocation,
                                CompletableFuture<Map<String, Object>> result, BlockPos target,
@@ -274,6 +276,7 @@ final class NeoForgeHardScript {
             client.options.keyAttack.setDown(false);
             return;
         }
+        forceMouseGrab(client);
         client.options.keyAttack.setDown(true);
         if (ticks == 1 || ticks % 5 == 0) {
             invocation.cancellation().commitMutation();
@@ -304,11 +307,37 @@ final class NeoForgeHardScript {
             client.options.keyUse.setDown(false);
             return;
         }
+        forceMouseGrab(client);
         client.options.keyUse.setDown(true);
         if (ticks == 1 || ticks % 5 == 0) {
             invocation.cancellation().commitMutation();
             KeyMapping.click(client.options.keyUse.getKey());
             dispatched = true;
+        }
+    }
+
+    /**
+     * Vanilla {@code Minecraft#tick} only advances held-attack destroy progress while the mouse
+     * is grabbed, so a background/unfocused window turns held mining into no-op arm taps
+     * (live-observed: repeated 300-tick mine timeouts whenever another app takes focus). Force
+     * the grabbed flag - without touching cursor mode, so the OS cursor stays free for the user -
+     * while a block-targeted script drives input; {@link #releaseInputs} restores it.
+     */
+    private void forceMouseGrab(Minecraft client) {
+        if (client.mouseHandler.isMouseGrabbed()) return;
+        forcedGrab = setGrabFlag(client, true);
+    }
+
+    private static boolean setGrabFlag(Minecraft client, boolean value) {
+        try {
+            var field = MouseHandler.class.getDeclaredField("mouseGrabbed");
+            field.setAccessible(true);
+            field.setBoolean(client.mouseHandler, value);
+            return true;
+        } catch (ReflectiveOperationException e) {
+            // Obfuscated production runtime: the dev-only field name is absent, so grab-dependent
+            // input keeps requiring a focused window there.
+            return false;
         }
     }
 
@@ -355,6 +384,10 @@ final class NeoForgeHardScript {
         var client = Minecraft.getInstance();
         client.options.keyAttack.setDown(false);
         client.options.keyUse.setDown(false);
+        if (forcedGrab && !client.isWindowActive()) {
+            setGrabFlag(client, false);
+        }
+        forcedGrab = false;
     }
 
     static String blockId(BlockState state) {
