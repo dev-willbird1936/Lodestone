@@ -29,11 +29,14 @@ if ($state.obsPid) {
     }
 }
 
-if ($state.launcherPid) { & taskkill.exe /PID $state.launcherPid /T /F 2>$null | Out-Null }
+$previousEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+if ($state.launcherPid) { cmd /c "taskkill /PID $($state.launcherPid) /T /F >nul 2>&1" }
 if ($state.gamePid) {
     $game = Get-Process -Id $state.gamePid -ErrorAction SilentlyContinue
-    if ($game) { & taskkill.exe /PID $state.gamePid /T /F 2>$null | Out-Null }
+    if ($game) { cmd /c "taskkill /PID $($state.gamePid) /T /F >nul 2>&1" }
 }
+$ErrorActionPreference = $previousEap
 for ($i = 0; $i -lt 30; $i++) {
     if (!(Get-NetTCPConnection -LocalPort $state.port -State Listen -ErrorAction SilentlyContinue)) { $result.portReleased = $true; break }
     Start-Sleep 1
