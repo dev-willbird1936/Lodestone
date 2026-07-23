@@ -70,12 +70,19 @@ if (!$SkipRecording) {
     Copy-Item -LiteralPath $obsSourceScenes -Destination $obsCollectionPath
 
     $scene = Get-Content -LiteralPath $obsCollectionPath -Raw | ConvertFrom-Json
+    # OBS resolves --collection by the collection's internal display name, not the file name.
+    $scene.name = $stem
     $scene.sources[0].settings.window = 'Minecraft NeoForge* 1.21.1*:GLFW30:java.exe'
     $scene | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $obsCollectionPath -Encoding UTF8
 
     $profilePath = Join-Path $obsProfileDirectory 'basic.ini'
     $profileText = Get-Content -LiteralPath $profilePath -Raw
     $obsPathValue = $evidence -replace '\\', '\\\\'
+    # OBS resolves --profile by the Name key, not the directory name; a copy that keeps
+    # Name=Untitled silently loses the match and OBS falls back to the last-used profile,
+    # recording under that profile's FilenameFormatting (live-observed: a3 run wrote
+    # "agent-goal-attempt-a2 (2).mp4" and the recording-growth gate never matched).
+    $profileText = $profileText -replace '(?m)^Name=.*$', "Name=$stem"
     $profileText = $profileText -replace '(?m)^FilePath=.*$', "FilePath=$obsPathValue"
     $profileText = $profileText -replace '(?m)^RecFilePath=.*$', "RecFilePath=$obsPathValue"
     $profileText = $profileText -replace '(?m)^FilenameFormatting=.*$', "FilenameFormatting=$stem"
