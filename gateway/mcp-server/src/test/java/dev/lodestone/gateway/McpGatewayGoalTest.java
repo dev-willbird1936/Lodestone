@@ -72,7 +72,9 @@ class McpGatewayGoalTest {
                 Map.entry("select_item", "minecraft.inventory.hotbar.select-item"),
                 Map.entry("place_block", "minecraft.player.block.place"),
                 Map.entry("place_target_block", "minecraft.player.target-block.place"),
-                Map.entry("cancel_current_script", "minecraft.script.current.cancel"));
+                Map.entry("cancel_current_script", "minecraft.script.current.cancel"),
+                Map.entry("open_inventory", "minecraft.ui.inventory.open"),
+                Map.entry("close_screen", "minecraft.ui.screen.close"));
 
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var gateway = new McpGateway(runtime);

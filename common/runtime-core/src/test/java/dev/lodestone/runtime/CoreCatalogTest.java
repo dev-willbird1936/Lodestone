@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 66 = 56 pre-existing capabilities + minecraft.session.reconcile + 9 hard-script
+        // 68 = 56 pre-existing capabilities + minecraft.session.reconcile + 11 hard-script
         // capabilities loaded from the NeoForge-ready deterministic script catalog.
-        assertEquals(66, CoreCatalog.load().size());
+        assertEquals(68, CoreCatalog.load().size());
     }
 
     @Test
@@ -29,7 +29,8 @@ final class CoreCatalogTest {
                 "minecraft.player.block.look-at", "minecraft.player.block.mine",
                 "minecraft.player.target-block.mine", "minecraft.inventory.hotbar.select-item",
                 "minecraft.player.block.place", "minecraft.player.target-block.place",
-                "minecraft.script.current.cancel")) {
+                "minecraft.script.current.cancel", "minecraft.ui.inventory.open",
+                "minecraft.ui.screen.close")) {
             var capability = capabilities.get(id);
             assertTrue(capability != null, "missing hard-script capability " + id);
             assertEquals("1.0", capability.version());
@@ -46,6 +47,24 @@ final class CoreCatalogTest {
         var cancel = capabilities.get("minecraft.script.current.cancel");
         assertTrue(SchemaValidator.validate(cancel.inputSchema(), Map.of()).isEmpty());
         assertFalse(SchemaValidator.validate(cancel.inputSchema(), Map.of("unexpected", true)).isEmpty());
+
+        var openInventory = capabilities.get("minecraft.ui.inventory.open");
+        assertTrue(SchemaValidator.validate(openInventory.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(openInventory.inputSchema(), Map.of("timeoutMs", 5000)).isEmpty());
+        assertFalse(SchemaValidator.validate(openInventory.inputSchema(), Map.of("timeoutMs", 100)).isEmpty());
+        assertFalse(SchemaValidator.validate(openInventory.inputSchema(), Map.of("timeoutMs", 10001)).isEmpty());
+        assertTrue(SchemaValidator.validate(openInventory.outputSchema(), Map.of("opened", true,
+                "alreadyOpen", true, "screenClass", "net.minecraft.client.gui.screens.inventory.InventoryScreen",
+                "screenToken", "screen-2", "snapshotRevision", "a".repeat(64))).isEmpty());
+        assertFalse(SchemaValidator.validate(openInventory.outputSchema(), Map.of("opened", true,
+                "alreadyOpen", true, "screenClass", "net.minecraft.client.gui.screens.inventory.InventoryScreen")).isEmpty());
+
+        var closeScreen = capabilities.get("minecraft.ui.screen.close");
+        assertTrue(SchemaValidator.validate(closeScreen.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(closeScreen.inputSchema(), Map.of("timeoutMs", 5000)).isEmpty());
+        assertFalse(SchemaValidator.validate(closeScreen.inputSchema(), Map.of("timeoutMs", 10001)).isEmpty());
+        assertTrue(SchemaValidator.validate(closeScreen.outputSchema(), Map.of("closed", true,
+                "alreadyClosed", true, "beforeScreenClass", "", "afterInWorld", true)).isEmpty());
     }
 
     @Test

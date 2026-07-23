@@ -89,6 +89,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.ui.click",
             "minecraft.ui.key",
             "minecraft.ui.text.insert",
+            "minecraft.ui.inventory.open",
+            "minecraft.ui.screen.close",
             "minecraft.chat.read",
             "minecraft.goal.survival.wooden-axe-tree",
             "minecraft.goal.creative.wool-tree-zombie-defense",
@@ -112,6 +114,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.inventory.slot.select", "minecraft.inventory.container.read", "minecraft.inventory.container.click",
             "minecraft.entity.interact", "minecraft.ui.state.read", "minecraft.ui.click",
             "minecraft.ui.key", "minecraft.ui.text.insert", "minecraft.chat.read",
+            "minecraft.ui.inventory.open", "minecraft.ui.screen.close",
             "minecraft.goal.survival.wooden-axe-tree",
             "minecraft.goal.creative.wool-tree-zombie-defense",
             "minecraft.goal.survival.reach-nether",
@@ -195,6 +198,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.ui.click", this::clientCall);
         handlers.put("minecraft.ui.key", this::clientCall);
         handlers.put("minecraft.ui.text.insert", this::clientCall);
+        handlers.put("minecraft.ui.inventory.open", this::clientCall);
+        handlers.put("minecraft.ui.screen.close", this::clientCall);
         handlers.put("minecraft.chat.read", this::clientCall);
         handlers.put("minecraft.goal.survival.wooden-axe-tree", this::clientCall);
         handlers.put("minecraft.goal.creative.wool-tree-zombie-defense", this::clientCall);

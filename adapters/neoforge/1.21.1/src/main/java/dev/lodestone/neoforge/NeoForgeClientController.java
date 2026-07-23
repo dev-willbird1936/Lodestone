@@ -23,6 +23,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -377,8 +378,9 @@ public final class NeoForgeClientController {
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
-                case "minecraft.ui.key" -> client.screen != null
+                case "minecraft.ui.key", "minecraft.ui.screen.close" -> client.screen != null
                         || (client.level != null && client.player != null);
+                case "minecraft.ui.inventory.open" -> client.level != null && client.player != null;
                 default -> client.level != null && client.player != null;
             };
         }
@@ -413,6 +415,8 @@ public final class NeoForgeClientController {
             if (capability.equals("minecraft.player.target-block.mine")) return startMineTargetBlock(invocation);
             if (capability.equals("minecraft.player.block.place")) return startPlaceBlock(invocation);
             if (capability.equals("minecraft.player.target-block.place")) return startPlaceTargetBlock(invocation);
+            if (capability.equals("minecraft.ui.inventory.open")) return startOpenInventory(invocation);
+            if (capability.equals("minecraft.ui.screen.close")) return startCloseScreen(invocation);
             return onClientThread(() -> {
                 invocation.cancellation().throwIfCancelled();
                 return switch (capability) {
@@ -1298,6 +1302,77 @@ public final class NeoForgeClientController {
             hardScript = NeoForgeHardScript.place("place-" + clientTick, invocation, result, target, support, face,
                     NeoForgeHardScript.blockFingerprint(level.dimension().location().toString(), target, state, null),
                     level.dimension().location().toString(), item, slot, 160);
+        }
+
+        private CompletionStage<Map<String, Object>> startOpenInventory(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    var timeoutMs = boundedScreenTimeoutMs(invocation);
+                    var client = Minecraft.getInstance();
+                    if (client.level == null || client.player == null) {
+                        throw new IllegalStateException("client player/world is unavailable");
+                    }
+                    if (client.screen instanceof InventoryScreen) {
+                        var snapshot = captureUi();
+                        result.complete(Map.of("opened", true, "alreadyOpen", true,
+                                "screenClass", client.screen.getClass().getName(),
+                                "screenToken", snapshot.screenToken(),
+                                "snapshotRevision", snapshot.snapshotRevision()));
+                        return;
+                    }
+                    if (client.screen != null) {
+                        throw new IllegalStateException("OTHER_SCREEN_OPEN: " + client.screen.getClass().getName()
+                                + " is open; close it before opening the inventory");
+                    }
+                    if (hardScript != null && !hardScript.done() || attackHold != null && !attackHold.done()
+                            || anyNativeGoalActorRunning()) {
+                        throw new IllegalStateException("another client actor is already running");
+                    }
+                    hardScript = NeoForgeHardScript.openScreen("open-inventory-" + clientTick, invocation, result,
+                            Math.max(1, timeoutMs / 50), this::uiTokenFields);
+                } catch (Throwable failure) { result.completeExceptionally(failure); }
+            });
+            return result;
+        }
+
+        private CompletionStage<Map<String, Object>> startCloseScreen(dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    var timeoutMs = boundedScreenTimeoutMs(invocation);
+                    var client = Minecraft.getInstance();
+                    if (client.screen == null) {
+                        result.complete(Map.of("closed", true, "alreadyClosed", true, "beforeScreenClass", "",
+                                "afterInWorld", client.level != null && client.player != null));
+                        return;
+                    }
+                    if (hardScript != null && !hardScript.done() || attackHold != null && !attackHold.done()
+                            || anyNativeGoalActorRunning()) {
+                        throw new IllegalStateException("another client actor is already running");
+                    }
+                    var beforeScreen = client.screen;
+                    hardScript = NeoForgeHardScript.closeScreen("close-screen-" + clientTick, invocation, result,
+                            Math.max(1, timeoutMs / 50), beforeScreen, beforeScreen.getClass().getName());
+                } catch (Throwable failure) { result.completeExceptionally(failure); }
+            });
+            return result;
+        }
+
+        private static int boundedScreenTimeoutMs(dev.lodestone.adapter.InvocationContext invocation) {
+            var timeoutMs = numberOrDefault(input(invocation), "timeoutMs", 3000);
+            if (timeoutMs < 250 || timeoutMs > 10000) {
+                throw new IllegalArgumentException("timeoutMs must be between 250 and 10000");
+            }
+            return timeoutMs;
+        }
+
+        /** Cheap ui-state fields worth including in minecraft.ui.inventory.open's success output so
+         * a caller can immediately follow up with minecraft.ui.click without a separate
+         * minecraft.ui.state.read round-trip. */
+        private Map<String, Object> uiTokenFields() {
+            var snapshot = captureUi();
+            return Map.of("screenToken", snapshot.screenToken(), "snapshotRevision", snapshot.snapshotRevision());
         }
 
         private static int chooseHotbarSlot(LocalPlayer player, String item, int preferred) {

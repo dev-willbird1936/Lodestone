@@ -58,7 +58,9 @@ public final class McpGateway {
             new CapabilityAlias("select_item", "minecraft.inventory.hotbar.select-item", "1.0"),
             new CapabilityAlias("place_block", "minecraft.player.block.place", "1.0"),
             new CapabilityAlias("place_target_block", "minecraft.player.target-block.place", "1.0"),
-            new CapabilityAlias("cancel_current_script", "minecraft.script.current.cancel", "1.0"));
+            new CapabilityAlias("cancel_current_script", "minecraft.script.current.cancel", "1.0"),
+            new CapabilityAlias("open_inventory", "minecraft.ui.inventory.open", "1.0"),
+            new CapabilityAlias("close_screen", "minecraft.ui.screen.close", "1.0"));
     private static final List<CapabilityAlias> COMPATIBILITY_ALIASES = mergeAliases(List.of(
             new CapabilityAlias("ui_wait", "lodestone.ui.wait", "1.0"),
             new CapabilityAlias("ui_navigate", "lodestone.ui.navigate", "1.0"),

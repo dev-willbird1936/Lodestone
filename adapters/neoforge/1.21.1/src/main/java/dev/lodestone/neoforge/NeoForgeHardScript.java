@@ -4,6 +4,8 @@ package dev.lodestone.neoforge;
 import dev.lodestone.adapter.InvocationContext;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
@@ -17,6 +19,7 @@ import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 /** One bounded, deterministic client-side hard script. No model or goal planner is involved. */
 final class NeoForgeHardScript {
@@ -34,6 +37,11 @@ final class NeoForgeHardScript {
     private final int maxTicks;
     private final String beforeBlock;
     private final boolean mining;
+    /** Only set for the "open-screen"/"close-screen" kinds - see {@link #openScreen} and
+     * {@link #closeScreen}. The block-targeted fields above are unused (null/empty/-1) then. */
+    private final Screen beforeScreen;
+    private final String beforeScreenClass;
+    private final Supplier<Map<String, Object>> extraOutputSupplier;
     private int ticks;
     private boolean dispatched;
     private boolean done;
@@ -57,6 +65,37 @@ final class NeoForgeHardScript {
         this.maxTicks = maxTicks;
         this.beforeBlock = beforeBlock;
         this.mining = mining;
+        this.beforeScreen = null;
+        this.beforeScreenClass = "";
+        this.extraOutputSupplier = null;
+    }
+
+    /**
+     * Backs {@code minecraft.ui.inventory.open} and {@code minecraft.ui.screen.close}: no block
+     * target is involved, so every block-targeted field above stays at a neutral default and
+     * {@link #tick} dispatches straight to {@link #tickOpenScreen}/{@link #tickCloseScreen}.
+     */
+    private NeoForgeHardScript(String id, String kind, InvocationContext invocation,
+                               CompletableFuture<Map<String, Object>> result, int maxTicks,
+                               Screen beforeScreen, String beforeScreenClass,
+                               Supplier<Map<String, Object>> extraOutputSupplier) {
+        this.id = id;
+        this.kind = kind;
+        this.invocation = invocation;
+        this.result = result;
+        this.target = null;
+        this.support = null;
+        this.face = null;
+        this.expectedFingerprint = null;
+        this.dimension = null;
+        this.itemId = "";
+        this.selectedSlot = -1;
+        this.maxTicks = maxTicks;
+        this.beforeBlock = "";
+        this.mining = false;
+        this.beforeScreen = beforeScreen;
+        this.beforeScreenClass = beforeScreenClass;
+        this.extraOutputSupplier = extraOutputSupplier;
     }
 
     static NeoForgeHardScript mine(String id, InvocationContext invocation,
@@ -74,6 +113,25 @@ final class NeoForgeHardScript {
                                     String itemId, int selectedSlot, int maxTicks) {
         return new NeoForgeHardScript(id, "place", invocation, result, target, support, face,
                 expectedFingerprint, dimension, itemId, selectedSlot, maxTicks, "", false);
+    }
+
+    /** Backs {@code minecraft.ui.inventory.open}. {@code extraOutputSupplier} is called once on
+     * success to merge in cheap ui-state fields (e.g. screenToken/snapshotRevision). */
+    static NeoForgeHardScript openScreen(String id, InvocationContext invocation,
+                                        CompletableFuture<Map<String, Object>> result, int maxTicks,
+                                        Supplier<Map<String, Object>> extraOutputSupplier) {
+        return new NeoForgeHardScript(id, "open-screen", invocation, result, maxTicks, null, "",
+                extraOutputSupplier);
+    }
+
+    /** Backs {@code minecraft.ui.screen.close}. {@code beforeScreen} is the exact screen instance
+     * observed when the call started, so a transition to any other screen counts as success even
+     * when Escape does not close it outright. */
+    static NeoForgeHardScript closeScreen(String id, InvocationContext invocation,
+                                         CompletableFuture<Map<String, Object>> result, int maxTicks,
+                                         Screen beforeScreen, String beforeScreenClass) {
+        return new NeoForgeHardScript(id, "close-screen", invocation, result, maxTicks, beforeScreen,
+                beforeScreenClass, null);
     }
 
     boolean done() {
@@ -97,34 +155,108 @@ final class NeoForgeHardScript {
         ticks++;
         try {
             invocation.cancellation().throwIfCancelled();
-            if (client.level == null || client.player == null || client.gameMode == null) {
-                fail("client world, player, or game mode disappeared");
-                return;
+            switch (kind) {
+                case "mine", "place" -> tickBlockTargeted(client);
+                case "open-screen" -> tickOpenScreen(client);
+                case "close-screen" -> tickCloseScreen(client);
+                default -> throw new IllegalStateException("unknown hard script kind: " + kind);
             }
-            // Keep Focus deliberately permits authentic client input while the launcher window is not foregrounded.
-            // Focus is not a gameplay lifecycle signal; a screen, death, world loss, or cancellation is.
-            if (client.screen != null || !client.player.isAlive()) {
-                fail("hard script cancelled by client lifecycle state");
-                return;
-            }
-            if (!dimension.equals(client.level.dimension().location().toString())) {
-                fail("player dimension changed while hard script was running");
-                return;
-            }
-            if (!client.level.isInWorldBounds(target) || !client.level.isLoaded(target)) {
-                fail("target chunk is not loaded");
-                return;
-            }
-            if (mining) tickMine(client);
-            else tickPlace(client);
-            if (!done && ticks >= maxTicks) fail("hard script timed out after " + maxTicks + " ticks");
+            if (!done && ticks >= maxTicks) fail(timeoutMessage(client));
         } catch (Throwable failure) {
             fail(failure.getMessage() == null ? failure.toString() : failure.getMessage());
         }
     }
 
+    private String timeoutMessage(Minecraft client) {
+        return switch (kind) {
+            case "open-screen" -> "OPEN_TIMEOUT: inventory screen did not open within " + maxTicks + " ticks";
+            case "close-screen" -> "CLOSE_TIMEOUT: " + (client.screen == null ? "screen" : client.screen.getClass().getName())
+                    + " did not close within " + maxTicks + " ticks";
+            default -> "hard script timed out after " + maxTicks + " ticks";
+        };
+    }
+
     void cancel(String reason) {
         if (!done) fail(reason == null ? "hard script cancelled" : reason);
+    }
+
+    private void tickBlockTargeted(Minecraft client) {
+        if (client.level == null || client.player == null || client.gameMode == null) {
+            fail("client world, player, or game mode disappeared");
+            return;
+        }
+        // Keep Focus deliberately permits authentic client input while the launcher window is not foregrounded.
+        // Focus is not a gameplay lifecycle signal; a screen, death, world loss, or cancellation is.
+        if (client.screen != null || !client.player.isAlive()) {
+            fail("hard script cancelled by client lifecycle state");
+            return;
+        }
+        if (!dimension.equals(client.level.dimension().location().toString())) {
+            fail("player dimension changed while hard script was running");
+            return;
+        }
+        if (!client.level.isInWorldBounds(target) || !client.level.isLoaded(target)) {
+            fail("target chunk is not loaded");
+            return;
+        }
+        if (mining) tickMine(client);
+        else tickPlace(client);
+    }
+
+    private void tickOpenScreen(Minecraft client) {
+        if (client.screen instanceof InventoryScreen) {
+            completeOpen(client);
+            return;
+        }
+        if (client.screen != null) {
+            fail("OTHER_SCREEN_OPEN: " + client.screen.getClass().getName()
+                    + " is open; close it before opening the inventory");
+            return;
+        }
+        if (client.level == null || client.player == null) {
+            fail("client player/world is unavailable");
+            return;
+        }
+        if (ticks == 1 || ticks % 5 == 0) {
+            invocation.cancellation().commitMutation();
+            KeyMapping.click(client.options.keyInventory.getKey());
+            dispatched = true;
+        }
+    }
+
+    private void tickCloseScreen(Minecraft client) {
+        if (client.screen == null || client.screen != beforeScreen) {
+            completeClose(client);
+            return;
+        }
+        if (ticks == 1 || ticks % 5 == 0) {
+            invocation.cancellation().commitMutation();
+            // Mirrors minecraft.ui.key's screen-open branch: dispatch Escape straight to the
+            // active screen instead of through a KeyMapping, since Escape is not itself bound to
+            // one - see NeoForgeClientController#uiKey.
+            client.screen.keyPressed(256, 0, 0);
+            dispatched = true;
+        }
+    }
+
+    private void completeOpen(Minecraft client) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("opened", true);
+        output.put("alreadyOpen", !dispatched);
+        output.put("screenClass", client.screen.getClass().getName());
+        if (extraOutputSupplier != null) {
+            output.putAll(extraOutputSupplier.get());
+        }
+        finish(output);
+    }
+
+    private void completeClose(Minecraft client) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("closed", true);
+        output.put("alreadyClosed", !dispatched);
+        output.put("beforeScreenClass", beforeScreenClass);
+        output.put("afterInWorld", client.level != null && client.player != null);
+        finish(output);
     }
 
     private void tickMine(Minecraft client) {
