@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 68 = 56 pre-existing capabilities + minecraft.session.reconcile + 11 hard-script
-        // capabilities loaded from the NeoForge-ready deterministic script catalog.
-        assertEquals(68, CoreCatalog.load().size());
+        // 69 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
+        // + 11 hard-script capabilities loaded from the NeoForge-ready deterministic script catalog.
+        assertEquals(69, CoreCatalog.load().size());
     }
 
     @Test
@@ -76,6 +76,45 @@ final class CoreCatalogTest {
         assertEquals(3, capability.rateLimit().permits());
         assertEquals(600_000, capability.rateLimit().windowMs());
         assertEquals(3, capability.rateLimit().burst());
+    }
+
+    @Test
+    void gotoGoalAcceptsBoundedInputAndValidatesEveryReasonCode() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.move.goto"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", capability.version());
+        assertEquals("client", capability.nativeThread());
+        assertTrue(capability.permissions().contains(dev.lodestone.protocol.PermissionClass.CONTROL_PLAYER));
+        assertTrue(capability.permissions().contains(dev.lodestone.protocol.PermissionClass.MODIFY_WORLD));
+
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("targetX", 10, "targetY", 64, "targetZ", -3)).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("targetX", 10, "targetY", 64, "targetZ", -3, "arriveRadius", 4,
+                        "allowBlockBreaking", true, "allowMining", true, "timeoutTicks", 4800)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("targetX", 10, "targetY", 64)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("targetX", 10, "targetY", 64, "targetZ", -3, "arriveRadius", 9)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("targetX", 10, "targetY", 64, "targetZ", -3, "timeoutTicks", 50)).isEmpty());
+
+        for (var reason : java.util.List.of("arrived", "timeout", "no-route", "repeated-mutation-failure", "cancelled")) {
+            assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                    "arrived", reason.equals("arrived"), "finalPosition", Map.of("x", 1, "y", 64, "z", 2),
+                    "distanceRemaining", 0.5, "ticksElapsed", 12, "blocksMined", 0, "reason", reason)).isEmpty(),
+                    "reason " + reason + " must validate");
+        }
+        assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "arrived", false, "finalPosition", Map.of("x", 1, "y", 64, "z", 2),
+                "distanceRemaining", 0.5, "ticksElapsed", 12, "blocksMined", 0, "reason", "unknown-reason")).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "arrived", false, "finalPosition", Map.of("x", 1, "y", 64, "z", 2),
+                "distanceRemaining", 5.5, "ticksElapsed", 2400, "blocksMined", 3, "reason", "no-route",
+                "nearestReachable", Map.of("x", 1, "y", 64, "z", 0),
+                "obstructionSample", java.util.List.of(Map.of("position", Map.of("x", 1, "y", 65, "z", 0),
+                        "block", "minecraft:oak_leaves")))).isEmpty());
     }
 
     @Test

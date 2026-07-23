@@ -93,6 +93,7 @@ public final class NeoForgeClientController {
         BRIDGE.tickWoolTreeZombieGoal();
         BRIDGE.tickNetherGoal();
         BRIDGE.tickNavigationGoal();
+        BRIDGE.tickGotoGoal();
         BRIDGE.tickCombatGoal();
         BRIDGE.tickSpawnGauntletGoal();
         BRIDGE.tickStoneToolsetGoal();
@@ -329,6 +330,7 @@ public final class NeoForgeClientController {
         private NeoForgeCombatGoal combatGoal;
         private NeoForgeSpawnGauntletGoal spawnGauntletGoal;
         private NeoForgeStoneToolsetGoal stoneToolsetGoal;
+        private NeoForgeGotoGoal gotoGoal;
         /** Backs a single in-flight minecraft.player.interact "attack" held against a breakable
          * block - see {@link NeoForgeAttackHold}. Not a native goal actor, but it still owns
          * keyAttack across real ticks exactly like one, so a new hold refuses to start while a
@@ -378,7 +380,8 @@ public final class NeoForgeClientController {
                         "minecraft.goal.navigation.safe-waypoint",
                         "minecraft.goal.combat.attack-nearest",
                         "minecraft.goal.survival.spawn-gauntlet",
-                        "minecraft.goal.survival.stone-toolset" -> true;
+                        "minecraft.goal.survival.stone-toolset",
+                        "minecraft.goal.move.goto" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
@@ -411,6 +414,9 @@ public final class NeoForgeClientController {
             }
             if ("minecraft.goal.survival.stone-toolset".equals(capability)) {
                 return startStoneToolsetGoal(invocation);
+            }
+            if ("minecraft.goal.move.goto".equals(capability)) {
+                return startGotoGoal(invocation);
             }
             if ("minecraft.player.interact".equals(capability)) {
                 return interactKeyAsync(invocation);
@@ -485,6 +491,7 @@ public final class NeoForgeClientController {
             if (combatGoal != null && !combatGoal.done()) stoppedGoalActors.add("combatGoal");
             if (spawnGauntletGoal != null && !spawnGauntletGoal.done()) stoppedGoalActors.add("spawnGauntletGoal");
             if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) stoppedGoalActors.add("stoneToolsetGoal");
+            if (gotoGoal != null && !gotoGoal.done()) stoppedGoalActors.add("gotoGoal");
             if (attackHold != null && !attackHold.done()) {
                 stoppedGoalActors.add("attackHold");
                 attackHold.fail(new IllegalStateException(
@@ -501,6 +508,7 @@ public final class NeoForgeClientController {
             combatGoal = null;
             spawnGauntletGoal = null;
             stoneToolsetGoal = null;
+            gotoGoal = null;
             attackHold = null;
             hardScript = null;
 
@@ -551,6 +559,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (gotoGoal != null && !gotoGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -612,6 +623,9 @@ public final class NeoForgeClientController {
                     if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (gotoGoal != null && !gotoGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     woolTreeZombieGoal = new NeoForgeWoolTreeZombieGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -646,6 +660,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (gotoGoal != null && !gotoGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -692,6 +709,9 @@ public final class NeoForgeClientController {
                     if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (gotoGoal != null && !gotoGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     navigationGoal = new NeoForgeNavigationGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -726,6 +746,9 @@ public final class NeoForgeClientController {
                     if (stoneToolsetGoal != null && !stoneToolsetGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (gotoGoal != null && !gotoGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     combatGoal = new NeoForgeCombatGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -753,7 +776,8 @@ public final class NeoForgeClientController {
                             || (navigationGoal != null && !navigationGoal.done())
                             || (combatGoal != null && !combatGoal.done())
                             || (spawnGauntletGoal != null && !spawnGauntletGoal.done())
-                            || (stoneToolsetGoal != null && !stoneToolsetGoal.done())) {
+                            || (stoneToolsetGoal != null && !stoneToolsetGoal.done())
+                            || (gotoGoal != null && !gotoGoal.done())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -782,7 +806,8 @@ public final class NeoForgeClientController {
                             || (netherGoal != null && !netherGoal.done())
                             || (navigationGoal != null && !navigationGoal.done())
                             || (combatGoal != null && !combatGoal.done())
-                            || (spawnGauntletGoal != null && !spawnGauntletGoal.done())) {
+                            || (spawnGauntletGoal != null && !spawnGauntletGoal.done())
+                            || (gotoGoal != null && !gotoGoal.done())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -811,6 +836,30 @@ public final class NeoForgeClientController {
             if (current == null) return;
             current.tick(Minecraft.getInstance());
             if (current.done()) stoneToolsetGoal = null;
+        }
+
+        private CompletionStage<Map<String, Object>> startGotoGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if (anyNativeGoalActorRunning()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    gotoGoal = new NeoForgeGotoGoal(invocation, result);
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickGotoGoal() {
+            var current = gotoGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) gotoGoal = null;
         }
 
         private void tickAttackHold() {
@@ -857,7 +906,8 @@ public final class NeoForgeClientController {
                     || (navigationGoal != null && !navigationGoal.done())
                     || (combatGoal != null && !combatGoal.done())
                     || (spawnGauntletGoal != null && !spawnGauntletGoal.done())
-                    || (stoneToolsetGoal != null && !stoneToolsetGoal.done());
+                    || (stoneToolsetGoal != null && !stoneToolsetGoal.done())
+                    || (gotoGoal != null && !gotoGoal.done());
         }
 
         private static Map<String, Object> screenshot(

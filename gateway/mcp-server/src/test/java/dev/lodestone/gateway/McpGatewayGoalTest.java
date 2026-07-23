@@ -92,6 +92,7 @@ class McpGatewayGoalTest {
                         schemas.get(toolName), "tool schema must come from canonical capability " + capabilityId);
             });
             assertTrue(schemas.containsKey("navigate_safe_waypoint"));
+            assertTrue(schemas.containsKey("goto_position"));
         }
     }
 
