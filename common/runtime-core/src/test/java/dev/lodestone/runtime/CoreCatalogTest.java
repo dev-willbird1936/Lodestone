@@ -16,10 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 70 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
-        // + minecraft.goal.gather.collect-drops + 11 hard-script capabilities loaded from the
-        // NeoForge-ready deterministic script catalog.
-        assertEquals(70, CoreCatalog.load().size());
+        // 71 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
+        // + minecraft.goal.gather.collect-drops + minecraft.goal.gather.chop-tree + 11 hard-script
+        // capabilities loaded from the NeoForge-ready deterministic script catalog.
+        assertEquals(71, CoreCatalog.load().size());
     }
 
     @Test
@@ -140,6 +140,34 @@ final class CoreCatalogTest {
         }
         assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
                 "collected", Map.of(), "itemsRemaining", 0, "ticksElapsed", 40, "reason", "bogus")).isEmpty());
+    }
+
+    @Test
+    void chopTreeGoalAcceptsBoundedInputAndValidatesEveryReasonCode() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.gather.chop-tree"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", capability.version());
+        assertEquals("client", capability.nativeThread());
+
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("species", "dark_oak", "maxDistance", 40, "collectDrops", false,
+                        "timeoutTicks", 1800)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("species", "acacia_wood")).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("maxDistance", 3)).isEmpty());
+
+        for (var reason : java.util.List.of("complete", "no-tree-found", "timeout", "unreachable", "cancelled")) {
+            assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                    "logsMined", 5, "logsCollected", Map.of("minecraft:oak_log", 5),
+                    "saplingsCollected", 1, "reason", reason)).isEmpty(), "reason " + reason + " must validate");
+        }
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "logsMined", 0, "logsCollected", Map.of(), "saplingsCollected", 0, "reason", "no-tree-found")).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "logsMined", 6, "logsCollected", Map.of(), "saplingsCollected", 0,
+                "treePosition", Map.of("x", 10, "y", 64, "z", -2), "reason", "complete")).isEmpty());
     }
 
     @Test

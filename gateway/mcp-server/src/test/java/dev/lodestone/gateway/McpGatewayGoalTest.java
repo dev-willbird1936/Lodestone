@@ -94,6 +94,7 @@ class McpGatewayGoalTest {
             assertTrue(schemas.containsKey("navigate_safe_waypoint"));
             assertTrue(schemas.containsKey("goto_position"));
             assertTrue(schemas.containsKey("collect_drops"));
+            assertTrue(schemas.containsKey("chop_tree"));
         }
     }
 
