@@ -73,6 +73,7 @@ public final class McpGateway {
             new CapabilityAlias("goto_position", "minecraft.goal.move.goto", "1.0"),
             new CapabilityAlias("collect_drops", "minecraft.goal.gather.collect-drops", "1.0"),
             new CapabilityAlias("chop_tree", "minecraft.goal.gather.chop-tree", "1.0"),
+            new CapabilityAlias("attack_entity", "minecraft.goal.combat.attack-entity", "1.0"),
             new CapabilityAlias("release_all_input", "minecraft.input.release-all", "1.0"),
             new CapabilityAlias("reconcile_session", "minecraft.session.reconcile", "1.0"),
             new CapabilityAlias("get_nearby_entities", "minecraft.entity.nearby.read", "1.0"),

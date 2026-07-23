@@ -16,10 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 71 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
-        // + minecraft.goal.gather.collect-drops + minecraft.goal.gather.chop-tree + 11 hard-script
-        // capabilities loaded from the NeoForge-ready deterministic script catalog.
-        assertEquals(71, CoreCatalog.load().size());
+        // 72 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
+        // + minecraft.goal.gather.collect-drops + minecraft.goal.gather.chop-tree
+        // + minecraft.goal.combat.attack-entity + 11 hard-script capabilities loaded from the
+        // NeoForge-ready deterministic script catalog.
+        assertEquals(72, CoreCatalog.load().size());
     }
 
     @Test
@@ -168,6 +169,36 @@ final class CoreCatalogTest {
         assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
                 "logsMined", 6, "logsCollected", Map.of(), "saplingsCollected", 0,
                 "treePosition", Map.of("x", 10, "y", 64, "z", -2), "reason", "complete")).isEmpty());
+    }
+
+    @Test
+    void attackEntityGoalAcceptsBoundedInputAndValidatesEveryReasonCode() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.combat.attack-entity"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", capability.version());
+        assertEquals("client", capability.nativeThread());
+
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of("entityId", 42)).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("entityId", 42, "maxChaseBlocks", 40, "timeoutTicks", 2000)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("entityId", 42, "maxChaseBlocks", 65)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("entityId", 42, "timeoutTicks", 99)).isEmpty());
+
+        for (var reason : java.util.List.of("killed", "target-lost", "fled-too-far", "timeout",
+                "player-endangered", "cancelled")) {
+            assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                    "killed", reason.equals("killed"), "targetType", "minecraft:zombie", "hits", 3,
+                    "ticksElapsed", 80, "lootCollected", Map.of("minecraft:rotten_flesh", 1),
+                    "reason", reason)).isEmpty(), "reason " + reason + " must validate");
+        }
+        assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "killed", false, "targetType", "", "hits", 0, "ticksElapsed", 0,
+                "lootCollected", Map.of(), "reason", "unknown-reason")).isEmpty());
     }
 
     @Test

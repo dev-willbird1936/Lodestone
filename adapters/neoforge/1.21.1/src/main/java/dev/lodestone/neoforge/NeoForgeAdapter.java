@@ -101,7 +101,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.goal.survival.stone-toolset",
             "minecraft.goal.move.goto",
             "minecraft.goal.gather.collect-drops",
-            "minecraft.goal.gather.chop-tree");
+            "minecraft.goal.gather.chop-tree",
+            "minecraft.goal.combat.attack-entity");
     private static final Set<String> CLIENT_CAPABILITIES = Set.of(
             "minecraft.registry.item.search", "minecraft.server.info.read",
             "minecraft.client.screenshot.capture",
@@ -127,7 +128,8 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.goal.survival.stone-toolset",
             "minecraft.goal.move.goto",
             "minecraft.goal.gather.collect-drops",
-            "minecraft.goal.gather.chop-tree");
+            "minecraft.goal.gather.chop-tree",
+            "minecraft.goal.combat.attack-entity");
     private static volatile NeoForgeAdapter active;
 
     private final AdapterDescriptor descriptor = new AdapterDescriptor(
@@ -217,6 +219,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.goal.move.goto", this::clientCall);
         handlers.put("minecraft.goal.gather.collect-drops", this::clientCall);
         handlers.put("minecraft.goal.gather.chop-tree", this::clientCall);
+        handlers.put("minecraft.goal.combat.attack-entity", this::clientCall);
         return Map.copyOf(handlers);
     }
 
