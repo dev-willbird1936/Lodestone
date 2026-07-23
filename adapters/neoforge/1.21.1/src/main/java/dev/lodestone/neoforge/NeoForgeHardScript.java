@@ -12,6 +12,8 @@ import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
@@ -287,11 +289,13 @@ final class NeoForgeHardScript {
 
     private void tickPlace(Minecraft client) {
         var state = client.level.getBlockState(target);
-        if (!sameBlockFingerprint(dimension, target, state, expectedFingerprint) && dispatched) {
+        var decision = placeDecision(matchesPlacedItemBlock(state),
+                !sameBlockFingerprint(dimension, target, state, expectedFingerprint));
+        if (decision == PlaceDecision.SUCCESS) {
             completePlace(state);
             return;
         }
-        if (!sameBlockFingerprint(dimension, target, state, expectedFingerprint) && !state.canBeReplaced()) {
+        if (decision == PlaceDecision.TARGET_CHANGED) {
             fail("TARGET_CHANGED before placement dispatch");
             return;
         }
@@ -388,6 +392,40 @@ final class NeoForgeHardScript {
             setGrabFlag(client, false);
         }
         forcedGrab = false;
+    }
+
+    /**
+     * Outcome of comparing the live destination cell against its pre-dispatch snapshot while a
+     * place hard script is running. Deliberately a pure enum/decision pair (no Minecraft classes)
+     * so the decision itself is unit-testable without a live client - see
+     * {@link #matchesPlacedItemBlock} for the one real-registry lookup this depends on.
+     */
+    enum PlaceDecision {
+        /** The destination already holds the block form of the item being placed: the placement
+         * dispatched and landed, regardless of whether {@link #dispatched} was observed true yet. */
+        SUCCESS,
+        /** The destination changed away from its pre-dispatch snapshot into something other than
+         * the placed item's block: another actor (grief, decay, a neighbour update) claimed the
+         * cell first. */
+        TARGET_CHANGED,
+        /** The destination still matches its pre-dispatch snapshot (including "still the original
+         * replaceable plant"): keep aiming and clicking. */
+        CONTINUE
+    }
+
+    static PlaceDecision placeDecision(boolean destinationMatchesPlacedItemBlock,
+                                        boolean destinationFingerprintChanged) {
+        if (destinationMatchesPlacedItemBlock) return PlaceDecision.SUCCESS;
+        if (destinationFingerprintChanged) return PlaceDecision.TARGET_CHANGED;
+        return PlaceDecision.CONTINUE;
+    }
+
+    /** True when {@code state} is already the block form of {@link #itemId}, i.e. the placement
+     * landed - even if it landed into a destination that started out as a replaceable plant such
+     * as grass, so the fingerprint captured before dispatch no longer matches. */
+    private boolean matchesPlacedItemBlock(BlockState state) {
+        var item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+        return item instanceof BlockItem blockItem && state.is(blockItem.getBlock());
     }
 
     static String blockId(BlockState state) {
