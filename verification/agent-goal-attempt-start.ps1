@@ -40,9 +40,17 @@ if (!$SkipRecording) {
     if (-not (Test-Path -LiteralPath $obsSourceScenes)) { throw "OBS scene collection was not found: $obsSourceScenes" }
     if (-not (Test-Path -LiteralPath $obsSourceProfile)) { throw "OBS profile was not found: $obsSourceProfile" }
 
-    # A prior force-killed OBS leaves an unclean-shutdown sentinel that opens a Safe Mode modal
+    # A prior non-clean OBS exit leaves an unclean-shutdown sentinel that opens a Safe Mode modal
     # BEFORE argument parsing; minimized and unattended, it blocks startup indefinitely
     # (observed: 42 minutes of nothing recorded). --disable-shutdown-check does not cover it.
+    # OBS 31 tracks this via leftover run_* files under .sentinel (live-confirmed on this
+    # machine); older builds used an UncleanShutdown ini key. Clear both. Safe here: the
+    # preflight above guarantees no obs64 process is running.
+    $sentinelDirectory = Join-Path $env:APPDATA 'obs-studio\.sentinel'
+    if (Test-Path -LiteralPath $sentinelDirectory) {
+        Get-ChildItem -LiteralPath $sentinelDirectory -Filter 'run_*' -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
     foreach ($configName in @('global.ini', 'user.ini')) {
         $configPath = Join-Path $env:APPDATA "obs-studio\$configName"
         if (Test-Path -LiteralPath $configPath) {
