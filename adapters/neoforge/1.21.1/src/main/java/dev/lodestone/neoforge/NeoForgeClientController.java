@@ -88,6 +88,7 @@ public final class NeoForgeClientController {
     public static void onClientTick(ClientTickEvent.Pre event) {
         clientTick++;
         BRIDGE.releaseExpiredInput(monotonicMillis());
+        BRIDGE.tickPlayerAlerts();
         BRIDGE.tickSurvivalTreeGoal();
         BRIDGE.tickWoolTreeZombieGoal();
         BRIDGE.tickNetherGoal();
@@ -339,6 +340,9 @@ public final class NeoForgeClientController {
         private NeoForgeAttackHold attackHold;
         /** Exactly one deterministic hard script may own attack/use input at a time. */
         private NeoForgeHardScript hardScript;
+        /** Not a goal actor - ticks unconditionally, every tick, before any goal actor - see
+         * {@link #tickPlayerAlerts()}. */
+        private final NeoForgePlayerAlerts playerAlerts = new NeoForgePlayerAlerts();
 
         private record ItemProjection(int rank, String id, String translationKey, String displayName,
                                       int maxStackSize, boolean blockItem) {
@@ -568,6 +572,19 @@ public final class NeoForgeClientController {
                 }
             });
             return result;
+        }
+
+        /** Advances {@link NeoForgePlayerAlerts} and republishes any detected alert through the same
+         * {@link #publish(String, Map)} path every other client event uses. Deliberately not a goal
+         * actor: it ticks unconditionally (no mutual-exclusion gate) and never owns input. */
+        private void tickPlayerAlerts() {
+            playerAlerts.tick(Minecraft.getInstance(), NeoForgeClientController::publish);
+        }
+
+        /** The most recent death position observed this session, or {@code null} if the player has
+         * not died - reserved for a future respawn-recover competency. */
+        Map<String, Object> lastDeathPosition() {
+            return playerAlerts.lastDeathPosition();
         }
 
         private void tickSurvivalTreeGoal() {

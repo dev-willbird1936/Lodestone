@@ -203,4 +203,22 @@ final class EventHubContractTest {
         assertEquals(1, events.size());
         assertEquals("minecraft.lifecycle.server.started", events.get(0).event());
     }
+
+    @Test
+    void playerAlertEventsAreNeverRedacted() {
+        var hub = new EventHub();
+        var subscription = hub.subscribe("caller", "runtime", "minecraft.player.alert.", 10);
+
+        hub.publish("runtime", "minecraft.player.alert.health-drop",
+                Map.of("previous", 20.0, "current", 18.0, "cause", "unknown"), 1);
+        hub.publish("runtime", "minecraft.player.alert.death", Map.of("position", Map.of(), "dayTime", 6500), 2);
+        hub.publish("runtime", "minecraft.player.alert.respawn", Map.of("position", Map.of()), 3);
+        hub.publish("runtime", "minecraft.player.alert.night", Map.of("dayTime", 13000), 4);
+        hub.publish("runtime", "minecraft.player.alert.dawn", Map.of("dayTime", 23000), 5);
+        hub.publish("runtime", "minecraft.player.alert.hostile-near",
+                Map.of("type", "minecraft:zombie", "entityId", 7, "distance", 8.0), 6);
+
+        var events = hub.poll("caller", subscription.id(), 10);
+        assertEquals(6, events.size(), "no minecraft.player.alert.* event may be silently dropped");
+    }
 }
