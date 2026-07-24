@@ -36,12 +36,21 @@ import java.util.Set;
  */
 final class NeoForgeGotoMovement {
     private static final int REPLAN_INTERVAL_TICKS = 20;
-    private static final int STUCK_TICKS_BEFORE_REPLAN = 45;
     private static final int LATERAL_DETOUR_OFFSET = 4;
     private static final int SOFT_MINE_TIMEOUT_TICKS = 30;
     /** After this many abandoned mine attempts (soft or hard) in one invocation, stop retrying and
      * report repeated-mutation-failure instead of grinding out the full timeout budget. */
     private static final int MAX_MUTATION_FAILURES = 3;
+    // Live-caught "dancing" bug: the walker re-aimed at the current path node's own block Y (feet
+    // level) every single tick, producing a steep, ever-changing down-pitch at close range that
+    // never settled, plus numerically unstable yaw right on top of a node - see reaimTowardWalkNode
+    // and nodeConsumed's own doc. These four constants are the fix's tunables, not derived
+    // game-mechanics values.
+    private static final float REAIM_YAW_THRESHOLD_DEGREES = 10.0F;
+    private static final double NODE_ARRIVAL_HORIZONTAL_DISTANCE = 0.7;
+    private static final int STUCK_TICKS_BEFORE_JUMP_ASSIST = 15;
+    private static final int MAX_JUMP_ASSISTS_BEFORE_REPLAN = 2;
+    private static final double SPRINT_DISTANCE_THRESHOLD_BLOCKS = 6.0;
 
     /** Vanilla block ids that are cheap, safe, and expected to be cleared on sight rather than
      * routed around or reported as a failure - see this class's own javadoc. Not exhaustive of
@@ -59,6 +68,9 @@ final class NeoForgeGotoMovement {
 
     enum Outcome { MOVING, ARRIVED, NO_ROUTE, MUTATION_FAILURE }
 
+    /** Pure stuck-recovery escalation ladder - see {@link #nextStuckAction}'s own doc. */
+    enum StuckAction { CONTINUE, JUMP_ASSIST, REPLAN, GIVE_UP }
+
     record Diagnosis(BlockPos nearestReachable, List<Map<String, Object>> obstructionSample) {
     }
 
@@ -71,6 +83,13 @@ final class NeoForgeGotoMovement {
     private int ticksSinceReplan;
     private int replans;
     private int stuckTicks;
+    private int jumpAssistsUsed;
+    /** Whether this movement instance has already spent its one stuck-triggered replan (see {@link
+     * #nextStuckAction}'s own doc) - never reset back to false once set, unlike {@link
+     * #jumpAssistsUsed}/{@link #stuckTicks}, which reset on ordinary progress or an ordinary replan;
+     * this is a lifetime ratchet for the whole invocation so a persistently stuck walk fails fast
+     * exactly once instead of replanning forever. */
+    private boolean stuckReplanUsed;
     private double lastDistance = Double.POSITIVE_INFINITY;
     private boolean lateralDetourAttempted;
     private int blocksMined;
@@ -137,9 +156,10 @@ final class NeoForgeGotoMovement {
             return Outcome.NO_ROUTE;
         }
 
-        while (pathIndex < path.size() && closeTo(player, path.get(pathIndex).position())) {
+        while (pathIndex < path.size() && nodeConsumed(player, path.get(pathIndex).position())) {
             pathIndex++;
             stuckTicks = 0;
+            jumpAssistsUsed = 0;
             lastDistance = Double.POSITIVE_INFINITY;
         }
         if (reached(player, target, arriveRadius)) {
@@ -168,16 +188,43 @@ final class NeoForgeGotoMovement {
 
         var waypoint = step.position();
         var distance = horizontalDistance(player, waypoint);
-        if (distance >= lastDistance - 0.01) stuckTicks++;
-        else stuckTicks = 0;
-        lastDistance = distance;
-        if (stuckTicks > STUCK_TICKS_BEFORE_REPLAN) {
-            diagnostics.add("stuck:replanning-at-" + player.blockPosition());
-            path = List.of();
-            return Outcome.MOVING;
+        if (distance >= lastDistance - 0.01) {
+            stuckTicks++;
+        } else {
+            stuckTicks = 0;
+            jumpAssistsUsed = 0;
         }
-        lookAt(player, waypoint);
-        setMovement(client, true, false, waypoint.getY() > player.blockPosition().getY() && player.onGround());
+        lastDistance = distance;
+
+        var jumpAssist = false;
+        switch (nextStuckAction(stuckTicks, jumpAssistsUsed, stuckReplanUsed,
+                STUCK_TICKS_BEFORE_JUMP_ASSIST, MAX_JUMP_ASSISTS_BEFORE_REPLAN)) {
+            case JUMP_ASSIST -> {
+                jumpAssistsUsed++;
+                stuckTicks = 0;
+                jumpAssist = true;
+                diagnostics.add("stuck:jump-assist-" + jumpAssistsUsed + "-at-" + player.blockPosition());
+            }
+            case REPLAN -> {
+                stuckReplanUsed = true;
+                jumpAssistsUsed = 0;
+                stuckTicks = 0;
+                diagnostics.add("stuck:replanning-at-" + player.blockPosition());
+                path = List.of();
+                return Outcome.MOVING;
+            }
+            case GIVE_UP -> {
+                diagnostics.add("stuck:giving-up-at-" + player.blockPosition());
+                releaseInput(client);
+                return Outcome.NO_ROUTE;
+            }
+            case CONTINUE -> { }
+        }
+
+        reaimTowardWalkNode(player, waypoint);
+        var ascendingStep = waypoint.getY() > player.blockPosition().getY() && player.onGround();
+        var sprint = shouldSprint(horizontalDistance(player, target));
+        setMovement(client, true, sprint, jumpAssist || ascendingStep);
         return Outcome.MOVING;
     }
 
@@ -233,6 +280,7 @@ final class NeoForgeGotoMovement {
         pathIndex = path.size() > 1 ? 1 : 0;
         replans++;
         stuckTicks = 0;
+        jumpAssistsUsed = 0;
         lastDistance = Double.POSITIVE_INFINITY;
     }
 
@@ -354,9 +402,28 @@ final class NeoForgeGotoMovement {
         return NeoForgeNavigationGoal.confirmedArrival(withinRadius, feetBlocked, headBlocked);
     }
 
-    private static boolean closeTo(LocalPlayer player, BlockPos position) {
-        return horizontalDistance(player, position) <= 0.8
-                && Math.abs(player.blockPosition().getY() - position.getY()) <= 1;
+    /**
+     * A path node counts as consumed once the player is within a loose horizontal radius of it,
+     * regardless of exact sub-block position, and within one step height vertically - never
+     * demanding exact-cell occupancy. See {@link #nodeConsumed(double, double)}'s own doc for why
+     * this matters beyond just "close enough": lingering right on top of a node long enough is
+     * exactly what let the old per-tick re-aim's yaw computation go numerically unstable.
+     */
+    private static boolean nodeConsumed(LocalPlayer player, BlockPos position) {
+        return nodeConsumed(horizontalDistance(player, position),
+                Math.abs(player.blockPosition().getY() - position.getY()));
+    }
+
+    /**
+     * Pure node-arrival decision, isolated from world/entity access so it's directly unit-testable.
+     * A live-caught bug ("dancing": the player stopped on a node and rapidly spun in place, pitching
+     * back down to "all the way down" each time) traced partly to this tolerance being both too
+     * tight (0.8, encouraging the walker to linger closer than necessary) and to {@code closeTo}'s
+     * old name inviting exact-cell thinking; {@code verticalDistance} deliberately only needs to be
+     * within one ordinary step height (1 block) - never exact-cell occupancy.
+     */
+    static boolean nodeConsumed(double horizontalDistance, double verticalDistance) {
+        return horizontalDistance < NODE_ARRIVAL_HORIZONTAL_DISTANCE && verticalDistance <= 1.0;
     }
 
     private static double horizontalDistance(LocalPlayer player, BlockPos position) {
@@ -365,21 +432,119 @@ final class NeoForgeGotoMovement {
         return Math.sqrt(dx * dx + dz * dz);
     }
 
-    private static void lookAt(LocalPlayer player, BlockPos target) {
-        lookAt(player, new Vec3(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5));
+    /**
+     * The eye-level walking re-aim: turns toward the next path node only when the yaw error exceeds
+     * {@link #REAIM_YAW_THRESHOLD_DEGREES}, never every tick. This is the actual fix for the
+     * live-caught "dancing" bug (operator-observed: the player looked at the floor and back up on
+     * every step) - the old code called {@link #lookAt(LocalPlayer, BlockPos)} unconditionally each
+     * tick, which aims at the node's own block Y (close to feet level); from an eye position roughly
+     * 1.6 blocks higher, at the short range between consecutive path nodes, that produces a steep,
+     * ever-changing down-pitch that never settles, and - right on top of a node, at near-zero
+     * horizontal distance - a numerically unstable yaw (tiny position jitter flips the sign of the
+     * atan2 inputs), which is what actually caused the reported "stops and rapidly turns around".
+     * Aiming at the player's own eye height instead keeps pitch level while walking (0 unless
+     * genuinely ascending/descending terrain); only {@link #continueHardMine}/{@link
+     * #continueSoftMine}'s own block-level aim should ever pitch down, and they are unaffected by
+     * this method entirely.
+     */
+    private static void reaimTowardWalkNode(LocalPlayer player, BlockPos node) {
+        var eye = player.getEyePosition();
+        var aim = eyeLevelAimTarget(node, eye.y);
+        var angles = computeLookAngles(eye, aim);
+        if (!yawNeedsReaim(player.getYRot(), angles.yaw())) return;
+        player.setYRot(angles.yaw());
+        player.setYHeadRot(angles.yaw());
+        player.setXRot(angles.pitch());
     }
 
-    private static void lookAt(LocalPlayer player, Vec3 target) {
-        var eye = player.getEyePosition();
+    /**
+     * Eye-level aim target for walking toward a path node: same X/Z as the node's center, but the
+     * player's OWN eye height rather than the node's own block Y - see {@link
+     * #reaimTowardWalkNode}'s own doc for why. Package-private and pure for direct testing: {@code
+     * target.y} must equal {@code eyeY} regardless of {@code node.getY()}.
+     */
+    static Vec3 eyeLevelAimTarget(BlockPos node, double eyeY) {
+        return new Vec3(node.getX() + 0.5, eyeY, node.getZ() + 0.5);
+    }
+
+    /**
+     * Whether a fresh yaw computation differs enough from the player's current yaw to be worth
+     * actually applying - more than {@link #REAIM_YAW_THRESHOLD_DEGREES}, wrapped through {@link
+     * #wrapDegrees} so a target just the "wrong side" of the -180/180 seam is never mistaken for a
+     * huge error. Package-private and pure for direct testing.
+     */
+    static boolean yawNeedsReaim(float currentYaw, float desiredYaw) {
+        return Math.abs(wrapDegrees(desiredYaw - currentYaw)) > REAIM_YAW_THRESHOLD_DEGREES;
+    }
+
+    /** Wraps a yaw delta into (-180, 180] so a re-aim threshold check isn't fooled by the
+     * 360-degree wraparound. Package-private and pure for direct testing. */
+    static float wrapDegrees(float degrees) {
+        var wrapped = degrees % 360.0F;
+        if (wrapped >= 180.0F) wrapped -= 360.0F;
+        if (wrapped < -180.0F) wrapped += 360.0F;
+        return wrapped;
+    }
+
+    /** Whether a route still has enough remaining distance left to be worth sprinting for -
+     * short hops (e.g. the last step into arrival radius) don't need it. Package-private and pure
+     * for direct testing. */
+    static boolean shouldSprint(double remainingDistanceToTarget) {
+        return remainingDistanceToTarget > SPRINT_DISTANCE_THRESHOLD_BLOCKS;
+    }
+
+    /**
+     * Pure stuck-recovery escalation ladder, isolated from world/input access so it's directly
+     * unit-testable. A live-caught bug had the old handler do nothing for 45 stuck ticks and then
+     * silently force a bare replan forever, which - combined with the aiming bug above - looked like
+     * the player "circles/spins at the node" instead of making an honest recovery attempt. The new
+     * ladder is a strict, one-shot escalation for the whole movement instance: try a bounded number
+     * of jump-assists first (a stuck player is very often just caught on a lip or a fence post), then
+     * spend the one stuck-triggered replan this instance is allowed (see {@link #stuckReplanUsed}'s
+     * own doc for why that flag never resets), and if the walker is STILL stuck after that, give up
+     * and report honestly instead of repeating the cycle for the rest of the timeout budget.
+     */
+    static StuckAction nextStuckAction(int stuckTicks, int jumpAssistsUsed, boolean stuckReplanUsed,
+                                        int stuckTicksBeforeJumpAssist, int maxJumpAssistsBeforeReplan) {
+        if (stuckTicks < stuckTicksBeforeJumpAssist) return StuckAction.CONTINUE;
+        // Once the one stuck-triggered replan has been spent, every later stuck episode gives up
+        // immediately - never restarts the jump-assist ladder, however jumpAssistsUsed itself was
+        // reset in the meantime - so this is a true one-shot escalation, not a repeating cycle.
+        if (stuckReplanUsed) return StuckAction.GIVE_UP;
+        if (jumpAssistsUsed < maxJumpAssistsBeforeReplan) return StuckAction.JUMP_ASSIST;
+        return StuckAction.REPLAN;
+    }
+
+    /** Pure yaw/pitch result of aiming from one point at another - see {@link
+     * #computeLookAngles}. */
+    record LookAngles(float yaw, float pitch) { }
+
+    /** Pure look-angle math, isolated from the player object so it's directly unit-testable; {@link
+     * #lookAt(LocalPlayer, Vec3)} and {@link #reaimTowardWalkNode} both apply its result rather than
+     * duplicating the atan2 formulas. */
+    static LookAngles computeLookAngles(Vec3 eye, Vec3 target) {
         var dx = target.x - eye.x;
         var dy = target.y - eye.y;
         var dz = target.z - eye.z;
         var horizontal = Math.sqrt(dx * dx + dz * dz);
         var yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
         var pitch = (float) -Math.toDegrees(Math.atan2(dy, horizontal));
-        player.setYRot(yaw);
-        player.setYHeadRot(yaw);
-        player.setXRot(Math.max(-89.0F, Math.min(89.0F, pitch)));
+        return new LookAngles(yaw, Math.max(-89.0F, Math.min(89.0F, pitch)));
+    }
+
+    /** Block-level aim, used only by {@link #continueHardMine}/{@link #continueSoftMine} - a
+     * mining/placing aim legitimately needs to pitch down at the obstruction itself, unlike ordinary
+     * walking (see {@link #reaimTowardWalkNode}). Re-aims every tick, unlike walking, since landing
+     * the mining raycast needs precision the yaw-hysteresis would otherwise blur. */
+    private static void lookAt(LocalPlayer player, BlockPos target) {
+        lookAt(player, new Vec3(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5));
+    }
+
+    private static void lookAt(LocalPlayer player, Vec3 target) {
+        var angles = computeLookAngles(player.getEyePosition(), target);
+        player.setYRot(angles.yaw());
+        player.setYHeadRot(angles.yaw());
+        player.setXRot(angles.pitch());
     }
 
     private static void setMovement(Minecraft client, boolean forward, boolean sprint, boolean jump) {

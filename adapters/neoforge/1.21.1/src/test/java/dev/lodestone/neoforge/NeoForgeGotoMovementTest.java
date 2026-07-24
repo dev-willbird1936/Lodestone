@@ -2,6 +2,7 @@
 package dev.lodestone.neoforge;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,5 +74,110 @@ final class NeoForgeGotoMovementTest {
         // The direct line runs along +Z, so the perpendicular offset is along X.
         assertTrue(candidates.stream().anyMatch(pos -> pos.getX() == 6));
         assertTrue(candidates.stream().anyMatch(pos -> pos.getX() == -6));
+    }
+
+    /**
+     * Regression coverage for the live-caught "dancing" bug: the walker used to aim at the current
+     * path node's own block Y (feet level) every tick, which - from an eye position roughly 1.6
+     * blocks higher, at close range - produced a steep down-pitch that never settled. The fix aims
+     * at the player's own eye height instead, so the aim target's Y never depends on the node's Y.
+     */
+    @Test
+    void eyeLevelAimTargetAlwaysUsesTheEyeHeightRegardlessOfTheNodesOwnY() {
+        var groundLevelNode = new BlockPos(10, 64, -3);
+        var elevatedNode = new BlockPos(10, 90, -3);
+
+        var fromGround = NeoForgeGotoMovement.eyeLevelAimTarget(groundLevelNode, 72.62);
+        var fromElevated = NeoForgeGotoMovement.eyeLevelAimTarget(elevatedNode, 72.62);
+
+        assertEquals(72.62, fromGround.y, 1e-9);
+        assertEquals(72.62, fromElevated.y, 1e-9, "aim Y must never track the node's own Y");
+        assertEquals(10.5, fromGround.x, 1e-9);
+        assertEquals(-2.5, fromGround.z, 1e-9);
+    }
+
+    /** End-to-end composition of {@link NeoForgeGotoMovement#eyeLevelAimTarget} and {@link
+     * NeoForgeGotoMovement#computeLookAngles}: walking toward a node below, level with, or above the
+     * player must always compute a near-level pitch, since the aim target is always at eye height. */
+    @Test
+    void walkingAimStaysLevelRegardlessOfTheNodesElevation() {
+        var eye = new Vec3(0.0, 72.62, 0.0);
+        for (var nodeY : new int[]{50, 70, 71, 72, 100}) {
+            var node = new BlockPos(5, nodeY, 0);
+            var aim = NeoForgeGotoMovement.eyeLevelAimTarget(node, eye.y);
+            var angles = NeoForgeGotoMovement.computeLookAngles(eye, aim);
+            assertEquals(0.0F, angles.pitch(), 1e-6, "pitch must stay level for node Y " + nodeY);
+        }
+    }
+
+    @Test
+    void reaimHysteresisIgnoresErrorsAtOrBelowTenDegrees() {
+        assertFalse(NeoForgeGotoMovement.yawNeedsReaim(0.0F, 10.0F));
+        assertFalse(NeoForgeGotoMovement.yawNeedsReaim(0.0F, -10.0F));
+        assertFalse(NeoForgeGotoMovement.yawNeedsReaim(45.0F, 45.0F));
+        assertTrue(NeoForgeGotoMovement.yawNeedsReaim(0.0F, 10.01F));
+        assertTrue(NeoForgeGotoMovement.yawNeedsReaim(0.0F, 90.0F));
+    }
+
+    @Test
+    void reaimHysteresisWrapsAroundTheYawSeamInsteadOfSeeingA350DegreeError() {
+        // 175 -> -175 is really only a 10-degree turn the short way around, not 350.
+        assertFalse(NeoForgeGotoMovement.yawNeedsReaim(175.0F, -175.0F));
+        assertTrue(NeoForgeGotoMovement.yawNeedsReaim(175.0F, -164.0F));
+    }
+
+    @Test
+    void nodeConsumedNeedsALooseHorizontalRadiusAndOnlyOneStepHeightVertically() {
+        assertTrue(NeoForgeGotoMovement.nodeConsumed(0.0, 0.0));
+        assertTrue(NeoForgeGotoMovement.nodeConsumed(0.69, 1.0));
+        // The horizontal bound is strict (<), not inclusive - matches the "< 0.7" spec exactly.
+        assertFalse(NeoForgeGotoMovement.nodeConsumed(0.7, 0.0));
+        assertFalse(NeoForgeGotoMovement.nodeConsumed(0.5, 1.01));
+        // Never demands exact-cell occupancy: comfortably inside the loose radius still counts,
+        // it doesn't need to be dead center.
+        assertTrue(NeoForgeGotoMovement.nodeConsumed(0.3, 0.5));
+    }
+
+    @Test
+    void sprintOnlyKicksInForRoutesLongerThanSixBlocks() {
+        assertFalse(NeoForgeGotoMovement.shouldSprint(6.0));
+        assertFalse(NeoForgeGotoMovement.shouldSprint(2.0));
+        assertTrue(NeoForgeGotoMovement.shouldSprint(6.01));
+        assertTrue(NeoForgeGotoMovement.shouldSprint(20.0));
+    }
+
+    /**
+     * Regression coverage for the live-caught bug where the old stuck handler did nothing for 45
+     * ticks and then silently forced a bare replan forever (looking, combined with the aiming bug,
+     * like the player "circles/spins at the node"). The new ladder is a strict, one-shot escalation:
+     * two bounded jump-assists, then exactly one replan, then an honest give-up - never repeating.
+     */
+    @Test
+    void stuckActionEscalatesThroughJumpAssistsThenOneReplanThenGivesUpHonestly() {
+        var stuckTicksBeforeJumpAssist = 15;
+        var maxJumpAssists = 2;
+
+        // Not stuck long enough yet: keep walking normally.
+        assertEquals(NeoForgeGotoMovement.StuckAction.CONTINUE,
+                NeoForgeGotoMovement.nextStuckAction(0, 0, false, stuckTicksBeforeJumpAssist, maxJumpAssists));
+        assertEquals(NeoForgeGotoMovement.StuckAction.CONTINUE,
+                NeoForgeGotoMovement.nextStuckAction(14, 0, false, stuckTicksBeforeJumpAssist, maxJumpAssists));
+
+        // First and second stuck episodes: bounded jump-assists, never a yaw-scan/spin action.
+        assertEquals(NeoForgeGotoMovement.StuckAction.JUMP_ASSIST,
+                NeoForgeGotoMovement.nextStuckAction(15, 0, false, stuckTicksBeforeJumpAssist, maxJumpAssists));
+        assertEquals(NeoForgeGotoMovement.StuckAction.JUMP_ASSIST,
+                NeoForgeGotoMovement.nextStuckAction(15, 1, false, stuckTicksBeforeJumpAssist, maxJumpAssists));
+
+        // Both jump-assists spent, no replan used yet: exactly one replan.
+        assertEquals(NeoForgeGotoMovement.StuckAction.REPLAN,
+                NeoForgeGotoMovement.nextStuckAction(15, 2, false, stuckTicksBeforeJumpAssist, maxJumpAssists));
+
+        // Still stuck after the one allowed replan: give up honestly, never loop back to jumping
+        // or replanning again.
+        assertEquals(NeoForgeGotoMovement.StuckAction.GIVE_UP,
+                NeoForgeGotoMovement.nextStuckAction(15, 2, true, stuckTicksBeforeJumpAssist, maxJumpAssists));
+        assertEquals(NeoForgeGotoMovement.StuckAction.GIVE_UP,
+                NeoForgeGotoMovement.nextStuckAction(15, 0, true, stuckTicksBeforeJumpAssist, maxJumpAssists));
     }
 }
