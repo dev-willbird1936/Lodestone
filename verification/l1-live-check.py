@@ -425,10 +425,14 @@ def stage_recover(port):
             rpc(port, "reconcile_session")
         o = out(rpc(port, "get_player_position"))
         day = out(rpc(port, "get_server_info")).get("dayTime", 0) % 24000
-        if o.get("position") and (o.get("health") or 0) > 0 and not (12000 <= day < 23200):
-            print(f"recover: ready (hp {o.get('health')}, dayTime {day})", flush=True)
+        if o.get("position") and (o.get("health") or 0) > 0:
+            night = 12000 <= day < 23200
+            print(f"recover: ready (hp {o.get('health')}, dayTime {day}{', STILL NIGHT' if night else ''})",
+                  flush=True)
+            # A live daytime player is ideal, but if sheltering failed, proceed anyway —
+            # the arena stage rerolls night worlds (fresh worlds always start at dawn).
             return True
-    print("recover: FAILED to reach a live daytime player", flush=True)
+    print("recover: FAILED to reach a live player", flush=True)
     return False
 
 
@@ -453,10 +457,15 @@ def arena_quality(port):
 
 def stage_arena(port):
     """Reroll worlds until spawn has trees, open ground, low ice, and mild relief."""
+    def daytime():
+        day = out(rpc(port, "get_server_info")).get("dayTime", 0) % 24000
+        return day < 11000 or day >= 23200
+
     def good(q):
-        return q and q["trees"] >= 25 and q["icyFrac"] < 0.2 and q["openFrac"] >= 0.05 and q["heightSD"] <= 3.5
+        return (q and q["trees"] >= 25 and q["icyFrac"] < 0.2 and q["openFrac"] >= 0.05
+                and q["heightSD"] <= 3.5 and daytime())
     q = arena_quality(port)
-    print("arena:", q, flush=True)
+    print("arena:", q, "daytime:", daytime(), flush=True)
     for i in range(6):
         if good(q):
             print("arena: ACCEPTED", flush=True)
