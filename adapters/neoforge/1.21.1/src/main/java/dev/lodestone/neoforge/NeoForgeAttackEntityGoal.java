@@ -28,6 +28,14 @@ final class NeoForgeAttackEntityGoal {
     private static final double ATTACK_STRENGTH_READY = 0.9;
     private static final double PLAYER_ENDANGERED_HEALTH = 8.0;
     private static final double LOOT_RADIUS = 6.0;
+    // Live-caught bug: a target walled off underground (e.g. a spider in a cave below the player)
+    // burned its entire timeout budget with hits:0 instead of failing fast, because the movement
+    // engine kept reporting MOVING (a lateral-detour retry kept finding SOME nearby reachable point,
+    // just never one that closed the distance) rather than an outright NO_ROUTE. This bounds how
+    // many consecutive replans may pass without real chase progress before the approach is treated
+    // as stuck - see unreachableApproach's own doc.
+    private static final int STAGNANT_REPLAN_LIMIT = 3;
+    private static final double PROGRESS_EPSILON_BLOCKS = 0.5;
 
     /** Pure per-tick target-resolution outcome, package-private and testable without a live
      * client - see {@link #resolveTargetState}. */
@@ -47,6 +55,9 @@ final class NeoForgeAttackEntityGoal {
     private String targetType = "";
     private boolean collecting;
     private NeoForgeDropCollector collector;
+    private int lastObservedReplans;
+    private double bestChaseDistance = Double.POSITIVE_INFINITY;
+    private int stagnantReplans;
 
     NeoForgeAttackEntityGoal(InvocationContext invocation, CompletableFuture<Map<String, Object>> result) {
         this.invocation = invocation;
@@ -87,11 +98,17 @@ final class NeoForgeAttackEntityGoal {
 
             var candidate = client.level.getEntity(entityId);
             var target = candidate instanceof LivingEntity living ? living : null;
+            // Recorded as soon as the entity is first resolved, not only on a confirmed kill - a
+            // failed attempt (timeout, target-lost, target-unreachable) must still report what it
+            // was fighting instead of an empty string.
+            if (target != null && targetType.isEmpty()) {
+                targetType = BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).toString();
+            }
             trackHits(target);
             var outcome = resolveTargetState(target != null, target != null && target.isAlive());
             switch (outcome) {
                 case TARGET_LOST -> complete(client, "target-lost");
-                case KILLED -> beginCollect(client, target);
+                case KILLED -> beginCollect(client);
                 case CONTINUE -> tickEngage(client, player, target);
             }
         } catch (Throwable failure) {
@@ -114,10 +131,30 @@ final class NeoForgeAttackEntityGoal {
             var outcome = movement.tick(client, player, target.blockPosition(), MELEE_RANGE - 0.5);
             if (outcome == NeoForgeGotoMovement.Outcome.NO_ROUTE
                     || outcome == NeoForgeGotoMovement.Outcome.MUTATION_FAILURE) {
-                complete(client, "target-lost");
+                complete(client, "target-unreachable");
+                return;
+            }
+            // The movement engine can keep reporting MOVING forever without ever declaring
+            // NO_ROUTE - e.g. its own lateral-detour retry keeps finding SOME nearby reachable
+            // point - while never actually closing the distance to a target walled off by real
+            // terrain (a live-caught case: a spider in a cave below the player). Fail fast instead
+            // of burning the rest of the timeout budget once enough consecutive replans in a row
+            // made no real chase progress.
+            if (movement.replans() > lastObservedReplans) {
+                lastObservedReplans = movement.replans();
+                var currentDistance = Math.sqrt(distanceSqr);
+                var madeProgress = replanMadeProgress(bestChaseDistance, currentDistance);
+                stagnantReplans = nextStagnantReplanCount(madeProgress, stagnantReplans);
+                bestChaseDistance = Math.min(bestChaseDistance, currentDistance);
+                if (unreachableApproach(stagnantReplans)) {
+                    complete(client, "target-unreachable");
+                    return;
+                }
             }
             return;
         }
+        stagnantReplans = 0;
+        bestChaseDistance = Double.POSITIVE_INFINITY;
         movement.releaseInput(client);
         aimAt(player, target);
         var scale = player.getAttackStrengthScale(0.5F);
@@ -136,10 +173,11 @@ final class NeoForgeAttackEntityGoal {
         lastObservedHealth = health;
     }
 
-    private void beginCollect(Minecraft client, LivingEntity target) {
+    private void beginCollect(Minecraft client) {
         movement.releaseInput(client);
         stopAttack(client);
-        targetType = target == null ? "" : BuiltInRegistries.ENTITY_TYPE.getKey(target.getType()).toString();
+        // targetType is already recorded from the moment the entity was first resolved (see
+        // tick()); KILLED never fires for a target that was never present, so it is never empty here.
         collecting = true;
         collector = new NeoForgeDropCollector(LOOT_RADIUS, null);
     }
@@ -213,6 +251,31 @@ final class NeoForgeAttackEntityGoal {
         if (present && !alive) return ResolutionOutcome.KILLED;
         if (!present) return ResolutionOutcome.TARGET_LOST;
         return ResolutionOutcome.CONTINUE;
+    }
+
+    /** Whether a fresh replan's resulting distance to the (possibly mobile) target counts as real
+     * chase progress - more than a small tolerance closer than the best distance observed so far -
+     * rather than mere noise from a wandering target or a lateral-detour path. Package-private and
+     * pure for direct testing. */
+    static boolean replanMadeProgress(double bestDistanceSoFar, double currentDistance) {
+        return currentDistance < bestDistanceSoFar - PROGRESS_EPSILON_BLOCKS;
+    }
+
+    /** Next run length of consecutive replans in a row that made no chase progress: reset to zero
+     * the moment one does, otherwise extended by one. Package-private and pure for direct testing. */
+    static int nextStagnantReplanCount(boolean madeProgress, int previousStagnantReplanCount) {
+        return madeProgress ? 0 : previousStagnantReplanCount + 1;
+    }
+
+    /** True once enough consecutive replans in a row made no real progress toward a target that is
+     * out of melee range - the approach is treated as stuck rather than merely slow, so the caller
+     * aborts with {@code target-unreachable} instead of burning the rest of its timeout budget (a
+     * live-caught bug: the movement engine can keep reporting MOVING forever - e.g. its own
+     * lateral-detour retry keeps finding SOME nearby reachable point - without ever declaring
+     * NO_ROUTE, while never actually closing on a target walled off by real terrain). Package-private
+     * and pure for direct testing. */
+    static boolean unreachableApproach(int stagnantReplanCount) {
+        return stagnantReplanCount >= STAGNANT_REPLAN_LIMIT;
     }
 
     private static int requiredInt(Map<String, Object> input, String key) {

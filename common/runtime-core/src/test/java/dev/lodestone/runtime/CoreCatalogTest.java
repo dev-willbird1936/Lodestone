@@ -190,8 +190,8 @@ final class CoreCatalogTest {
         assertFalse(SchemaValidator.validate(capability.inputSchema(),
                 Map.of("entityId", 42, "timeoutTicks", 99)).isEmpty());
 
-        for (var reason : java.util.List.of("killed", "target-lost", "fled-too-far", "timeout",
-                "player-endangered", "cancelled")) {
+        for (var reason : java.util.List.of("killed", "target-lost", "target-unreachable", "fled-too-far",
+                "timeout", "player-endangered", "cancelled")) {
             assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
                     "killed", reason.equals("killed"), "targetType", "minecraft:zombie", "hits", 3,
                     "ticksElapsed", 80, "lootCollected", Map.of("minecraft:rotten_flesh", 1),
