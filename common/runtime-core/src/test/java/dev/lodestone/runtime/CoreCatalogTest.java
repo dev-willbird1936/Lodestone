@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 72 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
+        // 73 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
         // + minecraft.goal.gather.collect-drops + minecraft.goal.gather.chop-tree
-        // + minecraft.goal.combat.attack-entity + 11 hard-script capabilities loaded from the
-        // NeoForge-ready deterministic script catalog.
-        assertEquals(72, CoreCatalog.load().size());
+        // + minecraft.goal.combat.attack-entity + minecraft.goal.survival.survive-night
+        // + 11 hard-script capabilities loaded from the NeoForge-ready deterministic script catalog.
+        assertEquals(73, CoreCatalog.load().size());
     }
 
     @Test
@@ -199,6 +199,31 @@ final class CoreCatalogTest {
         assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
                 "killed", false, "targetType", "", "hits", 0, "ticksElapsed", 0,
                 "lootCollected", Map.of(), "reason", "unknown-reason")).isEmpty());
+    }
+
+    @Test
+    void surviveNightGoalAcceptsBoundedInputAndValidatesEveryReasonCode() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.survive-night"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", capability.version());
+        assertEquals("client", capability.nativeThread());
+
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 12000)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 999)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 16001)).isEmpty());
+
+        for (var reason : java.util.List.of("dawn", "not-night", "timeout", "no-shelter-material", "cancelled")) {
+            assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                    "sheltered", reason.equals("dawn"), "ticksWaited", 9000,
+                    "position", Map.of("x", 10, "y", 64, "z", -3), "reason", reason)).isEmpty(),
+                    "reason " + reason + " must validate");
+        }
+        assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "sheltered", false, "ticksWaited", 0, "position", Map.of("x", 0, "y", 64, "z", 0),
+                "reason", "unknown-reason")).isEmpty());
     }
 
     @Test
