@@ -321,11 +321,44 @@ def stage_acceptance(port):
         skip("acceptance:mob-killed", "no suitable mob within 32")
 
 
+def stage_recover(port):
+    """Self-healing pre-stage: clear quarantine, respawn if dead, shelter through night."""
+    for round_i in range(3):
+        rpc(port, "reconcile_session")
+        o = out(rpc(port, "get_player_position"))
+        alive = bool(o.get("position")) and (o.get("health") or 0) > 0
+        if not alive:
+            r = rpc(port, "respawn_recover", {"recoverItems": False}, timeout=300)
+            print("recover: respawn ->", str(out(r) or r.get("result", {}))[:160], flush=True)
+            time.sleep(2)
+            rpc(port, "reconcile_session")
+            o = out(rpc(port, "get_player_position"))
+            alive = bool(o.get("position")) and (o.get("health") or 0) > 0
+            if not alive:
+                continue
+        day = out(rpc(port, "get_server_info")).get("dayTime", 0) % 24000
+        if 12000 <= day < 23200:
+            print(f"recover: night (dayTime {day}), sheltering via survive_night", flush=True)
+            s = rpc(port, "survive_night", {"timeoutTicks": 15000}, timeout=900)
+            print("recover: survive_night ->", str(out(s) or s.get("result", {}))[:200], flush=True)
+            rpc(port, "reconcile_session")
+        o = out(rpc(port, "get_player_position"))
+        day = out(rpc(port, "get_server_info")).get("dayTime", 0) % 24000
+        if o.get("position") and (o.get("health") or 0) > 0 and not (12000 <= day < 23200):
+            print(f"recover: ready (hp {o.get('health')}, dayTime {day})", flush=True)
+            return True
+    print("recover: FAILED to reach a live daytime player", flush=True)
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=37891)
     ap.add_argument("--stage", choices=["verbs", "acceptance", "all"], default="all")
     args = ap.parse_args()
+    if not stage_recover(args.port):
+        print("aborting: recovery pre-stage failed")
+        sys.exit(2)
     if args.stage in ("verbs", "all"):
         stage_verbs(args.port)
     if args.stage in ("acceptance", "all"):
