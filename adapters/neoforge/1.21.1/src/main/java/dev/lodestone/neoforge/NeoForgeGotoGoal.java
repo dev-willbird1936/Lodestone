@@ -95,11 +95,20 @@ final class NeoForgeGotoGoal {
         result.complete(Map.copyOf(output));
     }
 
+    /**
+     * Live-caught bug: this method was named {@code horizontalDistance} but its body included the
+     * {@code dy} term, making it a full 3D Euclidean distance - {@code distanceRemaining} could read
+     * e.g. {@code 2.78} (a genuine ~1.9 horizontal plus ~2 vertical, from a heightmap-derived
+     * {@code targetY} a couple of blocks off the real surface) even while the player stood directly
+     * beside the target column, well within any reasonable {@code arriveRadius}. Arrival itself is
+     * now decided purely on horizontal distance plus a lenient vertical tolerance (see
+     * {@link NeoForgeGotoMovement#arrivalReached}), so this output field must report the same
+     * horizontal figure to stay consistent with what actually gates completion.
+     */
     private static double horizontalDistance(LocalPlayer player, BlockPos position) {
         var dx = player.getX() - position.getX() - 0.5;
-        var dy = player.getY() - position.getY();
         var dz = player.getZ() - position.getZ() - 0.5;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     private static int requiredInt(Map<String, Object> input, String key) {

@@ -180,4 +180,28 @@ final class NeoForgeGotoMovementTest {
         assertEquals(NeoForgeGotoMovement.StuckAction.GIVE_UP,
                 NeoForgeGotoMovement.nextStuckAction(15, 0, true, stuckTicksBeforeJumpAssist, maxJumpAssists));
     }
+
+    /**
+     * Regression coverage for the live-caught "grinds in place until timeout" bug: the old formula
+     * tied its vertical tolerance to {@code arriveRadius} itself ({@code Math.max(2, ceil(radius))})
+     * instead of to the real source of vertical error - a heightmap-derived {@code targetY} commonly
+     * off by 1-2 blocks. The live repro was {@code arriveRadius=2} with the player standing beside
+     * the target column at roughly horizontal 1.9-2.0 and {@code dy=2}; for that exact radius the old
+     * formula happened to also tolerate {@code dy<=2}, so this test also exercises the case the old
+     * per-invocation search couldn't reach in the first place (see {@link
+     * NeoForgeSafePathPlanner.ArrivalSpec}'s own use in {@code replan}).
+     */
+    @Test
+    void arrivalUsesHorizontalDistanceWithALenientFixedVerticalTolerance() {
+        // Exactly the live case: horizontal ~1.9, dy 2, radius 2 -> arrived.
+        assertTrue(NeoForgeGotoMovement.arrivalReached(1.9, 2.0, 2.0));
+        // Horizontal alone exceeds the radius: never arrived, regardless of how forgiving dy is.
+        assertFalse(NeoForgeGotoMovement.arrivalReached(2.6, 0.0, 2.0));
+        // The exact live boundary: horizontal ~2, dy ~2, radius 2 -> arrived (inclusive bounds).
+        assertTrue(NeoForgeGotoMovement.arrivalReached(2.0, 2.0, 2.0));
+        // Vertical tolerance is fixed at 2 blocks regardless of arriveRadius - a larger radius must
+        // not also widen how far off the target's Y is allowed to be.
+        assertFalse(NeoForgeGotoMovement.arrivalReached(1.0, 2.01, 2.0));
+        assertFalse(NeoForgeGotoMovement.arrivalReached(1.0, 3.0, 8.0));
+    }
 }

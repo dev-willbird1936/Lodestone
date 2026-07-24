@@ -51,6 +51,12 @@ final class NeoForgeGotoMovement {
     private static final int STUCK_TICKS_BEFORE_JUMP_ASSIST = 15;
     private static final int MAX_JUMP_ASSISTS_BEFORE_REPLAN = 2;
     private static final double SPRINT_DISTANCE_THRESHOLD_BLOCKS = 6.0;
+    // Live-caught "grinds in place until timeout" bug: callers frequently supply a target Y derived
+    // from a heightmap sample that is off by 1-2 blocks from the actual walkable surface, so a
+    // vertical arrival check tied to arriveRadius (a purely horizontal, user-tunable "how close"
+    // knob) could reject an otherwise-genuine arrival. This is a fixed, terrain-slop allowance,
+    // independent of arriveRadius - see arrivalReached's own doc.
+    private static final double ARRIVAL_VERTICAL_TOLERANCE = 2.0;
 
     /** Vanilla block ids that are cheap, safe, and expected to be cleared on sight rather than
      * routed around or reported as a failure - see this class's own javadoc. Not exhaustive of
@@ -148,7 +154,7 @@ final class NeoForgeGotoMovement {
 
         ticksSinceReplan++;
         if (path.isEmpty() || pathIndex >= path.size() || ticksSinceReplan >= REPLAN_INTERVAL_TICKS) {
-            replan(client, player, target);
+            replan(client, player, target, arriveRadius);
             ticksSinceReplan = 0;
         }
         if (path.isEmpty()) {
@@ -167,7 +173,7 @@ final class NeoForgeGotoMovement {
             return Outcome.ARRIVED;
         }
         if (pathIndex >= path.size()) {
-            replan(client, player, target);
+            replan(client, player, target, arriveRadius);
             if (path.isEmpty()) {
                 releaseInput(client);
                 return Outcome.NO_ROUTE;
@@ -254,7 +260,7 @@ final class NeoForgeGotoMovement {
         client.options.keyUse.setDown(false);
     }
 
-    private void replan(Minecraft client, LocalPlayer player, BlockPos target) {
+    private void replan(Minecraft client, LocalPlayer player, BlockPos target, double arriveRadius) {
         mineTarget = null;
         mineQueue.clear();
         mineTicks = 0;
@@ -263,7 +269,14 @@ final class NeoForgeGotoMovement {
         client.options.keyAttack.setDown(false);
         client.options.keyUse.setDown(false);
         var origin = player.blockPosition();
-        var found = NeoForgeSafePathPlanner.findSteps(client.level, player, origin, target, policy);
+        // The search's own stopping criterion must match reached()'s arrival tolerance, not the
+        // planner's generic default (3.0 horizontal / 5.0 vertical) - otherwise, on terrain where
+        // the target's supplied Y is off by more than the goal's own tolerance, the search can
+        // decide "close enough" and stop producing steps at a point that reached() disagrees is an
+        // arrival, leaving the walker with no further waypoint to close the remaining gap and no
+        // way to ever satisfy reached() before the invocation times out. See arrivalReached's doc.
+        var arrival = new NeoForgeSafePathPlanner.ArrivalSpec(arriveRadius, ARRIVAL_VERTICAL_TOLERANCE);
+        var found = NeoForgeSafePathPlanner.findSteps(client.level, player, origin, target, policy, arrival);
         if (found.isEmpty() && !lateralDetourAttempted) {
             lateralDetourAttempted = true;
             for (var candidate : lateralDetourCandidates(origin, target, LATERAL_DETOUR_OFFSET)) {
@@ -392,14 +405,31 @@ final class NeoForgeGotoMovement {
     }
 
     private boolean reached(LocalPlayer player, BlockPos target, double arriveRadius) {
-        var withinRadius = horizontalDistance(player, target) <= arriveRadius
-                && Math.abs(player.blockPosition().getY() - target.getY()) <= Math.max(2, (int) Math.ceil(arriveRadius));
+        var withinRadius = arrivalReached(horizontalDistance(player, target),
+                Math.abs(player.blockPosition().getY() - target.getY()), arriveRadius);
         var level = player.level();
         var feet = player.blockPosition();
         var feetBlocked = !level.getBlockState(feet).getCollisionShape(level, feet).isEmpty();
         var head = feet.above();
         var headBlocked = !level.getBlockState(head).getCollisionShape(level, head).isEmpty();
         return NeoForgeNavigationGoal.confirmedArrival(withinRadius, feetBlocked, headBlocked);
+    }
+
+    /**
+     * Pure arrival decision, isolated from world/entity access so it's directly unit-testable.
+     * Live-caught bug: the old formula compared a genuinely-horizontal distance against
+     * {@code arriveRadius} correctly, but tied its vertical tolerance to {@code arriveRadius} itself
+     * ({@code Math.max(2, ceil(arriveRadius))}) rather than to the actual source of vertical error -
+     * callers deriving {@code targetY} from a heightmap sample that is commonly off by 1-2 blocks on
+     * sloped terrain. Combined with the path search settling for its own looser default arrival
+     * tolerance (see {@link #replan}), the walker could reach the target's true neighborhood, run out
+     * of path to walk, and still fail this check every tick for the rest of the timeout budget - the
+     * live-observed "grinds in place". {@code verticalDistance} now uses a fixed, terrain-slop
+     * allowance ({@link #ARRIVAL_VERTICAL_TOLERANCE}) independent of the caller-tunable
+     * {@code arriveRadius}.
+     */
+    static boolean arrivalReached(double horizontalDistance, double verticalDistance, double arriveRadius) {
+        return horizontalDistance <= arriveRadius && verticalDistance <= ARRIVAL_VERTICAL_TOLERANCE;
     }
 
     /**
