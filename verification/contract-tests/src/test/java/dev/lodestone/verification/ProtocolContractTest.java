@@ -43,7 +43,7 @@ class ProtocolContractTest {
 
     @Test
     void releaseProductVersionIsConsistentAcrossBuildsProfilesAndScripts() throws Exception {
-        var expected = "1.0.0";
+        var expected = "1.1.0";
         assertTrue(Files.readString(root.resolve("gradle.properties")).contains("lodestoneVersion=" + expected));
         assertTrue(Files.readString(root.resolve("build.gradle.kts"))
                 .contains("getOrElse(\"" + expected + "\")"));
@@ -114,7 +114,12 @@ class ProtocolContractTest {
         var catalog = JsonParser.parseReader(Files.newBufferedReader(root.resolve("protocol/catalog/core-capabilities.json"), StandardCharsets.UTF_8)).getAsJsonObject();
         var ids = new HashSet<String>();
         assertEquals("0.3.0", catalog.get("catalogVersion").getAsString());
-        assertEquals(50, catalog.getAsJsonArray("capabilities").size());
+        // 63 = every capability entry raw in protocol/catalog/core-capabilities.json as of chunk B
+        // (native goal actors for craft, attack-entity, survive-night, and respawn-recover). This
+        // is a strict subset of CoreCatalogTest's merged count of 74, which additionally loads the
+        // 11 hard-script capabilities from the separate hard-scripts.json resource that a raw
+        // parse of this one catalog file never sees.
+        assertEquals(63, catalog.getAsJsonArray("capabilities").size());
         for (var capability : catalog.getAsJsonArray("capabilities")) {
             var id = capability.getAsJsonObject().get("id").getAsString();
             assertTrue(ids.add(id), "duplicate capability: " + id);
