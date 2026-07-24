@@ -98,6 +98,7 @@ class McpGatewayGoalTest {
             assertTrue(schemas.containsKey("attack_entity"));
             assertTrue(schemas.containsKey("survive_night"));
             assertTrue(schemas.containsKey("respawn_recover"));
+            assertTrue(schemas.containsKey("craft_item"));
         }
     }
 

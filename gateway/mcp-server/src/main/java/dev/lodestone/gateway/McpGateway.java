@@ -76,6 +76,7 @@ public final class McpGateway {
             new CapabilityAlias("attack_entity", "minecraft.goal.combat.attack-entity", "1.0"),
             new CapabilityAlias("survive_night", "minecraft.goal.survival.survive-night", "1.0"),
             new CapabilityAlias("respawn_recover", "minecraft.goal.survival.respawn-recover", "1.0"),
+            new CapabilityAlias("craft_item", "minecraft.inventory.craft", "1.0"),
             new CapabilityAlias("release_all_input", "minecraft.input.release-all", "1.0"),
             new CapabilityAlias("reconcile_session", "minecraft.session.reconcile", "1.0"),
             new CapabilityAlias("get_nearby_entities", "minecraft.entity.nearby.read", "1.0"),

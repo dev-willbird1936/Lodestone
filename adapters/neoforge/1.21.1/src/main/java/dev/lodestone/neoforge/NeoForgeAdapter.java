@@ -84,6 +84,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.player.interact",
             "minecraft.inventory.slot.select",
             "minecraft.inventory.container.click",
+            "minecraft.inventory.craft",
             "minecraft.entity.interact",
             "minecraft.ui.state.read",
             "minecraft.ui.click",
@@ -118,6 +119,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
             "minecraft.script.current.cancel",
             "minecraft.player.look", "minecraft.player.move", "minecraft.player.interact",
             "minecraft.inventory.slot.select", "minecraft.inventory.container.read", "minecraft.inventory.container.click",
+            "minecraft.inventory.craft",
             "minecraft.entity.interact", "minecraft.ui.state.read", "minecraft.ui.click",
             "minecraft.ui.key", "minecraft.ui.text.insert", "minecraft.chat.read",
             "minecraft.ui.inventory.open", "minecraft.ui.screen.close",
@@ -205,6 +207,7 @@ public final class NeoForgeAdapter implements LodestoneAdapter {
         handlers.put("minecraft.inventory.slot.select", this::clientCall);
         handlers.put("minecraft.inventory.container.read", this::clientCall);
         handlers.put("minecraft.inventory.container.click", this::clientCall);
+        handlers.put("minecraft.inventory.craft", this::clientCall);
         handlers.put("minecraft.entity.interact", this::clientCall);
         handlers.put("minecraft.ui.state.read", this::clientCall);
         handlers.put("minecraft.ui.click", this::clientCall);

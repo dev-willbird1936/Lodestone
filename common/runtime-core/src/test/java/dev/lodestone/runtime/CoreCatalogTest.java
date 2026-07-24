@@ -630,10 +630,17 @@ final class CoreCatalogTest {
         assertEquals(dev.lodestone.protocol.Availability.UNAVAILABLE, craft.availability());
         assertFalse(craft.prerequisites().requiresScreen());
         assertFalse(craft.prerequisites().requiresContainer());
+        assertTrue(SchemaValidator.validate(craft.inputSchema(), Map.of("item", "minecraft:torch")).isEmpty());
+        assertTrue(SchemaValidator.validate(craft.inputSchema(), Map.of("item", "minecraft:torch", "count", 4,
+                "useNearbyTable", false, "placeTableIfNeeded", false, "timeoutTicks", 1200)).isEmpty());
+        assertFalse(SchemaValidator.validate(craft.inputSchema(), Map.of("count", 4)).isEmpty());
         assertTrue(SchemaValidator.validate(craft.outputSchema(), Map.of("item", "minecraft:torch",
-                "requestedCount", 4, "craftedCount", 4, "complete", true)).isEmpty());
+                "requestedCount", 4, "craftedCount", 4, "complete", true, "reason", "complete")).isEmpty());
         assertFalse(SchemaValidator.validate(craft.outputSchema(), Map.of("item", "minecraft:torch",
-                "requestedCount", 4, "craftedCount", 4)).isEmpty());
+                "requestedCount", 4, "craftedCount", 4, "complete", true)).isEmpty());
+        assertTrue(SchemaValidator.validate(craft.outputSchema(), Map.of("item", "minecraft:wooden_pickaxe",
+                "requestedCount", 1, "craftedCount", 0, "complete", false, "reason", "missing-ingredients",
+                "missing", Map.of("minecraft:stick", 2))).isEmpty());
     }
 
     @Test
