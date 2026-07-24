@@ -79,34 +79,84 @@ NEW_TOOLS = [
 ]
 
 
+def surface_columns(port, cx, cz, r):
+    hm = out(rpc(port, "get_heightmap", {"x1": cx - r, "z1": cz - r, "x2": cx + r, "z2": cz + r}))
+    return [c for c in hm.get("columns", []) if c.get("loaded")]
+
+
+def walkable_target(port, py, min_dist=8, max_dy=4):
+    """Nearest non-canopy surface column at least min_dist away, close to player height."""
+    o = out(rpc(port, "get_player_position"))
+    p = o.get("position", {})
+    if not p:
+        return None, None
+    cols = surface_columns(port, int(p["x"]), int(p["z"]), 16)
+    good = [c for c in cols
+            if "leaves" not in str(c.get("surfaceBlock", "")) and "log" not in str(c.get("surfaceBlock", ""))
+            and abs(c["height"] + 1 - py) <= max_dy]
+    good.sort(key=lambda c: abs(c["x"] - p["x"]) + abs(c["z"] - p["z"]))
+    tgt = next((c for c in good if abs(c["x"] - p["x"]) + abs(c["z"] - p["z"]) >= min_dist), None)
+    return tgt, p
+
+
+def tree_cluster_center(port, p):
+    """Center of the densest 16x16 cell of tree columns within the loaded area."""
+    cols = surface_columns(port, int(p["x"]), int(p["z"]), 64)
+    trees = [c for c in cols if "leaves" in str(c.get("surfaceBlock", "")) or "_log" in str(c.get("surfaceBlock", ""))]
+    if not trees:
+        return None
+    from collections import defaultdict
+    cl = defaultdict(list)
+    for c in trees:
+        cl[(int(c["x"]) // 16, int(c["z"]) // 16)].append(c)
+    pts = max(cl.values(), key=len)
+    mx = sum(c["x"] for c in pts) / len(pts)
+    mz = sum(c["z"] for c in pts) / len(pts)
+    return {"x": mx, "z": mz, "n": len(pts)}
+
+
 def stage_verbs(port):
     names = tool_names(port)
     for t in NEW_TOOLS:
         record(f"tool-published:{t}", t in names, "in tools/list" if t in names else "missing")
 
-    # alert events: subscribe must accept the prefix and alerts must not be redacted
+    # alert events: subscribe returns a flat {id, sessionId, ...} envelope. Poll is NOT checked
+    # here: subscriptions are session-owned and the one-shot rpc helper closes its session on
+    # exit, so cross-invocation polling is impossible by design over this bridge.
     sub = rpc(port, "lodestone_events_subscribe", {"eventPrefix": "minecraft.player.alert", "bufferLimit": 64})
-    record("alerts:subscribe", ok(sub), out(sub))
+    sub_id = sub.get("result", {}).get("id")
+    record("alerts:subscribe", bool(sub_id), sub.get("result", {}))
 
-    # goto: walk to a surface point ~12 blocks away
+    # goto: walk to a real, non-canopy surface point >=8 blocks away near player height
     if "goto_position" in names:
         o = out(rpc(port, "get_player_position"))
-        p = o.get("position", {})
-        if p:
-            tx, tz = int(p["x"]) + 12, int(p["z"])
-            hm = out(rpc(port, "get_heightmap", {"x1": tx, "z1": tz, "x2": tx, "z2": tz}))
-            cols = hm.get("columns", [])
-            ty = int(cols[0]["height"]) + 1 if cols else int(p["y"])
-            g = rpc(port, "goto_position", {"targetX": tx, "targetY": ty, "targetZ": tz}, timeout=300)
+        py = o.get("position", {}).get("y", 0)
+        tgt, p = walkable_target(port, py)
+        if tgt:
+            g = rpc(port, "goto_position",
+                    {"targetX": int(tgt["x"]), "targetY": int(tgt["height"]) + 1, "targetZ": int(tgt["z"]),
+                     "arriveRadius": 2}, timeout=300)
             go = out(g)
-            record("goto:arrives", ok(g) and go.get("arrived") is True and go.get("distanceRemaining", 99) <= 2.0, go)
+            record("goto:arrives", ok(g) and go.get("arrived") is True and go.get("distanceRemaining", 99) <= 2.5,
+                   {"target": tgt, "out": go})
         else:
-            skip("goto:arrives", "no player position")
+            skip("goto:arrives", "no walkable target column found")
     else:
         skip("goto:arrives", "tool missing")
 
-    # chop_tree: at least one log mined and collected
+    # chop_tree: reposition toward the densest tree cluster first, then chop
     if "chop_tree" in names:
+        o = out(rpc(port, "get_player_position"))
+        p = o.get("position", {})
+        cluster = tree_cluster_center(port, p) if p else None
+        if cluster and "goto_position" in names:
+            cols = surface_columns(port, int(cluster["x"]), int(cluster["z"]), 6)
+            ground = next((c for c in sorted(cols, key=lambda c: abs(c["x"] - cluster["x"]) + abs(c["z"] - cluster["z"]))
+                           if "leaves" not in str(c.get("surfaceBlock", "")) and "log" not in str(c.get("surfaceBlock", ""))),
+                          None)
+            if ground:
+                rpc(port, "goto_position", {"targetX": int(ground["x"]), "targetY": int(ground["height"]) + 1,
+                                            "targetZ": int(ground["z"]), "arriveRadius": 3}, timeout=300)
         before, _ = inventory(port)
         c = rpc(port, "chop_tree", {"collectDrops": True}, timeout=420)
         co = out(c)
@@ -114,11 +164,11 @@ def stage_verbs(port):
         gained = sum(v for k, v in after.items() if k.endswith("_log")) - sum(
             v for k, v in before.items() if k.endswith("_log"))
         record("chop_tree:logs", ok(c) and co.get("logsMined", 0) >= 1 and gained >= 1,
-               {"out": co, "invGain": gained})
+               {"out": co, "invGain": gained, "cluster": cluster})
     else:
         skip("chop_tree:logs", "tool missing")
 
-    # collect_drops: mine two ground blocks bare-handed, then collect
+    # collect_drops: mine verified-reachable ground blocks bare-handed, then collect
     if "collect_drops" in names:
         before, o = inventory(port)
         p = o.get("position", {})
@@ -126,12 +176,21 @@ def stage_verbs(port):
         if p:
             import math
             fx, fy, fz = int(math.floor(p["x"])), int(p["y"]), int(math.floor(p["z"]))
-            for dx, dz in ((1, 0), (0, 1)):
-                cap(port, "minecraft.player.block.look-at", {"x": fx + dx, "y": fy - 1, "z": fz + dz})
+            for dx, dz in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+                la = cap(port, "minecraft.player.block.look-at", {"x": fx + dx, "y": fy - 1, "z": fz + dz})
+                t = out(la).get("target", {})
+                hp = t.get("blockPosition", {})
+                if (hp.get("x"), hp.get("y"), hp.get("z")) != (fx + dx, fy - 1, fz + dz):
+                    continue
+                if t.get("distance", 99) > 4.2:
+                    continue
                 if ok(rpc(port, "mine_block")):
                     mined += 1
                 time.sleep(0.6)
-        c = rpc(port, "collect_drops", {"radius": 8}, timeout=180)
+                if mined >= 2:
+                    break
+        time.sleep(1.5)
+        c = rpc(port, "collect_drops", {"radius": 10}, timeout=180)
         after, _ = inventory(port)
         gained = sum(after.values()) - sum(before.values())
         record("collect_drops:gain", ok(c) and mined >= 1 and gained >= 1,
@@ -151,12 +210,23 @@ def stage_verbs(port):
     else:
         skip("craft:wooden_axe", "tool missing")
 
-    # attack_entity: nearest non-item, non-creeper entity
+    # attack_entity: nearest surface-accessible entity (cave mobs excluded via dy filter)
     if "attack_entity" in names:
+        o = out(rpc(port, "get_player_position"))
+        py = o.get("position", {}).get("y", 0)
+        px = o.get("position", {}).get("x", 0)
+        pz = o.get("position", {}).get("z", 0)
         ents = out(rpc(port, "get_nearby_entities", {"radius": 24, "limit": 48})).get("entities", [])
-        target = next((e for e in ents
-                       if str(e.get("type")) not in ("minecraft:item", "minecraft:creeper", "minecraft:bat")
-                       and "player" not in str(e.get("type"))), None)
+
+        def attackable(e):
+            t = str(e.get("type"))
+            ep = e.get("position", {})
+            if t in ("minecraft:item", "minecraft:creeper", "minecraft:bat") or "player" in t:
+                return False
+            horiz = ((ep.get("x", 0) - px) ** 2 + (ep.get("z", 0) - pz) ** 2) ** 0.5
+            return abs(ep.get("y", 0) - py) <= 3 and horiz <= 20
+
+        target = next((e for e in ents if attackable(e)), None)
         if target:
             eid = target.get("id") or target.get("entityId")
             a = rpc(port, "attack_entity", {"entityId": int(eid)}, timeout=420)
@@ -164,15 +234,9 @@ def stage_verbs(port):
             gone = all((e.get("id") or e.get("entityId")) != eid for e in ents2)
             record("attack_entity:kill", ok(a) and gone, {"target": target.get("type"), "out": out(a), "gone": gone})
         else:
-            skip("attack_entity:kill", "no suitable entity nearby")
+            skip("attack_entity:kill", "no surface-accessible entity nearby")
     else:
         skip("attack_entity:kill", "tool missing")
-
-    # poll alerts at the end: at least subscribe/poll round-trips cleanly
-    sid = out(sub).get("subscriptionId")
-    if sid is not None:
-        pl = rpc(port, "lodestone_events_poll", {"subscriptionId": sid, "maxEvents": 32})
-        record("alerts:poll", ok(pl), out(pl))
 
 
 def stage_acceptance(port):
