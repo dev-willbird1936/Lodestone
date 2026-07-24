@@ -129,6 +129,40 @@ final class NeoForgeSafePathPlannerTest {
         assertFalse(NeoForgeSafePathPlanner.placeCandidateEligible(false, false, false, true, false));
     }
 
+    /**
+     * Regression coverage for the live-caught bug where a player enclosed by dense tree canopy
+     * (leaves at body height in every lateral direction) saw {@code minecraft.goal.move.goto} and
+     * {@code minecraft.goal.navigation.safe-waypoint} report {@code no-route} on tick one: the
+     * search graph itself offered zero first steps out of the foliage, since {@code
+     * NeoForgeGotoMovement}'s own runtime soft-foliage clearing only ever fires on an
+     * already-planned step (see {@link NeoForgeSafePathPlanner#relaxNeighbor}'s own doc). This is
+     * the pure decision core of the origin's bounded first-hop leniency that fixes it.
+     */
+    @Test
+    void softFoliageOriginStepEligibleAllowsOnlyRealFoliageNeverAnArbitraryWall() {
+        // Leaves blocking the feet cell alone, head clear, support intact, no fluid: exactly the
+        // "enclosed by canopy" first-hop case this leniency exists for.
+        assertTrue(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, true, false, false, true, true, true));
+        // Foliage in both feet and head cells (e.g. tall grass's second segment or a thick leaf
+        // wall) is still just as clearable, still eligible.
+        assertTrue(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, true, true, true, true, true, true));
+        // A real, non-foliage wall (e.g. stone) must never be treated as clearable by this bounded
+        // leniency - this is exactly what keeps a genuinely-unreachable target correctly reporting
+        // no-route instead of silently letting a non-adaptive actor mine through ordinary terrain.
+        assertFalse(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, false, false, false, true, true, true));
+        // A mixed case - foliage at the feet but a real wall at head height - must not be treated
+        // as partially clearable either.
+        assertFalse(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, true, true, false, true, true, true));
+        // Nothing solid to clear: not this leniency's concern (the plain walkable check already
+        // would have accepted the cell).
+        assertFalse(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(false, false, false, false, true, true, true));
+        // Missing support (a floor gap) or standing fluid: never a safe cell to step into regardless
+        // of what's classified as foliage.
+        assertFalse(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, true, false, false, false, true, true));
+        assertFalse(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, true, false, false, true, false, true));
+        assertFalse(NeoForgeSafePathPlanner.softFoliageOriginStepEligible(true, true, false, false, true, true, false));
+    }
+
     private static NeoForgeGoalPolicy policy(String intelligence, String safety) {
         return NeoForgeGoalPolicy.from(Map.of("intelligence", intelligence, "safety", safety));
     }

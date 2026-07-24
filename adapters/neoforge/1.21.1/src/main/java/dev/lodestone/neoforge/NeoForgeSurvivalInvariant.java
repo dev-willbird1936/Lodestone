@@ -19,9 +19,17 @@ final class NeoForgeSurvivalInvariant {
         return Math.max(0, (airSupply - AIR_RESERVE_TICKS) / AIR_TICKS_PER_RETREAT_EDGE);
     }
 
-    static boolean normalRouteOriginAllowed(boolean walkable, boolean bufferedWalkable,
+    /**
+     * Whether an ordinary (non-recovery) route search may begin from a given origin. Fed {@code
+     * NeoForgeWorldSnapshot.originStandable}/{@code hazardBuffer} rather than {@code
+     * walkable}/{@code bufferedWalkable} - the origin is wherever the player already stands, so it
+     * is never gated on what its own support classifies as (solid ground, leaves, tall grass, ...);
+     * see {@code originStandable}'s own doc for the live-caught bug this fixed. Every step the
+     * search actually proposes beyond the origin still keeps the full, unrelaxed contract.
+     */
+    static boolean normalRouteOriginAllowed(boolean originStandable, boolean originHazardFree,
                                             boolean highSafety) {
-        return walkable && (!highSafety || bufferedWalkable);
+        return originStandable && (!highSafety || originHazardFree);
     }
 
     static boolean verticalRecoveryOriginAllowed(boolean walkable, boolean hazard,

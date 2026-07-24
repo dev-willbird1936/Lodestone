@@ -157,7 +157,18 @@ final class NeoForgeWorldSnapshot {
 
     /** High-safety work surface with a full 3D fluid/fire/hazard buffer around the body. */
     boolean bufferedWalkable(BlockPos feet) {
-        if (!walkable(feet)) return false;
+        return walkable(feet) && hazardBuffer(feet);
+    }
+
+    /**
+     * The full 3x3x4 hazard-free body buffer {@link #bufferedWalkable} composes with {@link
+     * #walkable}'s own support/foliage contract. Exposed separately so a route search's ORIGIN -
+     * always admissible regardless of what its support classifies as, see {@link
+     * #originStandable} and {@code NeoForgeSurvivalInvariant#normalRouteOriginAllowed}'s own doc -
+     * can still demand a hazard-free buffer under high safety without also re-imposing {@link
+     * #walkable}'s support-solidity requirement, which the origin is deliberately exempt from.
+     */
+    boolean hazardBuffer(BlockPos feet) {
         for (var x = feet.getX() - 1; x <= feet.getX() + 1; x++) {
             for (var z = feet.getZ() - 1; z <= feet.getZ() + 1; z++) {
                 for (var y = feet.getY() - 1; y <= feet.getY() + 2; y++) {
@@ -167,6 +178,30 @@ final class NeoForgeWorldSnapshot {
             }
         }
         return true;
+    }
+
+    /**
+     * Whether the player's own current cell could ever be a legal route-search origin,
+     * deliberately ignoring what classifies its support (solid ground vs. leaves, tall grass,
+     * short grass, ...) - a live-caught bug had a player standing on a leaf block (a vanilla-legal
+     * position, e.g. spawning atop tree canopy) see every {@code minecraft.goal.move.goto}/{@code
+     * minecraft.goal.navigation.safe-waypoint} call fail with {@code no-route} on tick one, because
+     * the origin was gated on the exact same support-solidity contract as any other graph cell. The
+     * origin is wherever the player actually is, so it must be admissible by definition; only the
+     * feet/head cells themselves still have to be collision-free and dry, exactly like {@link
+     * #walkable} - a player already embedded in solid, non-foliage terrain or standing in water is
+     * a completely different scenario a separate recovery path already owns (see {@code
+     * NeoForgeSurvivalInvariant#decide}), so this stays a defensive backstop, not a meaningfully
+     * restrictive gate in the ordinary case. Every step the search actually proposes beyond the
+     * origin keeps the full, unrelaxed {@link #walkable}/{@link #bufferedWalkable} contract - see
+     * {@code NeoForgeSafePathPlanner#relaxNeighbor}.
+     */
+    boolean originStandable(BlockPos feet) {
+        var head = feet.above();
+        if (!level.hasChunkAt(feet) || !level.hasChunkAt(head)) return false;
+        if (!level.getBlockState(feet).getCollisionShape(level, feet).isEmpty()
+                || !level.getBlockState(head).getCollisionShape(level, head).isEmpty()) return false;
+        return level.getFluidState(feet).isEmpty() && level.getFluidState(head).isEmpty();
     }
 
     /** Collision-free water/ascent cell used only by the bounded emergency retreat graph. */

@@ -132,8 +132,8 @@ final class NeoForgeSafePathPlanner {
         if (targets.isEmpty()) return List.of();
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
-        var originAllowed = NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
-                snapshot.bufferedWalkable(origin), policy.highSafety());
+        var originAllowed = NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.originStandable(origin),
+                snapshot.hazardBuffer(origin), policy.highSafety());
         if (!originAllowed && allowWalkableOrigin) {
             originAllowed = snapshot.walkable(origin)
                     && !snapshot.hazard(origin) && !snapshot.hazard(origin.above());
@@ -245,6 +245,25 @@ final class NeoForgeSafePathPlanner {
                     cost, previous, incomingKind, incomingTargets, queue);
             return;
         }
+        // The search's very first hop away from wherever the player already stands must never be
+        // permanently blocked purely by a soft, on-sight-clearable obstruction (leaves, tall grass,
+        // vines, flowers): NeoForgeGotoMovement's own runtime soft-foliage reflex only ever fires on
+        // an ALREADY-planned step, never invents one, so a graph that offers zero first steps out of
+        // foliage-enclosed terrain (e.g. a player spawned inside/atop dense tree canopy) would leave
+        // every non-adaptive actor stranded there forever - see NeoForgeWorldSnapshot.originStandable's
+        // own doc for the live-caught bug this and the origin-admission fix together resolve. Bounded
+        // to edges leaving the origin itself - never a later step, so this is not a general
+        // walkability relaxation - and to real soft-foliage obstructions the caller can already clear
+        // bare-handed on sight, independent of intelligence tier (matching NeoForgeGotoMovement's own
+        // allowSoftFoliageClearing, gated on allowBlockBreaking alone, not adaptive-v1).
+        if (current.equals(origin) && policy.allowBlockBreaking()) {
+            var softMutation = softFoliageMutationCandidate(snapshot, candidate);
+            if (softMutation != null) {
+                offerSoftFoliageOriginEdge(current, candidate, softMutation, policy, snapshot, targets,
+                        cost, previous, incomingKind, incomingTargets, queue);
+                return;
+            }
+        }
         // Only adaptive intelligence considers reaching an otherwise-blocked cell by mining an
         // obstruction or placing a support block; NeoForgePathCostExtensions prices (and can
         // outright veto via POSITIVE_INFINITY) both, so proposing the edge here never bypasses a
@@ -264,14 +283,87 @@ final class NeoForgeSafePathPlanner {
                                    HashMap<Long, Double> cost, HashMap<Long, Long> previous,
                                    HashMap<Long, MutationKind> incomingKind,
                                    HashMap<Long, List<BlockPos>> incomingTargets, PriorityQueue<Node> queue) {
-        var nextCost = cost.get(current.asLong())
-                + edgeCost(current, candidate, policy, snapshot, player, kind, mutationTargets);
+        var edgeCost = edgeCost(current, candidate, policy, snapshot, player, kind, mutationTargets);
+        insertIfImprovement(current, candidate, kind, mutationTargets, edgeCost, targets, cost, previous,
+                incomingKind, incomingTargets, queue);
+    }
+
+    // Tunable preference weight, not a derived game-mechanics value: on top of ordinary geometry and
+    // real fall-damage cost, how strongly the origin's bounded soft-foliage first-hop leniency (see
+    // relaxNeighbor's own doc) should still prefer an equally-short plain move when one exists.
+    private static final double SOFT_FOLIAGE_ORIGIN_STEP_COST = 1.5;
+
+    /**
+     * Prices the origin's own bounded soft-foliage first-hop leniency with plain geometry and real
+     * fall damage only, deliberately bypassing {@link NeoForgePathCostExtensions}, whose mine-cost
+     * term gates to adaptive intelligence by design - this edge exists for every intelligence tier
+     * that can break a block at all (see {@link #relaxNeighbor}'s own doc), not only adaptive-v1.
+     */
+    private static void offerSoftFoliageOriginEdge(BlockPos current, BlockPos candidate, MutationCandidate mutation,
+                                                    NeoForgeGoalPolicy policy, NeoForgeWorldSnapshot snapshot,
+                                                    Collection<BlockPos> targets, HashMap<Long, Double> cost,
+                                                    HashMap<Long, Long> previous, HashMap<Long, MutationKind> incomingKind,
+                                                    HashMap<Long, List<BlockPos>> incomingTargets, PriorityQueue<Node> queue) {
+        var edgeCost = edgeCost(current, candidate, policy) + fallDamageCost(current, candidate, policy, snapshot)
+                + SOFT_FOLIAGE_ORIGIN_STEP_COST;
+        insertIfImprovement(current, candidate, mutation.kind(), mutation.targets(), edgeCost, targets, cost,
+                previous, incomingKind, incomingTargets, queue);
+    }
+
+    /** Shared insert-if-improvement core both {@link #offerEdge} and {@link
+     * #offerSoftFoliageOriginEdge} defer to once they've each priced their own edge differently. */
+    private static void insertIfImprovement(BlockPos current, BlockPos candidate, MutationKind kind,
+                                             List<BlockPos> mutationTargets, double edgeCost,
+                                             Collection<BlockPos> targets, HashMap<Long, Double> cost,
+                                             HashMap<Long, Long> previous, HashMap<Long, MutationKind> incomingKind,
+                                             HashMap<Long, List<BlockPos>> incomingTargets, PriorityQueue<Node> queue) {
+        var nextCost = cost.get(current.asLong()) + edgeCost;
         if (nextCost >= cost.getOrDefault(candidate.asLong(), Double.POSITIVE_INFINITY)) return;
         cost.put(candidate.asLong(), nextCost);
         previous.put(candidate.asLong(), current.asLong());
         incomingKind.put(candidate.asLong(), kind);
         incomingTargets.put(candidate.asLong(), mutationTargets);
         queue.add(new Node(candidate.immutable(), nextCost, nextCost + heuristic(candidate, targets)));
+    }
+
+    /**
+     * Narrower cousin of {@link #mutationCandidate}: eligible only when every solid cell in the way
+     * (feet and/or head) is a leaf, vine, tall-grass, or flower - block ids {@link
+     * NeoForgeGotoMovement#isSoftFoliageBlockId} already treats as cheap and safe to clear on sight -
+     * never an arbitrary wall. Used exclusively for {@link #relaxNeighbor}'s origin-only first-hop
+     * leniency, so this can never let a non-adaptive actor mine its way through ordinary terrain.
+     */
+    private static MutationCandidate softFoliageMutationCandidate(NeoForgeWorldSnapshot snapshot, BlockPos candidate) {
+        var level = snapshot.level();
+        var head = candidate.above();
+        var support = candidate.below();
+        if (!level.hasChunkAt(candidate) || !level.hasChunkAt(head) || !level.hasChunkAt(support)) return null;
+        var feetState = level.getBlockState(candidate);
+        var headState = level.getBlockState(head);
+        var feetSolid = !feetState.getCollisionShape(level, candidate).isEmpty();
+        var headSolid = !headState.getCollisionShape(level, head).isEmpty();
+        var feetSoftFoliage = NeoForgeGotoMovement.isSoftFoliageBlockId(NeoForgeHardScript.blockId(feetState));
+        var headSoftFoliage = NeoForgeGotoMovement.isSoftFoliageBlockId(NeoForgeHardScript.blockId(headState));
+        var supportSolid = !level.getBlockState(support).getCollisionShape(level, support).isEmpty();
+        var feetFluidEmpty = level.getFluidState(candidate).isEmpty();
+        var headFluidEmpty = level.getFluidState(head).isEmpty();
+        if (!softFoliageOriginStepEligible(feetSolid, feetSoftFoliage, headSolid, headSoftFoliage, supportSolid,
+                feetFluidEmpty, headFluidEmpty)) return null;
+        var mutationTargets = new ArrayList<BlockPos>(2);
+        if (feetSolid) mutationTargets.add(candidate);
+        if (headSolid) mutationTargets.add(head);
+        return new MutationCandidate(MutationKind.MINE, List.copyOf(mutationTargets));
+    }
+
+    /** Pure decision core of {@link #softFoliageMutationCandidate}, isolated from world access so
+     * it's directly unit-testable. */
+    static boolean softFoliageOriginStepEligible(boolean feetSolid, boolean feetSoftFoliage, boolean headSolid,
+                                                  boolean headSoftFoliage, boolean supportSolid,
+                                                  boolean feetFluidEmpty, boolean headFluidEmpty) {
+        if (!feetSolid && !headSolid) return false;
+        if (feetSolid && !feetSoftFoliage) return false;
+        if (headSolid && !headSoftFoliage) return false;
+        return supportSolid && feetFluidEmpty && headFluidEmpty;
     }
 
     /**
@@ -379,8 +471,8 @@ final class NeoForgeSafePathPlanner {
                                             NeoForgeGoalPolicy policy, int maxVisited) {
         var snapshot = NeoForgeWorldSnapshot.capture(level, policy, player);
         var origin = start.immutable();
-        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.walkable(origin),
-                snapshot.bufferedWalkable(origin), policy.highSafety())) return new Reachability(List.of(), false);
+        if (!NeoForgeSurvivalInvariant.normalRouteOriginAllowed(snapshot.originStandable(origin),
+                snapshot.hazardBuffer(origin), policy.highSafety())) return new Reachability(List.of(), false);
 
         var visited = new HashSet<Long>();
         var queue = new ArrayDeque<BlockPos>();

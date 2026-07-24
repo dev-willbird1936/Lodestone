@@ -370,8 +370,8 @@ final class NeoForgeNavigationGoal {
      * arrival. {@code withinAcceptanceRadius} is the raw distance-based proximity test alone;
      * {@code feetBlocked}/{@code headBlocked} report whether the player's own current cell has
      * non-empty collision at feet or head - the exact signal {@link NeoForgeSafePathPlanner}'s
-     * own path-search origin admissibility check ({@code NeoForgeWorldSnapshot.walkable}, via
-     * {@code NeoForgeSurvivalInvariant.normalRouteOriginAllowed}) and {@link
+     * own path-search origin admissibility check ({@code NeoForgeWorldSnapshot.originStandable},
+     * via {@code NeoForgeSurvivalInvariant.normalRouteOriginAllowed}) and {@link
      * NeoForgeGoalSupervisor#recoverObstructionOrStall} already use to detect a player wedged in
      * terrain or foliage. Without this guard, a player embedded in blocking collision (e.g. a
      * benchmark spawn placed it inside dense foliage, or it walked into an obstruction while
