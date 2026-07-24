@@ -22,9 +22,12 @@ import java.util.concurrent.TimeoutException;
  *
  * <p>Without a token (two-argument constructor) the endpoint is zero-config: any local MCP client
  * connects with no credential. The trust boundary is the machine, not a shared secret - the
- * listener binds only IPv4 loopback, accepts only POST, and rejects requests whose {@code Origin}
- * or {@code Host} header names anything other than this loopback listener, which keeps browser
- * pages (including DNS-rebinding attacks) from driving the endpoint.
+ * listener binds only IPv4 loopback, accepts only POST and DELETE, and rejects requests whose
+ * {@code Origin} or {@code Host} header names anything other than this loopback listener, which
+ * keeps browser pages (including DNS-rebinding attacks) from driving the endpoint. DELETE with an
+ * {@code Mcp-Session-Id} header terminates that session immediately (MCP streamable-HTTP session
+ * termination), freeing its slot in the gateway's bounded session table instead of waiting for the
+ * idle-session reaper.
  *
  * <p>With a token (three-argument constructor) every request must also carry it in
  * {@code X-Lodestone-Token}. The RCON and legacy-bridge launchers keep this mode because they
@@ -88,7 +91,8 @@ public final class LoopbackHttpServer implements AutoCloseable {
             return;
         }
         try (exchange) {
-            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            var isDelete = "DELETE".equalsIgnoreCase(exchange.getRequestMethod());
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod()) && !isDelete) {
                 send(exchange, 405, "method not allowed");
                 return;
             }
@@ -113,6 +117,10 @@ public final class LoopbackHttpServer implements AutoCloseable {
                     send(exchange, 401, "unauthorized");
                     return;
                 }
+            }
+            if (isDelete) {
+                handleDelete(exchange);
+                return;
             }
             var length = exchange.getRequestHeaders().getFirst("Content-Length");
             if (length != null) {
@@ -178,6 +186,23 @@ public final class LoopbackHttpServer implements AutoCloseable {
             }
         } finally {
             activeExchanges.release();
+        }
+    }
+
+    /**
+     * MCP streamable-HTTP session termination: the client sends {@code DELETE} with the session's
+     * {@code Mcp-Session-Id} to free its slot immediately instead of waiting for TTL-based reaping.
+     */
+    private void handleDelete(HttpExchange exchange) throws IOException {
+        var sessionId = exchange.getRequestHeaders().getFirst("Mcp-Session-Id");
+        if (sessionId == null || sessionId.isBlank()) {
+            send(exchange, 400, "Mcp-Session-Id header is required");
+            return;
+        }
+        if (gateway.terminateSession(sessionId)) {
+            exchange.sendResponseHeaders(204, -1);
+        } else {
+            send(exchange, 404, "MCP session ID is unknown or already terminated");
         }
     }
 

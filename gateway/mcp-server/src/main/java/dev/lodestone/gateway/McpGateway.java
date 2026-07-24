@@ -211,6 +211,7 @@ public final class McpGateway {
                     failure.code, failure.getMessage());
         }
         session.touch();
+        session.beginRequest();
         responseSessionId.set(sessionKey);
         currentSession.set(session);
         try {
@@ -229,6 +230,27 @@ public final class McpGateway {
                     "invalid or failed MCP request: " + failure.getClass().getSimpleName());
         } finally {
             currentSession.remove();
+            session.endRequest();
+        }
+    }
+
+    /**
+     * Terminate one session per the MCP streamable-HTTP spec's HTTP DELETE semantics - free its slot
+     * immediately instead of waiting for TTL-based reaping. Returns false when the session is already
+     * unknown (never existed, already terminated, or already reaped).
+     */
+    public boolean terminateSession(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return false;
+        }
+        var trimmed = sessionId.trim();
+        synchronized (sessionAdmissionLock) {
+            var session = sessions.get(trimmed);
+            if (session == null) {
+                return false;
+            }
+            removeSession(trimmed, session);
+            return true;
         }
     }
 
@@ -244,11 +266,10 @@ public final class McpGateway {
             if (existing != null) {
                 return existing;
             }
-            if (sessions.size() >= MAX_SESSIONS) {
-                pruneSessions();
-                if (sessions.size() >= MAX_SESSIONS) {
-                    throw new GatewayException(-32003, "MCP session capacity reached");
-                }
+            pruneSessions();
+            if (sessions.size() >= MAX_SESSIONS && !evictLeastRecentlyUsedIdleSession()) {
+                throw new GatewayException(-32000, "MCP session table is exhausted: all " + MAX_SESSIONS
+                        + " sessions have an in-flight request and none can be evicted");
             }
             var created = new GatewaySession(sessionKey, AuthorizationPolicy.allPermissions());
             sessions.put(sessionKey, created);
@@ -256,21 +277,53 @@ public final class McpGateway {
         }
     }
 
+    /**
+     * Evict the least-recently-used session that has no in-flight request, freeing one slot. A
+     * session mid-request is never evicted out from under its caller; if every session is genuinely
+     * active this returns false so the caller reports honest exhaustion instead.
+     */
+    private boolean evictLeastRecentlyUsedIdleSession() {
+        String lruId = null;
+        GatewaySession lru = null;
+        for (var entry : sessions.entrySet()) {
+            var candidate = entry.getValue();
+            if (!candidate.isIdle()) {
+                continue;
+            }
+            if (lru == null || candidate.lastTouchSequence < lru.lastTouchSequence) {
+                lru = candidate;
+                lruId = entry.getKey();
+            }
+        }
+        if (lru == null) {
+            return false;
+        }
+        removeSession(lruId, lru);
+        return true;
+    }
+
     private void pruneSessions() {
         var cutoff = System.currentTimeMillis() - SESSION_TTL_MS;
         sessions.forEach((id, session) -> {
-            if (session.lastSeen < cutoff && sessions.remove(id, session)) {
-                session.subscriptions.forEach(subscriptionId -> {
-                    try {
-                        runtime.unsubscribe(id, subscriptionId);
-                    } finally {
-                        subscriptionOwners.remove(subscriptionId, id);
-                    }
-                });
-                runtime.releaseCallerArtifacts(id);
-                goalHooks.removeSession(id);
+            if (session.lastSeen < cutoff && session.isIdle()) {
+                removeSession(id, session);
             }
         });
+    }
+
+    private void removeSession(String id, GatewaySession session) {
+        if (!sessions.remove(id, session)) {
+            return;
+        }
+        session.subscriptions.forEach(subscriptionId -> {
+            try {
+                runtime.unsubscribe(id, subscriptionId);
+            } finally {
+                subscriptionOwners.remove(subscriptionId, id);
+            }
+        });
+        runtime.releaseCallerArtifacts(id);
+        goalHooks.removeSession(id);
     }
 
     private JsonElement dispatch(String method, JsonObject params) {
@@ -1399,10 +1452,17 @@ public final class McpGateway {
     }
 
     private static final class GatewaySession {
+        /** Monotonic tiebreaker for LRU eviction - immune to the coarse wall-clock resolution that
+         * can give several sessions the same {@link System#currentTimeMillis()} tick under a burst. */
+        private static final java.util.concurrent.atomic.AtomicLong NEXT_TOUCH_SEQUENCE =
+                new java.util.concurrent.atomic.AtomicLong();
         private final String id;
         private final AuthorizationPolicy authorization;
         private final java.util.Set<String> subscriptions = ConcurrentHashMap.newKeySet();
+        private final java.util.concurrent.atomic.AtomicInteger inFlight =
+                new java.util.concurrent.atomic.AtomicInteger();
         private volatile long lastSeen = System.currentTimeMillis();
+        private volatile long lastTouchSequence = NEXT_TOUCH_SEQUENCE.incrementAndGet();
         private volatile boolean initialized;
         private String negotiatedMcpVersion;
 
@@ -1413,6 +1473,20 @@ public final class McpGateway {
 
         private void touch() {
             lastSeen = System.currentTimeMillis();
+            lastTouchSequence = NEXT_TOUCH_SEQUENCE.incrementAndGet();
+        }
+
+        private void beginRequest() {
+            inFlight.incrementAndGet();
+        }
+
+        private void endRequest() {
+            inFlight.decrementAndGet();
+        }
+
+        /** No request is currently dispatching against this session. */
+        private boolean isIdle() {
+            return inFlight.get() == 0;
         }
     }
 

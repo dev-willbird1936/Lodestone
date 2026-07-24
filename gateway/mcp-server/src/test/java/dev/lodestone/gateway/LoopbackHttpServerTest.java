@@ -92,6 +92,62 @@ class LoopbackHttpServerTest {
     }
 
     @Test
+    void deleteWithSessionIdTerminatesTheSessionAndFreesItsSlot() throws Exception {
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
+            var gateway = new McpGateway(runtime);
+            try (var loopback = new LoopbackHttpServer(gateway, 0)) {
+                loopback.start();
+                var port = loopback.port();
+
+                var initializeConnection = openConnection(port, "POST");
+                initializeConnection.setDoOutput(true);
+                initializeConnection.getOutputStream().write(INITIALIZE_BODY.getBytes(StandardCharsets.UTF_8));
+                assertEquals(200, initializeConnection.getResponseCode());
+                var sessionId = initializeConnection.getHeaderField("Mcp-Session-Id");
+                assertNotNull(sessionId, "a successful initialize must mint a session id");
+                initializeConnection.disconnect();
+
+                var deleteConnection = openConnection(port, "DELETE");
+                deleteConnection.setRequestProperty("Mcp-Session-Id", sessionId);
+                assertEquals(204, deleteConnection.getResponseCode(), "DELETE on a live session must succeed");
+                deleteConnection.disconnect();
+
+                var reuseConnection = openConnection(port, "POST");
+                reuseConnection.setRequestProperty("Mcp-Session-Id", sessionId);
+                reuseConnection.setDoOutput(true);
+                reuseConnection.getOutputStream().write(
+                        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}"
+                                .getBytes(StandardCharsets.UTF_8));
+                assertEquals(200, reuseConnection.getResponseCode());
+                var body = new String(reuseConnection.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                assertTrue(body.contains("-32001"), "a DELETEd session id must no longer be usable: " + body);
+                reuseConnection.disconnect();
+            }
+        }
+    }
+
+    @Test
+    void deleteRequiresASessionIdHeaderAndReports404ForAnUnknownSession() throws Exception {
+        try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
+            var gateway = new McpGateway(runtime);
+            try (var loopback = new LoopbackHttpServer(gateway, 0)) {
+                loopback.start();
+                var port = loopback.port();
+
+                var missingHeader = openConnection(port, "DELETE");
+                assertEquals(400, missingHeader.getResponseCode(), "DELETE without Mcp-Session-Id must be rejected");
+                missingHeader.disconnect();
+
+                var unknownSession = openConnection(port, "DELETE");
+                unknownSession.setRequestProperty("Mcp-Session-Id", "does-not-exist");
+                assertEquals(404, unknownSession.getResponseCode(),
+                        "DELETE for an unknown session must be reported honestly, not silently accepted");
+                unknownSession.disconnect();
+            }
+        }
+    }
+
+    @Test
     void constructorAllowsPortZeroButRejectsNegativePortsAndBlankTokens() {
         try (var runtime = new LodestoneRuntime(AuthorizationPolicy.observeOnly())) {
             var gateway = new McpGateway(runtime);
@@ -101,6 +157,15 @@ class LoopbackHttpServerTest {
             new LoopbackHttpServer(gateway, 0).close();
             new LoopbackHttpServer(gateway, 0, "test-token").close();
         }
+    }
+
+    private static HttpURLConnection openConnection(int port, String method) throws Exception {
+        var connection = (HttpURLConnection) URI.create("http://127.0.0.1:" + port + "/mcp")
+                .toURL().openConnection();
+        connection.setConnectTimeout(10_000);
+        connection.setReadTimeout(10_000);
+        connection.setRequestMethod(method);
+        return connection;
     }
 
     private static int post(int port, String token) throws Exception {
