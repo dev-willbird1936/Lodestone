@@ -121,8 +121,18 @@ def skip(name, why):
     print("SKIP " + name + " :: " + why, flush=True)
 
 
+def player_state(port, tries=4):
+    """Position reads flicker empty transiently; retry until real."""
+    for _ in range(tries):
+        o = out(rpc(port, "get_player_position"))
+        if o.get("position"):
+            return o
+        time.sleep(1.5)
+    return o
+
+
 def inventory(port):
-    o = out(rpc(port, "get_player_position"))
+    o = player_state(port)
     return o.get("worldObservation", {}).get("inventory", {}).get("items", {}), o
 
 
@@ -147,7 +157,7 @@ def surface_columns(port, cx, cz, r):
 
 def walkable_target(port, py, min_dist=8, max_dy=4):
     """Nearest non-canopy surface column at least min_dist away, close to player height."""
-    o = out(rpc(port, "get_player_position"))
+    o = player_state(port)
     p = o.get("position", {})
     if not p:
         return None, None
@@ -207,7 +217,7 @@ def stage_verbs(port):
 
     # chop_tree: reposition toward the densest tree cluster first, then chop
     if "chop_tree" in names:
-        o = out(rpc(port, "get_player_position"))
+        o = player_state(port)
         p = o.get("position", {})
         cluster = tree_cluster_center(port, p) if p else None
         if cluster and "goto_position" in names:
@@ -215,9 +225,12 @@ def stage_verbs(port):
             ground = next((c for c in sorted(cols, key=lambda c: abs(c["x"] - cluster["x"]) + abs(c["z"] - cluster["z"]))
                            if "leaves" not in str(c.get("surfaceBlock", "")) and "log" not in str(c.get("surfaceBlock", ""))),
                           None)
+            print(f"chop: cluster {cluster} ground {ground}", flush=True)
             if ground:
-                rpc(port, "goto_position", {"targetX": int(ground["x"]), "targetY": int(ground["height"]) + 1,
-                                            "targetZ": int(ground["z"]), "arriveRadius": 3}, timeout=300)
+                pre = rpc(port, "goto_position", {"targetX": int(ground["x"]), "targetY": int(ground["height"]) + 1,
+                                                  "targetZ": int(ground["z"]), "arriveRadius": 3}, timeout=300)
+                p2 = player_state(port).get("position", {})
+                print(f"chop: pre-goto -> {str(out(pre))[:180]} | now at {p2}", flush=True)
         before, _ = inventory(port)
         c = rpc(port, "chop_tree", {"collectDrops": True}, timeout=420)
         co = out(c)
@@ -239,10 +252,17 @@ def stage_verbs(port):
             fx, fy, fz = int(math.floor(p["x"])), int(p["y"]), int(math.floor(p["z"]))
             # only blocks that actually drop an item when mined bare-handed
             DROPPABLE = ("minecraft:grass_block", "minecraft:dirt", "minecraft:sand", "minecraft:gravel")
-            for dx, dz in ((1, 0), (0, 1), (-1, 0), (0, -1)):
-                la = cap(port, "minecraft.player.block.look-at", {"x": fx + dx, "y": fy - 1, "z": fz + dz})
-                t = out(la).get("target", {})
-                hp = t.get("blockPosition", {})
+            PLANTS = ("minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow")
+            for dx, dz in ((1, 0), (0, 1), (-1, 0), (0, -1), (1, 1), (-1, -1)):
+                for attempt in range(2):
+                    la = cap(port, "minecraft.player.block.look-at", {"x": fx + dx, "y": fy - 1, "z": fz + dz})
+                    t = out(la).get("target", {})
+                    hp = t.get("blockPosition", {})
+                    if t.get("block") in PLANTS and t.get("distance", 99) <= 4.2:
+                        rpc(port, "mine_block")  # clear the plant, then re-aim
+                        time.sleep(0.5)
+                        continue
+                    break
                 if (hp.get("x"), hp.get("y"), hp.get("z")) != (fx + dx, fy - 1, fz + dz):
                     continue
                 if t.get("distance", 99) > 4.2 or t.get("block") not in DROPPABLE:
