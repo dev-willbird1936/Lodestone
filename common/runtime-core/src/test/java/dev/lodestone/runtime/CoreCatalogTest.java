@@ -16,11 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class CoreCatalogTest {
     @Test
     void loadsRecordBackedCatalogValuesWithoutReflectiveMutation() {
-        // 73 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
+        // 74 = 56 pre-existing capabilities + minecraft.session.reconcile + minecraft.goal.move.goto
         // + minecraft.goal.gather.collect-drops + minecraft.goal.gather.chop-tree
         // + minecraft.goal.combat.attack-entity + minecraft.goal.survival.survive-night
-        // + 11 hard-script capabilities loaded from the NeoForge-ready deterministic script catalog.
-        assertEquals(73, CoreCatalog.load().size());
+        // + minecraft.goal.survival.respawn-recover + 11 hard-script capabilities loaded from the
+        // NeoForge-ready deterministic script catalog.
+        assertEquals(74, CoreCatalog.load().size());
     }
 
     @Test
@@ -224,6 +225,35 @@ final class CoreCatalogTest {
         assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
                 "sheltered", false, "ticksWaited", 0, "position", Map.of("x", 0, "y", 64, "z", 0),
                 "reason", "unknown-reason")).isEmpty());
+    }
+
+    @Test
+    void respawnRecoverGoalAcceptsBoundedInputAndValidatesEveryReasonCode() {
+        var capability = CoreCatalog.load().stream()
+                .filter(candidate -> candidate.id().equals("minecraft.goal.survival.respawn-recover"))
+                .findFirst().orElseThrow();
+
+        assertEquals("1.0", capability.version());
+        assertEquals("client", capability.nativeThread());
+
+        assertTrue(SchemaValidator.validate(capability.inputSchema(), Map.of()).isEmpty());
+        assertTrue(SchemaValidator.validate(capability.inputSchema(),
+                Map.of("recoverItems", false, "timeoutTicks", 3000)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 99)).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 6001)).isEmpty());
+
+        for (var reason : java.util.List.of("recovered", "nothing-to-recover", "drops-gone", "not-dead",
+                "timeout", "cancelled")) {
+            assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                    "respawned", !reason.equals("not-dead"), "itemsRecovered",
+                    reason.equals("recovered") ? Map.of("minecraft:diamond", 2) : Map.of(),
+                    "reason", reason)).isEmpty(), "reason " + reason + " must validate without a death position");
+        }
+        assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "respawned", true, "deathPosition", Map.of("x", 5, "y", 64, "z", -2),
+                "itemsRecovered", Map.of("minecraft:diamond", 2), "reason", "recovered")).isEmpty());
+        assertFalse(SchemaValidator.validate(capability.outputSchema(), Map.of(
+                "respawned", true, "itemsRecovered", Map.of(), "reason", "unknown-reason")).isEmpty());
     }
 
     @Test

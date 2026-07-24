@@ -98,6 +98,7 @@ public final class NeoForgeClientController {
         BRIDGE.tickChopTreeGoal();
         BRIDGE.tickAttackEntityGoal();
         BRIDGE.tickSurviveNightGoal();
+        BRIDGE.tickRespawnRecoverGoal();
         BRIDGE.tickCombatGoal();
         BRIDGE.tickSpawnGauntletGoal();
         BRIDGE.tickStoneToolsetGoal();
@@ -339,6 +340,7 @@ public final class NeoForgeClientController {
         private NeoForgeChopTreeGoal chopTreeGoal;
         private NeoForgeAttackEntityGoal attackEntityGoal;
         private NeoForgeSurviveNightGoal surviveNightGoal;
+        private NeoForgeRespawnRecoverGoal respawnRecoverGoal;
         /** Backs a single in-flight minecraft.player.interact "attack" held against a breakable
          * block - see {@link NeoForgeAttackHold}. Not a native goal actor, but it still owns
          * keyAttack across real ticks exactly like one, so a new hold refuses to start while a
@@ -393,7 +395,8 @@ public final class NeoForgeClientController {
                         "minecraft.goal.gather.collect-drops",
                         "minecraft.goal.gather.chop-tree",
                         "minecraft.goal.combat.attack-entity",
-                        "minecraft.goal.survival.survive-night" -> true;
+                        "minecraft.goal.survival.survive-night",
+                        "minecraft.goal.survival.respawn-recover" -> true;
                 case "minecraft.world.heightmap.read", "minecraft.world.light.analyze" -> client.level != null;
                 case "minecraft.ui.click", "minecraft.ui.text.insert",
                         "minecraft.inventory.container.read", "minecraft.inventory.container.click" -> client.screen != null;
@@ -441,6 +444,9 @@ public final class NeoForgeClientController {
             }
             if ("minecraft.goal.survival.survive-night".equals(capability)) {
                 return startSurviveNightGoal(invocation);
+            }
+            if ("minecraft.goal.survival.respawn-recover".equals(capability)) {
+                return startRespawnRecoverGoal(invocation);
             }
             if ("minecraft.player.interact".equals(capability)) {
                 return interactKeyAsync(invocation);
@@ -520,6 +526,7 @@ public final class NeoForgeClientController {
             if (chopTreeGoal != null && !chopTreeGoal.done()) stoppedGoalActors.add("chopTreeGoal");
             if (attackEntityGoal != null && !attackEntityGoal.done()) stoppedGoalActors.add("attackEntityGoal");
             if (surviveNightGoal != null && !surviveNightGoal.done()) stoppedGoalActors.add("surviveNightGoal");
+            if (respawnRecoverGoal != null && !respawnRecoverGoal.done()) stoppedGoalActors.add("respawnRecoverGoal");
             if (attackHold != null && !attackHold.done()) {
                 stoppedGoalActors.add("attackHold");
                 attackHold.fail(new IllegalStateException(
@@ -541,6 +548,7 @@ public final class NeoForgeClientController {
             chopTreeGoal = null;
             attackEntityGoal = null;
             surviveNightGoal = null;
+            respawnRecoverGoal = null;
             attackHold = null;
             hardScript = null;
 
@@ -606,6 +614,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (surviveNightGoal != null && !surviveNightGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (respawnRecoverGoal != null && !respawnRecoverGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -682,6 +693,9 @@ public final class NeoForgeClientController {
                     if (surviveNightGoal != null && !surviveNightGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (respawnRecoverGoal != null && !respawnRecoverGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     woolTreeZombieGoal = new NeoForgeWoolTreeZombieGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -731,6 +745,9 @@ public final class NeoForgeClientController {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     if (surviveNightGoal != null && !surviveNightGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    if (respawnRecoverGoal != null && !respawnRecoverGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -792,6 +809,9 @@ public final class NeoForgeClientController {
                     if (surviveNightGoal != null && !surviveNightGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (respawnRecoverGoal != null && !respawnRecoverGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     navigationGoal = new NeoForgeNavigationGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -841,6 +861,9 @@ public final class NeoForgeClientController {
                     if (surviveNightGoal != null && !surviveNightGoal.done()) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
+                    if (respawnRecoverGoal != null && !respawnRecoverGoal.done()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
                     invocation.cancellation().commitMutation();
                     combatGoal = new NeoForgeCombatGoal(invocation, result);
                 } catch (Throwable failure) {
@@ -873,7 +896,8 @@ public final class NeoForgeClientController {
                             || (collectDropsGoal != null && !collectDropsGoal.done())
                             || (chopTreeGoal != null && !chopTreeGoal.done())
                             || (attackEntityGoal != null && !attackEntityGoal.done())
-                            || (surviveNightGoal != null && !surviveNightGoal.done())) {
+                            || (surviveNightGoal != null && !surviveNightGoal.done())
+                            || (respawnRecoverGoal != null && !respawnRecoverGoal.done())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -907,7 +931,8 @@ public final class NeoForgeClientController {
                             || (collectDropsGoal != null && !collectDropsGoal.done())
                             || (chopTreeGoal != null && !chopTreeGoal.done())
                             || (attackEntityGoal != null && !attackEntityGoal.done())
-                            || (surviveNightGoal != null && !surviveNightGoal.done())) {
+                            || (surviveNightGoal != null && !surviveNightGoal.done())
+                            || (respawnRecoverGoal != null && !respawnRecoverGoal.done())) {
                         throw new IllegalStateException("a native Minecraft goal actor is already running");
                     }
                     invocation.cancellation().commitMutation();
@@ -1058,6 +1083,30 @@ public final class NeoForgeClientController {
             if (current.done()) surviveNightGoal = null;
         }
 
+        private CompletionStage<Map<String, Object>> startRespawnRecoverGoal(
+                dev.lodestone.adapter.InvocationContext invocation) {
+            var result = new CompletableFuture<Map<String, Object>>();
+            Minecraft.getInstance().execute(() -> {
+                try {
+                    if (anyNativeGoalActorRunning()) {
+                        throw new IllegalStateException("a native Minecraft goal actor is already running");
+                    }
+                    invocation.cancellation().commitMutation();
+                    respawnRecoverGoal = new NeoForgeRespawnRecoverGoal(invocation, result, lastDeathPosition());
+                } catch (Throwable failure) {
+                    result.completeExceptionally(failure);
+                }
+            });
+            return result;
+        }
+
+        private void tickRespawnRecoverGoal() {
+            var current = respawnRecoverGoal;
+            if (current == null) return;
+            current.tick(Minecraft.getInstance());
+            if (current.done()) respawnRecoverGoal = null;
+        }
+
         private void tickAttackHold() {
             var current = attackHold;
             if (current == null) return;
@@ -1107,7 +1156,8 @@ public final class NeoForgeClientController {
                     || (collectDropsGoal != null && !collectDropsGoal.done())
                     || (chopTreeGoal != null && !chopTreeGoal.done())
                     || (attackEntityGoal != null && !attackEntityGoal.done())
-                    || (surviveNightGoal != null && !surviveNightGoal.done());
+                    || (surviveNightGoal != null && !surviveNightGoal.done())
+                    || (respawnRecoverGoal != null && !respawnRecoverGoal.done());
         }
 
         private static Map<String, Object> screenshot(
