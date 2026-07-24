@@ -138,14 +138,30 @@ final class NeoForgeWorldSnapshot {
         if (!feetState.getCollisionShape(level, feet).isEmpty()
                 || !headState.getCollisionShape(level, feet.above()).isEmpty()) return false;
         if (supportState.getCollisionShape(level, supportPos).isEmpty()) return false;
-        // A recovery/path feet block must be dry even for balanced policy. Water and lava are
-        // valid observations and bucket targets, but never valid surfaces to walk or recover to.
-        if (!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.above()).isEmpty()) return false;
+        // Live-caught bug: a feet cell was required to be fully dry even for balanced policy, but
+        // vanilla players routinely stand/wade through shallow water (a pond, a stream) as ordinary
+        // movement, not a hazard - this left every non-adaptive actor standing at or walking through
+        // such a spot with literally zero admissible graph cells nearby (see originStandable's own
+        // doc for the matching origin-side half of this fix). Shallow water at the feet is now fine;
+        // the head must stay fully dry (a submerged head is swimming, a different movement mode this
+        // planner does not model), and any other fluid (lava) is still always rejected. High safety
+        // keeps its own stricter no-fluid-anywhere buffer below, unaffected by this relaxation.
+        if (!wadableFluid(waterOrEmpty(feet), level.getFluidState(head).isEmpty())) return false;
         if (policy.highSafety()) {
-            return !hazard(feet) && !hazard(feet.above()) && !hazard(supportPos)
+            return !hazard(feet) && !hazard(head) && !hazard(supportPos)
                     && level.getFluidState(supportPos).isEmpty();
         }
         return true;
+    }
+
+    /**
+     * Whether a cell's fluid state permits ordinary wading-based navigation: shallow water at the
+     * feet is fine (real vanilla wading, not a hazard by itself), any other fluid (lava) is not, and
+     * the head must stay fully dry - a submerged head is swimming, a different movement mode this
+     * planner does not model. Package-private and pure for direct testing.
+     */
+    static boolean wadableFluid(boolean feetWaterOrEmpty, boolean headFluidEmpty) {
+        return feetWaterOrEmpty && headFluidEmpty;
     }
 
     boolean hazard(BlockPos position) {
@@ -195,13 +211,21 @@ final class NeoForgeWorldSnapshot {
      * restrictive gate in the ordinary case. Every step the search actually proposes beyond the
      * origin keeps the full, unrelaxed {@link #walkable}/{@link #bufferedWalkable} contract - see
      * {@code NeoForgeSafePathPlanner#relaxNeighbor}.
+     *
+     * <p>Live-caught bug: this required the origin to be fully dry, so a player standing/wading in
+     * shallow water (a pond, a stream edge - ordinary vanilla movement, not a hazard) saw every
+     * {@code minecraft.goal.move.goto}/{@code minecraft.goal.gather.collect-drops} call fail with
+     * {@code no-route} on tick one, unable to even step toward dry land. Shallow water at the feet
+     * is now tolerated here too, exactly like {@link #walkable}'s own matching relaxation - the head
+     * must stay dry (a submerged head is swimming, not walking) and any other fluid (lava) is still
+     * never admissible.
      */
     boolean originStandable(BlockPos feet) {
         var head = feet.above();
         if (!level.hasChunkAt(feet) || !level.hasChunkAt(head)) return false;
         if (!level.getBlockState(feet).getCollisionShape(level, feet).isEmpty()
                 || !level.getBlockState(head).getCollisionShape(level, head).isEmpty()) return false;
-        return level.getFluidState(feet).isEmpty() && level.getFluidState(head).isEmpty();
+        return wadableFluid(waterOrEmpty(feet), level.getFluidState(head).isEmpty());
     }
 
     /** Collision-free water/ascent cell used only by the bounded emergency retreat graph. */
