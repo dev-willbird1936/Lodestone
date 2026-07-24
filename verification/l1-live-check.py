@@ -405,14 +405,75 @@ def stage_recover(port):
     return False
 
 
+def arena_quality(port):
+    import statistics
+    o = out(rpc(port, "get_player_position"))
+    p = o.get("position", {})
+    if not p:
+        return None
+    cols = surface_columns(port, int(p["x"]), int(p["z"]), 40)
+    if not cols:
+        return None
+    trees = sum(1 for c in cols if "leaves" in str(c["surfaceBlock"]) or "_log" in str(c["surfaceBlock"]))
+    icy = sum(1 for c in cols if str(c["surfaceBlock"]).split(":")[1] in
+              ("snow", "ice", "packed_ice", "powder_snow", "snow_block"))
+    openc = sum(1 for c in cols if str(c["surfaceBlock"]).endswith(("grass_block", "dirt", "sand")))
+    ground = [c["height"] for c in cols if "leaves" not in str(c["surfaceBlock"])]
+    sd = statistics.pstdev(ground) if ground else 99
+    return {"trees": trees, "openFrac": round(openc / len(cols), 2),
+            "icyFrac": round(icy / len(cols), 2), "heightSD": round(sd, 1)}
+
+
+def stage_arena(port):
+    """Reroll worlds until spawn has trees, open ground, low ice, and mild relief."""
+    def good(q):
+        return q and q["trees"] >= 25 and q["icyFrac"] < 0.2 and q["openFrac"] >= 0.05 and q["heightSD"] <= 3.5
+    q = arena_quality(port)
+    print("arena:", q, flush=True)
+    for i in range(6):
+        if good(q):
+            print("arena: ACCEPTED", flush=True)
+            return True
+        cap(port, "minecraft.ui.key", {"key": 256})
+        time.sleep(1.0)
+        st = out(rpc(port, "ui_state"))
+        w = next((x for x in st.get("widgets", []) if "quit to title" in str(x.get("label", "")).lower()), None)
+        if not w:
+            print("arena: no quit widget; screen:", st.get("screen"), flush=True)
+            rpc(port, "close_screen")
+            return good(q)
+        cap(port, "minecraft.ui.click", {"nodeId": w["nodeId"], "screenToken": st.get("screenToken"),
+                                         "snapshotRevision": st.get("snapshotRevision")})
+        time.sleep(3)
+        for tgt in ["singleplayer", "create_new_world", "create_world"]:
+            rpc(port, "ui_navigate", {"target": tgt})
+            time.sleep(0.8)
+        for _ in range(15):
+            time.sleep(6)
+            if out(rpc(port, "get_player_position")).get("position"):
+                break
+        time.sleep(4)
+        q = arena_quality(port)
+        print(f"arena reroll {i+1}:", q, flush=True)
+    return good(q)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=37891)
     ap.add_argument("--stage", choices=["verbs", "acceptance", "all"], default="all")
+    ap.add_argument("--ensure-arena", action="store_true")
     args = ap.parse_args()
     if not stage_recover(args.port):
         print("aborting: recovery pre-stage failed")
         sys.exit(2)
+    if args.ensure_arena:
+        if not stage_arena(args.port):
+            print("aborting: no acceptable arena")
+            sys.exit(2)
+        if not stage_recover(args.port):
+            print("aborting: post-arena recovery failed")
+            sys.exit(2)
     if args.stage in ("verbs", "all"):
         stage_verbs(args.port)
     if args.stage in ("acceptance", "all"):
