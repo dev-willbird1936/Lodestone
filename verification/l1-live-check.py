@@ -170,6 +170,37 @@ def walkable_target(port, py, min_dist=8, max_dy=4):
     return tgt, p
 
 
+def night_guard(port):
+    """If night is close or falling, shelter through it before continuing checks."""
+    day = out(rpc(port, "get_server_info")).get("dayTime", 0) % 24000
+    if 11500 <= day < 23200:
+        print(f"night_guard: dayTime {day}, sheltering", flush=True)
+        s = rpc(port, "survive_night", {"timeoutTicks": 15000}, timeout=900)
+        print("night_guard: survive_night ->", str(out(s))[:180], flush=True)
+        rpc(port, "reconcile_session")
+
+
+def goto_legs(port, tx, ty, tz, arrive=3, max_legs=4):
+    """Multi-leg goto: when the planner reports nearestReachable short of the target,
+    walk there and continue — the verb reports honestly, the caller legs it."""
+    last = None
+    for leg in range(max_legs):
+        g = rpc(port, "goto_position", {"targetX": int(tx), "targetY": int(ty), "targetZ": int(tz),
+                                        "arriveRadius": arrive}, timeout=300)
+        o = out(g)
+        last = o
+        if o.get("arrived"):
+            return o
+        nr = o.get("nearestReachable")
+        fp = o.get("finalPosition") or {}
+        if not nr or (int(nr.get("x", 0)) == int(fp.get("x", 1 << 30)) and int(nr.get("z", 0)) == int(fp.get("z", 1 << 30))):
+            return o  # no progress possible
+        hop = rpc(port, "goto_position", {"targetX": int(nr["x"]), "targetY": int(nr["y"]), "targetZ": int(nr["z"]),
+                                          "arriveRadius": 2}, timeout=300)
+        print(f"goto_legs leg{leg+1}: hop to {nr} -> {str(out(hop).get('arrived'))}", flush=True)
+    return last
+
+
 def tree_cluster_center(port, p):
     """Center of the densest 16x16 cell of tree columns within the loaded area."""
     cols = surface_columns(port, int(p["x"]), int(p["z"]), 64)
@@ -217,6 +248,7 @@ def stage_verbs(port):
 
     # chop_tree: reposition toward the densest tree cluster first, then chop
     if "chop_tree" in names:
+        night_guard(port)
         o = player_state(port)
         p = o.get("position", {})
         cluster = tree_cluster_center(port, p) if p else None
@@ -227,10 +259,9 @@ def stage_verbs(port):
                           None)
             print(f"chop: cluster {cluster} ground {ground}", flush=True)
             if ground:
-                pre = rpc(port, "goto_position", {"targetX": int(ground["x"]), "targetY": int(ground["height"]) + 1,
-                                                  "targetZ": int(ground["z"]), "arriveRadius": 3}, timeout=300)
+                pre = goto_legs(port, ground["x"], ground["height"] + 1, ground["z"])
                 p2 = player_state(port).get("position", {})
-                print(f"chop: pre-goto -> {str(out(pre))[:180]} | now at {p2}", flush=True)
+                print(f"chop: pre-goto -> {str(pre)[:180]} | now at {p2}", flush=True)
         before, _ = inventory(port)
         c = rpc(port, "chop_tree", {"collectDrops": True}, timeout=420)
         co = out(c)
@@ -283,6 +314,7 @@ def stage_verbs(port):
 
     # craft: planks then a crafting table then a wooden axe (needs logs from chop stage)
     if "craft_item" in names:
+        night_guard(port)
         c1 = rpc(port, "craft_item", {"item": "minecraft:oak_planks", "count": 8}, timeout=300)
         c2 = rpc(port, "craft_item", {"item": "minecraft:stick", "count": 4}, timeout=300)
         c3 = rpc(port, "craft_item", {"item": "minecraft:crafting_table", "count": 1}, timeout=300)
