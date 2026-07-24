@@ -176,13 +176,15 @@ def stage_verbs(port):
         if p:
             import math
             fx, fy, fz = int(math.floor(p["x"])), int(p["y"]), int(math.floor(p["z"]))
+            # only blocks that actually drop an item when mined bare-handed
+            DROPPABLE = ("minecraft:grass_block", "minecraft:dirt", "minecraft:sand", "minecraft:gravel")
             for dx, dz in ((1, 0), (0, 1), (-1, 0), (0, -1)):
                 la = cap(port, "minecraft.player.block.look-at", {"x": fx + dx, "y": fy - 1, "z": fz + dz})
                 t = out(la).get("target", {})
                 hp = t.get("blockPosition", {})
                 if (hp.get("x"), hp.get("y"), hp.get("z")) != (fx + dx, fy - 1, fz + dz):
                     continue
-                if t.get("distance", 99) > 4.2:
+                if t.get("distance", 99) > 4.2 or t.get("block") not in DROPPABLE:
                     continue
                 if ok(rpc(port, "mine_block")):
                     mined += 1
