@@ -66,4 +66,36 @@ final class NeoForgeSurviveNightGoalTest {
 
         assertTrue(cells.isEmpty());
     }
+
+    /**
+     * Regression coverage for the live-caught "no-shelter-material without ever digging" bug:
+     * {@code beginSeal} used to check the inventory the instant digging finished, racing vanilla's
+     * own drop pickup delay. The fix decides on a genuine before/after delta instead of "is any
+     * block item present now", which a pre-existing, unrelated inventory item could satisfy without
+     * the dig having contributed anything.
+     */
+    @Test
+    void materialCollectedRequiresAGenuineIncreaseOverThePreDigSnapshot() {
+        assertTrue(NeoForgeSurviveNightGoal.materialCollected(2, 0));
+        assertTrue(NeoForgeSurviveNightGoal.materialCollected(3, 2));
+        assertFalse(NeoForgeSurviveNightGoal.materialCollected(0, 0));
+        // Pre-existing inventory contents alone (no increase since before the dig) must not count.
+        assertFalse(NeoForgeSurviveNightGoal.materialCollected(5, 5));
+    }
+
+    /**
+     * Regression coverage for the live-caught "dig stalls to a deadline on a no-drop block" bug:
+     * ordinary shelter topsoil always yields a drop bare-handed, but stone/ore/etc. never do,
+     * wasting the whole mine attempt before finding out. Checked before spending any mining ticks.
+     */
+    @Test
+    void onlyKnownHandDiggableSoilYieldsAUsableDrop() {
+        assertTrue(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop("minecraft:dirt"));
+        assertTrue(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop("minecraft:grass_block"));
+        assertTrue(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop("minecraft:sand"));
+        assertTrue(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop("MINECRAFT:DIRT"), "matching must be case-insensitive");
+        assertFalse(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop("minecraft:stone"));
+        assertFalse(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop("minecraft:iron_ore"));
+        assertFalse(NeoForgeSurviveNightGoal.yieldsHandDiggableDrop(null));
+    }
 }

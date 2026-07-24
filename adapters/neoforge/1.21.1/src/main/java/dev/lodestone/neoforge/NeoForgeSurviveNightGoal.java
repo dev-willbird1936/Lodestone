@@ -22,7 +22,9 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
@@ -40,9 +42,27 @@ final class NeoForgeSurviveNightGoal {
     private static final int MINE_STALL_TICKS = 200;
     private static final int PLACE_STALL_TICKS = 200;
     private static final int EXIT_STALL_TICKS = 60;
+    // Live-caught bug: beginSeal() used to check the inventory for a sealable block on the exact
+    // same tick digging finished, racing vanilla's own default ItemEntity pickup delay (10 ticks) -
+    // the drop from the very last dug cell could not possibly have been collected yet, so this
+    // reliably reported no-shelter-material even though a genuine dirt/grass drop was one or two
+    // ticks away from landing in the inventory. This bound is generously past that delay.
+    private static final int AWAIT_DROPS_STALL_TICKS = 40;
     private static final float REACH = 4.5F;
 
-    private enum Stage { CHECK, DIG, ENSURE_HOTBAR, SEAL, WAIT_DAWN, UNSEAL, EXIT, DONE }
+    /** Vanilla block ids that reliably yield a usable, hand-minable drop - the exact set this shaft
+     * dig is meant to work with (topsoil/sand/etc.), never stone, ore, or anything else that
+     * requires a correct tool to drop at all. Checked before spending any mining ticks on a cell so
+     * an early "unshelterable-ground" is honest instead of grinding a no-drop block to a deadline.
+     * Package-private and pure for direct testing via {@link #yieldsHandDiggableDrop}. */
+    private static final Set<String> HAND_DIGGABLE_SOIL_IDS = Set.of(
+            "minecraft:dirt", "minecraft:grass_block", "minecraft:coarse_dirt", "minecraft:podzol",
+            "minecraft:mycelium", "minecraft:rooted_dirt", "minecraft:sand", "minecraft:red_sand",
+            "minecraft:gravel", "minecraft:clay", "minecraft:mud", "minecraft:muddy_mangrove_roots",
+            "minecraft:soul_sand", "minecraft:soul_soil", "minecraft:farmland", "minecraft:dirt_path",
+            "minecraft:snow_block", "minecraft:powder_snow");
+
+    private enum Stage { CHECK, DIG, AWAIT_DROPS, ENSURE_HOTBAR, SEAL, WAIT_DAWN, UNSEAL, EXIT, DONE }
     private enum HotbarTransfer { OPENING, MOVING, CLOSING }
 
     private final InvocationContext invocation;
@@ -57,6 +77,8 @@ final class NeoForgeSurviveNightGoal {
     private int digIndex;
     private BlockPos activeMiningTarget;
     private int miningTicks;
+    private int preDigBlockItemTotal;
+    private int awaitDropsTicks;
     private Item sealItem;
     private HotbarTransfer hotbarTransfer;
     private int hotbarTicks;
@@ -99,6 +121,7 @@ final class NeoForgeSurviveNightGoal {
             switch (stage) {
                 case CHECK -> tickCheck(client);
                 case DIG -> tickDig(client);
+                case AWAIT_DROPS -> tickAwaitDrops(client);
                 case ENSURE_HOTBAR -> tickEnsureHotbar(client);
                 case SEAL -> tickSeal(client);
                 case WAIT_DAWN -> tickWaitDawn(client);
@@ -126,23 +149,60 @@ final class NeoForgeSurviveNightGoal {
             complete(client, "no-shelter-material");
             return;
         }
+        // The dig always attempts unconditionally from here - never gated on whether the player
+        // already happens to be carrying a sealable block - since the dug dirt/grass IS the seal
+        // material this competency is meant to obtain. Only the delta against this snapshot (see
+        // tickAwaitDrops) decides no-shelter-material, and only after digging actually finished.
+        preDigBlockItemTotal = countBlockItems(player);
         digIndex = 0;
         stage = Stage.DIG;
     }
 
     private void tickDig(Minecraft client) {
         if (digIndex >= shaftCells.size()) {
-            beginSeal(client);
+            awaitDropsTicks = 0;
+            stage = Stage.AWAIT_DROPS;
             return;
         }
         var target = shaftCells.get(digIndex);
-        if (client.level.getBlockState(target).isAir()) {
+        var state = client.level.getBlockState(target);
+        if (state.isAir()) {
             digIndex++;
             activeMiningTarget = null;
             miningTicks = 0;
             return;
         }
-        mineVerified(client, target);
+        // Live-caught bug: mining a block that requires a correct tool to drop anything (e.g. stone
+        // under a thin topsoil layer, bare-handed) could still fully break within the stall budget
+        // while yielding zero usable material, wasting the whole attempt before finding out. Checked
+        // before spending any ticks on this cell, so the honest give-up is immediate, not deferred.
+        if (!yieldsHandDiggableDrop(NeoForgeHardScript.blockId(state))) {
+            complete(client, "unshelterable-ground");
+            return;
+        }
+        if (mineVerified(client, target)) {
+            complete(client, "unshelterable-ground");
+        }
+    }
+
+    /**
+     * Bounded post-dig wait for the shaft's own drops to actually register in the inventory - see
+     * {@link #AWAIT_DROPS_STALL_TICKS}'s own doc for the pickup-delay race this replaces. Only once
+     * the inventory shows a genuine increase in block-item count since before digging started (not
+     * merely "any block item present", which could be a false positive from unrelated pre-existing
+     * inventory contents) does this proceed to seal; a bounded timeout with no such increase is now
+     * a truly earned no-shelter-material, not a premature one.
+     */
+    private void tickAwaitDrops(Minecraft client) {
+        stopMovement(client);
+        var player = client.player;
+        if (materialCollected(countBlockItems(player), preDigBlockItemTotal)) {
+            beginSeal(client);
+            return;
+        }
+        if (++awaitDropsTicks > AWAIT_DROPS_STALL_TICKS) {
+            complete(client, "no-shelter-material");
+        }
     }
 
     private void beginSeal(Minecraft client) {
@@ -177,7 +237,11 @@ final class NeoForgeSurviveNightGoal {
         }
         hotbarTicks++;
         if (hotbarTicks > PLACE_STALL_TICKS) {
-            throw new IllegalStateException("survive-night sealing material could not reach the hotbar");
+            // A structured, honest failure - not an exception - so a genuinely stuck inventory
+            // transfer after the dig's mutation was already committed reports cleanly instead of
+            // leaving the session quarantined as indeterminate.
+            complete(client, "no-shelter-material");
+            return;
         }
         if (slot >= 0) {
             // Already in the hotbar; only a lingering screen from the transfer below is left to close.
@@ -249,7 +313,12 @@ final class NeoForgeSurviveNightGoal {
             stage = Stage.EXIT;
             return;
         }
-        mineVerified(client, sealTarget);
+        if (mineVerified(client, sealTarget)) {
+            // Already survived to dawn - a stuck exit is a best-effort cosmetic gap, not a shelter
+            // failure (see tickExit's own doc): report the success already earned instead of an
+            // indeterminate failure after the seal-mutation was committed.
+            complete(client, "dawn");
+        }
     }
 
     private void tickExit(Minecraft client) {
@@ -273,13 +342,28 @@ final class NeoForgeSurviveNightGoal {
         }
     }
 
-    private void mineVerified(Minecraft client, BlockPos target) {
+    /**
+     * Live-caught bug: this never stopped player movement, unlike every other mining loop in the
+     * codebase ({@code NeoForgeGotoMovement.continueHardMine}/{@code continueSoftMine}) - any
+     * movement key left down from whatever preceded this invocation kept walking the player away
+     * from directly above the shaft cell mid-dig, so the downward raycast increasingly missed the
+     * target and the "completion detection" (the cell ever actually turning to air) never fired.
+     * Also no longer throws on a stall: the caller decides what an honest give-up looks like in its
+     * own context (digging the shelter vs. mining back out at dawn) instead of every caller being
+     * forced into the same "irreversible mutation dispatched, now indeterminate" exceptional path -
+     * see {@link #tickDig}/{@link #tickUnseal}.
+     *
+     * @return true once the mining attempt has exceeded its bounded stall budget without breaking
+     * the target.
+     */
+    private boolean mineVerified(Minecraft client, BlockPos target) {
         var player = client.player;
         if (!target.equals(activeMiningTarget)) {
             activeMiningTarget = target;
             miningTicks = 0;
         }
         miningTicks++;
+        stopMovement(client);
         lookAt(player, target);
         var hit = player.pick(REACH, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(target)) {
@@ -288,9 +372,7 @@ final class NeoForgeSurviveNightGoal {
         } else {
             client.options.keyAttack.setDown(false);
         }
-        if (miningTicks > MINE_STALL_TICKS) {
-            throw new IllegalStateException("survive-night shaft dig stalled on " + target);
-        }
+        return miningTicks > MINE_STALL_TICKS;
     }
 
     /**
@@ -304,7 +386,10 @@ final class NeoForgeSurviveNightGoal {
         var player = client.player;
         var slot = hotbarSlot(player, sealItem);
         if (slot < 0) {
-            throw new IllegalStateException("survive-night sealing material is no longer available");
+            // A structured, honest failure - not an exception - so this reports cleanly instead of
+            // leaving the session quarantined as indeterminate after the dig's mutation committed.
+            complete(client, "no-shelter-material");
+            return;
         }
         if (player.getInventory().selected != slot) {
             KeyMapping.click(client.options.keyHotbarSlots[slot].getKey());
@@ -318,7 +403,8 @@ final class NeoForgeSurviveNightGoal {
         player.setXRot(0.0F);
         placeTicks++;
         if (placeTicks > PLACE_STALL_TICKS) {
-            throw new IllegalStateException("survive-night could not seal shaft at " + target);
+            complete(client, "unshelterable-ground");
+            return;
         }
         if (solid) {
             var hit = client.level.clip(new ClipContext(eye, Vec3.atCenterOf(neighbor),
@@ -384,6 +470,37 @@ final class NeoForgeSurviveNightGoal {
 
     private static boolean isBlockStack(ItemStack stack) {
         return !stack.isEmpty() && stack.getItem() instanceof BlockItem;
+    }
+
+    /** Total count of block items across the whole inventory - used as the before/after snapshot
+     * for {@link #materialCollected}, immune to which specific stack/slot a drop happened to land
+     * in. */
+    private static int countBlockItems(LocalPlayer player) {
+        var total = 0;
+        for (var slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            var stack = player.getInventory().getItem(slot);
+            if (isBlockStack(stack)) total += stack.getCount();
+        }
+        return total;
+    }
+
+    /**
+     * Whether digging has actually yielded new sealable material, compared against the inventory
+     * snapshot taken before the dig started - a genuine increase, not merely "some block item is
+     * present now", which could be a false positive from unrelated pre-existing inventory contents.
+     * Package-private and pure for direct testing.
+     */
+    static boolean materialCollected(int blockItemCountAfterDig, int blockItemCountBeforeDig) {
+        return blockItemCountAfterDig > blockItemCountBeforeDig;
+    }
+
+    /**
+     * True for vanilla block ids that reliably drop something when mined bare-handed - the shaft
+     * dig only ever expects to encounter ordinary topsoil, never stone/ore/anything requiring a
+     * correct tool to drop at all. Package-private and pure for direct testing.
+     */
+    static boolean yieldsHandDiggableDrop(String blockId) {
+        return blockId != null && HAND_DIGGABLE_SOIL_IDS.contains(blockId.trim().toLowerCase(Locale.ROOT));
     }
 
     private static int hotbarSlot(LocalPlayer player, Item item) {

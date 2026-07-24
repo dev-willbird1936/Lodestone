@@ -216,7 +216,8 @@ final class CoreCatalogTest {
         assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 999)).isEmpty());
         assertFalse(SchemaValidator.validate(capability.inputSchema(), Map.of("timeoutTicks", 16001)).isEmpty());
 
-        for (var reason : java.util.List.of("dawn", "not-night", "timeout", "no-shelter-material", "cancelled")) {
+        for (var reason : java.util.List.of("dawn", "not-night", "timeout", "no-shelter-material",
+                "unshelterable-ground", "cancelled")) {
             assertTrue(SchemaValidator.validate(capability.outputSchema(), Map.of(
                     "sheltered", reason.equals("dawn"), "ticksWaited", 9000,
                     "position", Map.of("x", 10, "y", 64, "z", -3), "reason", reason)).isEmpty(),
