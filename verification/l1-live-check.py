@@ -13,38 +13,95 @@ Every check is tolerant of a missing tool (reports SKIP) so the harness can run 
 
 import argparse
 import json
-import subprocess
 import sys
 import time
+import urllib.request
 
 REPO = r"C:\SyncedProjects\Game Development\Minecraft\Mods\Lodestone"
 RESULTS = []
 
+# One persistent MCP session for the whole run: burst-creating one-shot sessions per call
+# exhausts the gateway session table (live-observed -32001 storms), and events/artifacts are
+# session-scoped anyway.
+class McpClient:
+    def __init__(self, port):
+        self.uri = f"http://127.0.0.1:{port}/mcp"
+        self.sid = None
+        self.rid = 0
+        self._post("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
+                                  "clientInfo": {"name": "l1-live-check", "version": "1.0"}})
+        self._post("notifications/initialized", {})
 
-def rpc(port, tool, args=None, timeout=180):
-    cmd = [
-        "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-        "-File", "verification/agent-goal-rpc.ps1", "-Port", str(port), "-ToolName", tool,
-    ]
-    if args:
-        cmd += ["-ArgsJson", json.dumps(args)]
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=REPO)
+    def _post(self, method, params, timeout=300):
+        self.rid += 1
+        body = json.dumps({"jsonrpc": "2.0", "id": self.rid, "method": method, "params": params}).encode()
+        req = urllib.request.Request(self.uri, data=body)
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "application/json, text/event-stream")
+        if self.sid:
+            req.add_header("Mcp-Session-Id", self.sid)
+            req.add_header("MCP-Protocol-Version", "2025-11-25")
+        resp = urllib.request.urlopen(req, timeout=timeout)
+        if resp.headers.get("Mcp-Session-Id"):
+            self.sid = resp.headers.get("Mcp-Session-Id")
+        raw = resp.read().decode("utf-8", "replace")
+        if not raw.strip():
+            return {}
+        if raw.lstrip().startswith("{"):
+            return json.loads(raw)
+        datas = [l[5:].strip() for l in raw.splitlines() if l.startswith("data:")]
+        return json.loads(datas[-1]) if datas else {"raw": raw[:300]}
+
+    def tool(self, name, args=None, timeout=300):
+        r = self._post("tools/call", {"name": name, "arguments": args or {}}, timeout)
+        res = r.get("result", {})
+        outp = {"http": 200}
+        if r.get("error"):
+            outp["rpcError"] = r["error"]
+        if res.get("isError"):
+            outp["isError"] = True
+        outp["result"] = res.get("structuredContent") if res.get("structuredContent") is not None \
+            else res.get("content")
+        return outp
+
+
+_CLIENT = None
+
+
+def client(port):
+    global _CLIENT
+    if _CLIENT is None:
+        _CLIENT = McpClient(port)
+    return _CLIENT
+
+
+def rpc(port, tool, args=None, timeout=300):
     try:
-        return json.loads(p.stdout)
-    except Exception:
-        return {"parse_error": p.stdout[:300], "stderr": p.stderr[:200]}
+        return client(port).tool(tool, args, timeout)
+    except Exception as e:
+        # one reconnect attempt (client restart / session loss)
+        global _CLIENT
+        _CLIENT = None
+        try:
+            return client(port).tool(tool, args, timeout)
+        except Exception as e2:
+            return {"transport_error": f"{e} / {e2}"}
 
 
-def cap(port, cid, inp=None, timeout=180):
+def cap(port, cid, inp=None, timeout=300):
     return rpc(port, "lodestone_capability_invoke", {"capability": cid, "input": inp or {}}, timeout)
 
 
 def out(resp):
-    return resp.get("result", {}).get("output", {})
+    r = resp.get("result")
+    if isinstance(r, dict):
+        return r.get("output", r if "status" not in r else {})
+    return {}
 
 
 def ok(resp):
-    return resp.get("result", {}).get("status") == "ok"
+    r = resp.get("result")
+    return isinstance(r, dict) and r.get("status") == "ok"
 
 
 def record(name, passed, evidence):
@@ -63,12 +120,9 @@ def inventory(port):
 
 
 def tool_names(port):
-    resp = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-         "verification/agent-goal-rpc.ps1", "-Port", str(port), "-ListTools"],
-        capture_output=True, text=True, timeout=120, cwd=REPO)
     try:
-        return {t["name"] for t in json.loads(resp.stdout)["tools"]}
+        r = client(port)._post("tools/list", {})
+        return {t["name"] for t in r.get("result", {}).get("tools", [])}
     except Exception:
         return set()
 
