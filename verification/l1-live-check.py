@@ -493,9 +493,22 @@ def stage_arena(port):
         day = out(rpc(port, "get_server_info")).get("dayTime", 0) % 24000
         return day < 11000 or day >= 23200
 
+    def mobility_probe():
+        """The spawn area must actually be walkable, not a pond island."""
+        o = player_state(port)
+        py = o.get("position", {}).get("y", 0)
+        tgt, _ = walkable_target(port, py, min_dist=8)
+        if not tgt:
+            return False
+        g = rpc(port, "goto_position", {"targetX": int(tgt["x"]), "targetY": int(tgt["height"]) + 1,
+                                        "targetZ": int(tgt["z"]), "arriveRadius": 2}, timeout=300)
+        arrived = bool(out(g).get("arrived"))
+        print("arena mobility probe:", arrived, str(out(g))[:120], flush=True)
+        return arrived
+
     def good(q):
         return (q and q["trees"] >= 25 and q["icyFrac"] < 0.2 and q["openFrac"] >= 0.05
-                and q["heightSD"] <= 3.5 and daytime())
+                and q["heightSD"] <= 3.5 and daytime() and mobility_probe())
     q = arena_quality(port)
     print("arena:", q, "daytime:", daytime(), flush=True)
     for i in range(6):
