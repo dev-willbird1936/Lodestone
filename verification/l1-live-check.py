@@ -76,16 +76,23 @@ def client(port):
 
 
 def rpc(port, tool, args=None, timeout=300):
-    try:
-        return client(port).tool(tool, args, timeout)
-    except Exception as e:
-        # one reconnect attempt (client restart / session loss)
-        global _CLIENT
-        _CLIENT = None
+    for attempt in range(5):
         try:
-            return client(port).tool(tool, args, timeout)
-        except Exception as e2:
-            return {"transport_error": f"{e} / {e2}"}
+            r = client(port).tool(tool, args, timeout)
+        except Exception:
+            # one reconnect attempt (client restart / session loss)
+            global _CLIENT
+            _CLIENT = None
+            try:
+                r = client(port).tool(tool, args, timeout)
+            except Exception as e2:
+                return {"transport_error": str(e2)}
+        err = (r.get("result") or {}).get("error", {}) if isinstance(r.get("result"), dict) else {}
+        if err.get("code") == "RATE_LIMIT_EXCEEDED" and attempt < 4:
+            time.sleep(1.5)
+            continue
+        return r
+    return r
 
 
 def cap(port, cid, inp=None, timeout=300):
